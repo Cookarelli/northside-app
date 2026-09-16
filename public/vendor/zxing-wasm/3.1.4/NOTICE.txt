@@ -1,0 +1,8 @@
+Locally served zxing-wasm 3.1.4, unmodified WASM from the pinned npm package.
+Wrapper: copyright 2023 Ze-Zheng Wu, MIT (LICENSE-MIT.txt).
+ZXing-C++: Apache License 2.0 (LICENSE-Apache-2.0.txt).
+QR writing uses the Zint backend: Robin Stuart and contributors, BSD
+(LICENSE-Zint-BSD.txt). Frontend applications are not included.
+Sources: https://github.com/Sec-ant/zxing-wasm and https://github.com/zxing-cpp/zxing-cpp
+SHA256.json records the checksums verified against zxing-wasm's exported values.
+No code is loaded from a CDN at runtime. Re-run pnpm store:assets for the pinned assets.

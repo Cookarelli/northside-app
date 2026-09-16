@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "corepack pnpm install --frozen-lockfile",
+  "buildCommand": "corepack pnpm build",
+  "build": {
+    "env": { "ENABLE_EXPERIMENTAL_COREPACK": "1", "NORTHSIDE_FIXTURES": "0" }
+  },
+  "env": {
+    "NORTHSIDE_FIXTURES": "0",
+    "NOTIFICATION_DELIVERY_ENABLED": "false",
+    "HOBBY_KEY_INTEREST_ENABLED": "false"
+  }
+}

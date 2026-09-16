@@ -1,0 +1,36 @@
+# Working on Northside
+
+Read Northside-App-Codex-Prompts.md completely, README.md and docs/{PRODUCT-SPEC,ARCHITECTURE,INTEGRATIONS,STATUS}.md before continuing. Implement only the user-authorized stage. The user authorized and completed Prompt 10 locally. Prompts 1–10 are implemented and locally validated; read docs/RELEASE-REPORT.md, REQUIREMENTS-MATRIX.md and STATUS.md for current evidence and external gaps. Deployment, real checkout/identity/Storage/device verification and feature activation remain pending. The requested design reminder has been delivered at the functional-completion milestone; the dedicated design pass is the next user-directed work. Do not silently start new features or launch.
+
+Preserve the fresh Next.js App Router / React / TypeScript application and the supplied Northside logo proportions. Business modules stay separate from branding. No paid loyalty plugin: Northside owns its ledger, tiers, rewards and analytics. Shopify owns identity, paid orders, refunds, inventory and applied checkout discounts. Do not alter products (currently Draft), locations or fulfillment settings. Keep the three inventory pools separate.
+
+Read docs/SETUP-PROMPT-9.md and docs/MARKETING-HUB-ENGAGEMENT-CONTRACT.md for PWA, engagement role, notification workers and consent. Cache only the explicit public static allowlist. Never send until delivery is authorized/configured; provider acceptance is not device delivery. Stable show QR labels retain original placement attribution while destinations change. Shopify verified orders, legacy evidence and consignment payouts remain separate.
+
+Read docs/SETUP-PROMPT-8.md and docs/STORE-ACTIVATION-CHECKLIST.md for the future store. Preserve eight editable schematic aisles, separate product/variant/barcode/locator identities, three pools and the approved-retail-only projection. Stable QR tokens encode only an app URL; use pinned, locally served library assets and visibly marked sample downloads. Scanned URLs never trigger arbitrary fetches or inventory writes. Pickup records are SAMPLE rehearsals only. Real phone cameras, floor plan, app domain, published mappings and physical/Shopify fulfillment remain unverified; public store routes remain disabled.
+
+Read docs/SETUP-PROMPT-7.md and docs/BREAK-SALE-CHECKLIST.md for breaks. Preserve exact server variant mappings, unique paid-line/finite-slot allocation, separate legacy payment evidence, durable commerce-role jobs and retained refund holds. A local PGlite conflict test never proves Shopify overselling protection. Actual checkout concurrency and physical fulfillment/pool reconciliation remain pending. Passing a countdown never marks live. Reminders use the Prompt 9 outbox; live email/push remain unconfigured and UNSENT. Participant names require explicit alias consent.
+
+Read docs/SETUP-PROMPT-6.md, docs/LOYALTY-RECONCILIATION.md and docs/MARKETING-HUB-LOYALTY-CONTRACT.md for loyalty. Preserve immutable rule/line allocations, signed ledger debt, transactional holds, stable-code lookup recovery and manual capped restoration. Use the separate northside_loyalty database role. Live economics require Joey’s verified approval; all public earning/redemption gates remain false and real Shopify checkout verification is outstanding. Local sample approval is never real approval. Never return points based on an unused count, expiry or abandoned cart alone.
+
+Read docs/SETUP-PROMPT-5.md and docs/FANATICS-DATA-REQUEST.md for consignment. Preserve explicit unknown amounts, verified exact ownership matches, immutable settlement corrections and manual records during provider outages. No live Fanatics requests without actual partner documentation. Payout records must never initiate transfers or enter retail/loyalty revenue.
+
+Read docs/SETUP-PROMPT-4.md for grading persistence, claim verification, CSV review/reversal and payment-source separation. Local sample grading storage stays ignored under work/. Never enable that fixture route in production or accept a browser-chosen live actor.
+
+Read docs/AUTH-AND-PRIVACY.md and docs/SETUP-PROMPT-2.md for identity enforcement and configuration. Never replace the runtime/auth SQL roles with a Supabase service or migration role.
+Read docs/SETUP-PROMPT-3.md for Shopify configuration and worker operations. The separate commerce SQL role has no session or operational-card access. Customer Account access tokens and full cart IDs stay server-only; cart-line handles are also redacted. Order ownership comes from verified Shopify customer mapping, never email, a cart ID or checkout return. Storefront is the only public catalog source. Preserve the durable receipt/lease/reconciliation path and immutable order ledger. No automatic same-organization Admin grant assumption or expired-token fallback.
+
+Fixtures require explicit local opt-in and are prohibited in production. Never substitute them for missing live data. No live checkout from demo controls. No private customer caching. Keep provider access server-only. All public purchase, earning/redemption, scan, aisle and pickup gates remain disabled. Eight editable aisles is the latest store requirement. Do not implement future stages early.
+
+Use integer cents, USD, America/Chicago display, UTC storage. No invented approvals, dates, sale amounts, provider connections or real-time labels. Joey must approve loyalty economics. “BGP” is unconfirmed; do not silently call it BGS. Customer scope is tenant/shop/provider/subject, never email alone. Private staff notes and pooled batch totals are not customer data.
+
+Use native labeled inputs/buttons and accessible Radix tabs. Run build, typecheck, lint and tests, inspect mobile and desktop, then update docs/STATUS.md with evidence and honest limitations. Routine local development is authorized; this file adds no approval gate. Do not send messages, deploy, purchase plans or change Shopify without the user's scope authorizing it.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

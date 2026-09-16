@@ -1,0 +1,145 @@
+{
+  "fixture": true,
+  "notice": "Fictional local sample checkpoint only; no real Shopify activity or business metrics.",
+  "period": {
+    "start": "2026-08-13T09:26:02.825Z",
+    "end": "2026-09-12T09:26:02.825Z"
+  },
+  "metrics": [
+    {
+      "key": "members",
+      "label": "Members",
+      "value": 2,
+      "unit": "members",
+      "period": "Before 2026-09-12T09:26:02.825Z",
+      "source": "loyalty_accounts.enrolled_at",
+      "definition": "Verified enrolled accounts by period end."
+    },
+    {
+      "key": "active_earners",
+      "label": "Active earners",
+      "value": 1,
+      "unit": "members",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z (end excluded)",
+      "source": "loyalty_ledger.created_at",
+      "definition": "Distinct customers with positive purchase earnings."
+    },
+    {
+      "key": "gross_earned",
+      "label": "Gross earned points",
+      "value": 1250,
+      "unit": "points",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z (end excluded)",
+      "source": "loyalty_ledger.created_at",
+      "definition": "Positive purchase earning entries, before reversals."
+    },
+    {
+      "key": "reversals",
+      "label": "Refund / edit reversals",
+      "value": 0,
+      "unit": "points",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z (end excluded)",
+      "source": "loyalty_ledger.created_at",
+      "definition": "Absolute negative purchase refund/edit entries; separate from reward restoration."
+    },
+    {
+      "key": "exchange_debits",
+      "label": "Reward exchange debits",
+      "value": 500,
+      "unit": "points",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z (end excluded)",
+      "source": "loyalty_ledger.created_at",
+      "definition": "Points spent when voucher issuance was confirmed."
+    },
+    {
+      "key": "restorations",
+      "label": "Reviewed restorations",
+      "value": 0,
+      "unit": "points",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z (end excluded)",
+      "source": "loyalty_ledger.created_at",
+      "definition": "Audited compensating reward credits."
+    },
+    {
+      "key": "adjustments",
+      "label": "Signed staff adjustments",
+      "value": 0,
+      "unit": "points",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z (end excluded)",
+      "source": "loyalty_ledger.created_at",
+      "definition": "Signed reasoned staff corrections."
+    },
+    {
+      "key": "outstanding",
+      "label": "Outstanding signed points",
+      "value": 750,
+      "unit": "points",
+      "period": "Before 2026-09-12T09:26:02.825Z",
+      "source": "Sum of immutable ledger entries",
+      "definition": "Signed total; includes debt and already-held points. Not cash or a liability valuation."
+    },
+    {
+      "key": "held",
+      "label": "Processing holds now",
+      "value": 0,
+      "unit": "points",
+      "period": "2026-09-12T09:26:02.830Z",
+      "source": "Current held/review reservations",
+      "definition": "Current snapshot, not a reconstructed historical hold balance; included within outstanding points."
+    },
+    {
+      "key": "issued",
+      "label": "Vouchers issued",
+      "value": 1,
+      "unit": "vouchers",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z",
+      "source": "shopify_vouchers.issued_at",
+      "definition": "Confirmed voucher mappings; does not mean used."
+    },
+    {
+      "key": "used",
+      "label": "Vouchers used",
+      "value": 0,
+      "unit": "vouchers",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z",
+      "source": "Verified paid order discount allocations",
+      "definition": "Distinct vouchers with recorded paid usage; delayed webhooks can change this count."
+    },
+    {
+      "key": "discount_cents",
+      "label": "Shopify discount amounts",
+      "value": 0,
+      "unit": "USD cents",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z",
+      "source": "loyalty_voucher_usage.amount_cents",
+      "definition": "Gross observed reward discount allocation on paid orders before refund adjustments; not issued face value."
+    },
+    {
+      "key": "repeat",
+      "label": "Repeat purchasers",
+      "value": 0,
+      "unit": "members",
+      "period": "2026-08-13T09:26:02.825Z to 2026-09-12T09:26:02.825Z",
+      "source": "Current reconciled eligible paid orders",
+      "definition": "Customers with at least two non-cancelled orders retaining positive qualifying spend in period. No causal sales claim."
+    }
+  ],
+  "tiers": {
+    "Rookie": 1,
+    "Vet": 1,
+    "HOF": 0,
+    "GOAT": 0
+  },
+  "tier_as_of": "2026-09-12T09:26:02.828Z",
+  "tier_rule_version": 2,
+  "exposure": null,
+  "reconciliation": {
+    "checked_at": "2026-09-12T09:26:02.830Z",
+    "source": "Local persisted ledger, reservations and voucher mappings",
+    "accounts_checked": 2,
+    "issues": [],
+    "negative_accounts": 0,
+    "held_points": 0,
+    "provider_verification": "Not a live Shopify reconciliation or checkout test"
+  }
+}

@@ -1,0 +1,3 @@
+external_id,customer_id,item_id,description,received_date,channel,state_key,currency,asking_cents,sale_cents,fees_cents,provider_reference,submission_reference,listing_reference,customer_notes,source_updated_at
+SAMPLE-CONSIGN-001,00000000-0000-4000-8000-000000000001,,SAMPLE ONLY basketball consignment,2026-09-01,Fanatics Collect SAMPLE,listed,USD,15000,,,SAMPLE-ITEM-001,SAMPLE-SUBMISSION,SAMPLE-LISTING,Sample listing note,2026-09-03T12:00:00Z
+SAMPLE-CONSIGN-002,,,SAMPLE ONLY unmatched baseball card,2026-09-01,Fanatics Collect SAMPLE,processing,USD,,,,SAMPLE-ITEM-002,SAMPLE-SUBMISSION,,Match only with verified receipt evidence,2026-09-03T12:00:00Z

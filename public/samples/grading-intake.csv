@@ -1,0 +1,3 @@
+external_id,customer_id,description,quantity,sport,year,manufacturer,card_set,card_number,parallel
+SAMPLE-EXAM-001,00000000-0000-4000-8000-000000000001,SAMPLE ONLY basketball card,3,Basketball,2025,Sample manufacturer,Preview set,EXAMPLE,Base
+SAMPLE-EXAM-002,00000000-0000-4000-8000-000000000002,SAMPLE ONLY baseball card,1,Baseball,2025,Sample manufacturer,Preview set,EXAMPLE,Base

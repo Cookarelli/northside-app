@@ -1,0 +1,35 @@
+# Launch checklist
+
+**Decision: not ready for customer launch.** Local functionality and release preparation are complete; checked boxes below do not activate gates or establish a provider connection. No live checkout, message or hosted deployment was performed. Steve owns the release decision and must record private evidence references, reviewer and date for each missing item.
+
+| Required item | Current result | Who supplies the remaining input / acceptance evidence |
+| --- | --- | --- |
+| Approved Northside logo | Supplied clean SVG preserved intact; local icons/layout inspected | Steve confirms final brand guide, photography and design pass. No logo file blocker. |
+| GitHub write access | Waiting; previous connected account lacked push permission | Steve restores account/repository write access, then authorizes upload of the reviewed final commit. |
+| Hosting and HTTPS origin | Vercel project supplied; no deployment or domain verified | Steve chooses exact staging/production origin, access protection, worker host and acceptable costs. |
+| Supabase migrations and roles | 001–009 tested locally; hosted application absent | Database operator/Steve inspect project, apply reviewed migrations, provision five restricted roles, verify TLS/pooling and no public signup. |
+| Backup and restore | Isolated PGlite rehearsal passed; hosted recovery pending | Database operator/Steve set recovery objectives/retention, restore database + private files + required keys/Auth, test reconciliation and record actual recovery time. |
+| Customer and invited staff login | Local OIDC/session/role tests only | Steve/Shopify admin configure HTTPS callbacks, actual customer client/scopes, invited owner; test refresh, denial, logout, account switching and physical-device history. |
+| Private card files | Ownership/RLS tests passed; no hosted upload/download | Operations + database operator use sanitized staging files, test foreign/direct denial and actual 60-second expiry. |
+| Small selected published catalog | Unchanged Draft catalog; published-channel adapter mocked locally | Steve names exact authorized test products/channel. Verify an unselected Draft remains inaccessible; no bulk publication. |
+| Actual guest/customer checkout | Disabled, no real test performed | Steve/Shopify admin authorize a controlled test plan: paid evidence, identity, prices/discounts/tax, stock changes, expired cart and buyer-IP spoof resistance. |
+| Supported financial modes | Reader conservatively reviews tax-inclusive/test/subscription/ambiguous or truncated cases | Steve/Joey confirm real shop settings. Test supported modes; separately implement required unsupported contracts. Test-mode orders intentionally do not earn automatically. |
+| Webhooks and durable workers | Raw HMAC, duplicates, leases and retries tested locally | Steve/deployment operator verify actual signed delivery, secrets/rotation, subscription health, scheduler, crashes, parallel PostgreSQL contention and alert ownership. |
+| Breaks and real stream destinations | Sample schedule; exact social URLs/format/terms unconfirmed | Operations supplies host/products, time, format/capacity, terms, approved watch/replay URLs and external paid commitments. No placeholder public streams. |
+| Last-spot sale / refunds | Local unique allocation and reconciliation pass; purchases disabled | Operations/Shopify admin run real competing checkout matrix, refund/cancel timing and per-event sale checklist. |
+| Inventory/physical fulfillment | Three pools unchanged; no floor-stock promise | Operations verifies Northside Retail Floor, Northside Breaker Storage and Northside Excess Storage routing separately using actual test fulfillment. |
+| Grading operations | Manual intake/grouping/decisions/imports tested locally | Operations supplies sanitized spreadsheet and validates the workflow. $5 examination only; confirm other charges separately. |
+| Second grading provider | “BGP” unconfirmed and kept internal | Steve/Joey identify the exact company; never silently substitute Beckett/BGS. Provider APIs are optional. |
+| Fanatics Collect coverage | Partnership confirmed by Steve; feed disconnected | Steve + Fanatics partner supply exact connector/docs/access/consignor mapping/status/sale/fee/payout coverage. Manual portal remains independent. |
+| Custom loyalty economics | Engine local; no paid plugin; real rules inactive | Joey approves earning, eligibility, rolling tiers, exclusions, fixed rewards, minimum, stacking, expiry and manual restoration within supported policies. |
+| Actual reward issuance/use | Mocked timeout/crash/owner/discount tests only | Shopify admin + Joey verify eligible owner, another customer/guest rejection, minimum, full reward use, one-use, combinations, returns and cancellation races. |
+| Notifications | Generic in-app and UNSENT outbox local; email/push disabled | Steve chooses verified sender/keys, approves recipient test and verifies denial/opt-out/time changes/provider acceptance/real device delivery. |
+| Show campaigns and Marketing Hub | Local consented QR/metrics/export; no live Hub | Steve supplies confirmed show details, approved UTMs/placements and consent/retention wording; receiving Hub owner accepts report replacement/schema. HobbyKey capture stays off. |
+| Physical iPhone Safari and Android Chrome | Unperformed; desktop viewport tests are separate | Steve arranges devices; test install/menu/standalone/update, OAuth, logout/back/shared device, offline/slow network, denied push, deep links and actual notification delivery. |
+| Store opening/scanner/pickup | Intentionally disabled; schematic eight aisles only | Operations supplies real plan/opening decision and completes STORE-ACTIVATION-CHECKLIST.md. No stock transfer or pickup promise. |
+| Scale and operational support | Recent-list/provider-read limits documented | Steve/operations agree expected volume; add pagination before exceeding limits. Assign queue monitoring, recovery and escalation coverage. |
+| Design pass | Now due: functional local stages through Prompt 10 complete | Steve returns for dedicated brand/layout/typography/photo/mobile review before customer launch. No broad redesign performed in Prompt 10. |
+
+For every integration check record **environment, exact app/schema version, test identities (privately), expected result, actual result, timestamp and reviewer**. A configuration flag, screenshot or successful local mock is not external evidence. Keep credentials, buyer data and operational exports out of this repository. Only the public Shopify discovery metadata has prior external technical verification; see REQUIREMENTS-MATRIX.md.
+
+The highest-priority operational step is restoring account access and choosing a stable protected HTTPS staging origin, then verifying hosted identity/Storage before payments. The requested design pass can begin against the preserved local preview while access is being restored. Live gate changes require their own reviewed launch work after the relevant evidence passes.
