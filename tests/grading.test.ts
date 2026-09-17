@@ -27,6 +27,12 @@ import {
 } from "../lib/server/grading-import";
 import { gradingFields } from "../lib/grading";
 import { gradingApi } from "../lib/server/grading-api";
+import {
+  approveForTest,
+  dispatchForTest,
+  sampleService,
+} from "./support/grading-exam-fixture";
+import { recordOutcome } from "../lib/server/grading-fulfillment";
 import { TENANT } from "../lib/server/providers";
 const directory = await mkdtemp(join(tmpdir(), "northside-grading-tests-"));
 let fixture = await openPreviewDatabase(directory);
@@ -62,11 +68,27 @@ test("grading: three physical cards have unique IDs and a $15 examination snapsh
   );
   assert.equal(cards.length, 3);
   assert.equal(new Set(cards.map((c) => c.card_id)).size, 3);
+  assert.equal(new Set(cards.map((c) => c.description)).size, 1);
+  assert.equal(new Set(cards.map((c) => c.card_number)).size, 1);
+  assert.equal(
+    cards.reduce((sum, c) => sum + c.examination_cents, 0),
+    1500,
+  );
   const retry = await run("staff", (db, a) =>
     createIntake(db, a, input(), request, "Retry"),
   );
   assert.equal(retry.case_id, caseId);
   assert.equal(retry.duplicate, true);
+  assert.equal(
+    (await run("a", gradingCards))
+      .filter((c) => c.case_id === caseId)
+      .reduce((sum, c) => sum + c.examination_cents, 0),
+    1500,
+  );
+  assert.equal(
+    (await run("a", gradingCards)).filter((c) => c.case_id === caseId).length,
+    3,
+  );
   const detail = await run("a", (db, a) =>
     gradingDetail(db, a, cards[0].card_id),
   );
@@ -111,39 +133,33 @@ test("grading: future rates do not rewrite intake amounts or history", async () 
   );
 });
 test("grading: shared batch events reach only selected cards; partial returns preserve other items", async () => {
-  const a = (await run("a", gradingCards)).find((c) => c.case_id === caseId)!;
-  const b = (await run("b", gradingCards))[0];
+  let a = (await run("a", gradingCards)).find((c) => c.case_id === caseId)!;
+  let b = (await run("b", gradingCards))[0];
+  await approveForTest(fixture, [a.card_id], "a");
+  await approveForTest(fixture, [b.card_id], "b");
+  a = await run("a", (db, actor) => gradingCard(db, actor, a.card_id));
+  b = await run("b", (db, actor) => gradingCard(db, actor, b.card_id));
   const created = await run("staff", (db, s) =>
     batch(db, s, {
       operation: "create",
       reference: "PRIVATE POOLED REFERENCE",
       provider: "psa",
+      service: sampleService,
       carrier: "Example carrier",
       tracking: "PRIVATE TRACKING",
       reason: "Group sample cards",
     }),
   );
   const id = created.id!;
-  await run("staff", (db, s) =>
-    batch(db, s, {
-      operation: "cards",
-      id,
-      version: 1,
-      assign: true,
-      cards: [a, b].map((c) => ({ card_id: c.card_id, version: c.version })),
-      status_key: "sent_to_grader",
-      reason: "Sample shipping recorded",
-    }),
-  );
+  await dispatchForTest(fixture, id, [a.card_id, b.card_id]);
   const shipped = await run("a", (db, s) => gradingCard(db, s, a.card_id));
   await run("staff", (db, s) =>
-    batch(db, s, {
-      operation: "cards",
-      id,
-      version: 2,
-      assign: false,
-      cards: [{ card_id: a.card_id, version: shipped.version }],
-      status_key: "returned",
+    recordOutcome(db, s, {
+      card_id: a.card_id,
+      version: shipped.version,
+      result_kind: "graded",
+      result: "SAMPLE actual 8",
+      certificate: "SAMPLE certificate",
       reason: "One sample card physically returned",
     }),
   );
@@ -184,36 +200,26 @@ test("grading: shared batch events reach only selected cards; partial returns pr
     fail(404),
   );
 });
-test("grading: authenticated submit/return decisions are allowed only at the decision step and are idempotent", async () => {
-  const cards = (await run("a", gradingCards)).filter(
+test("grading: legacy decisions cannot bypass current exam and quote approval", async () => {
+  const c = (await run("a", gradingCards)).find(
     (c) => c.case_id === caseId && c.status_key === "received",
-  );
-  for (const [index, choice] of ["submit", "return"].entries()) {
-    const c = cards[index];
-    await run("staff", (db, a) =>
-      updateGradingCard(db, a, c.card_id, {
-        version: c.version,
-        status_key: "awaiting_decision",
-        findings: "Sample findings",
-        reason: "Exam complete",
-      }),
-    );
-    const body = { version: c.version + 1, choice, request_id: randomUUID() };
-    await run("a", (db, a) => decide(db, a, c.card_id, body));
-    await run("a", (db, a) => decide(db, a, c.card_id, body));
-    const d = await run("a", (db, a) => gradingDetail(db, a, c.card_id));
-    assert.equal(
-      d.card.status_key,
-      choice === "submit" ? "ready_to_submit" : "return_requested",
-    );
-    assert.equal(d.events.filter((e) => e.source === "customer").length, 1);
+  )!;
+  for (const choice of ["submit", "return"]) {
     await assert.rejects(
       run("a", (db, a) =>
-        decide(db, a, c.card_id, { ...body, request_id: randomUUID() }),
+        decide(db, a, c.card_id, {
+          version: c.version,
+          choice,
+          request_id: randomUUID(),
+        }),
       ),
-      /Decision unavailable/,
+      fail(409),
     );
   }
+  assert.equal(
+    (await run("a", (db, a) => gradingCard(db, a, c.card_id))).status_key,
+    "received",
+  );
 });
 test("grading: customer, content editor and read-only staff cannot write status or intake", async () => {
   const card = (await run("a", gradingCards))[0];
@@ -278,6 +284,11 @@ test("grading: unactivated receipt contact requires code plus independent staff 
   const claim = await run("staff", (db, a) =>
     claimCode(db, a, i.case_id, "Private receipt handoff"),
   );
+  for (const forged of [i.case_id, "someone@example.test"])
+    await assert.rejects(
+      run("a", (db, a) => requestClaim(db, a, forged)),
+      fail(400),
+    );
   await run("a", (db, a) => requestClaim(db, a, claim.code));
   await assert.rejects(
     run("a", (db, a) => gradingCard(db, a, card.card_id)),
@@ -320,13 +331,7 @@ test("grading: unactivated receipt contact requires code plus independent staff 
       reason: "Examined claimed sample",
     }),
   );
-  await run("a", (db, a) =>
-    decide(db, a, card.card_id, {
-      version: card.version + 1,
-      choice: "submit",
-      request_id: randomUUID(),
-    }),
-  );
+  await approveForTest(fixture, [card.card_id], "a");
   await assert.rejects(
     run("a", (db, a) => requestClaim(db, a, "someone@example.test")),
     fail(400),

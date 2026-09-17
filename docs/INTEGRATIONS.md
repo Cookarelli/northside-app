@@ -28,7 +28,7 @@ Initial public logo lookup at northsidecollectibles.com failed to resolve; the u
 
 ## Prompt 2 inputs received
 
-Supabase project zuqktfohxqzkzumtqibg and Vercel project northsidecollectibles/northside-app were supplied. Both dashboards require sign-in in this browser. User cannot sign in until a password reset and confirmed these can wait. Do not block local work or request passwords. GitHub connected as Cookarelli has no push permission; owner can invite that account later.
+Supabase project zuqktfohxqzkzumtqibg and Vercel project northsidecollectibles/northside-app were supplied. Both dashboards required sign-in during the initial setup; the user confirmed that account recovery and live configuration could wait. Do not block local work or request passwords. The original GitHub access blocker applied to `NorthsideCollectibles/northside-app`; Steve later selected `Cookarelli/northside-app`, where connected-account write access was verified again on September 17. See [the repository checkpoint](STATUS.md#grading-repository-checkpoint--september-17-2026).
 
 Shopify discovery verified publicly: issuer https://shopify.com/authentication/103967392113, RS256 ID tokens, S256 PKCE, confidential client authentication. Actual client credentials, grant/refresh/logout remain unverified. See SETUP-PROMPT-2.md.
 
@@ -53,3 +53,19 @@ Email adapter: Resend HTTP API with stable idempotency key and a bounded retry w
 ## Release handoff and missing inputs
 
 Current per-feature evidence is in REQUIREMENTS-MATRIX.md, exact private variable scope in ENVIRONMENT.md, and named input owners in LAUNCH-CHECKLIST.md. Migrations 001–009 and all five database roles are ready for hosted verification. Staff Integration health now includes staff/files, grading, Fanatics, custom loyalty, streams, notifications, Marketing Hub and phone/store readiness with next actions. A nonempty environment value never implies authenticated verification. Marketing Hub has separate loyalty and engagement export contracts and no live connection. Only previously recorded public Shopify discovery has external technical evidence.
+
+## Northside Exam private photography — September 16
+
+The new authenticated grading exam routes use the existing Supabase Auth session, runtime SQL role and `northside-private` bucket. Apply `20260916174953_grading_photos_and_northside_exam.sql` after 001–009 through the existing migration runner; no additional environment variable, paid service or dependency was introduced. Existing private bucket policy and size limit stay in place. The server accepts at most 4 MiB JPEG/PNG/WebP, fully validates/orients/normalizes images, uploads without overwrite and reads the private object back before confirming it. The browser receives only authenticated app image routes, never a public Storage URL or service credential.
+
+Local preview uses actual private local file bytes with the same service checks; the Supabase SDK contract has mocked upload/download coverage. No hosted migration, real Storage operation or camera/device login was performed in this extension. Follow the [exam setup and acceptance guide](NORTHSIDE-EXAM.md) for hosted Auth/RLS/Storage, retry, concurrency and phone/tablet checks. Earlier grading attachments remain legacy evidence and cannot satisfy the required exam front/back photographs.
+
+## Customer grading and website connection — September 16
+
+The customer portal reuses Shopify Customer Account identity and the existing server session; list/card/exam login return destinations are constrained and preserved. It introduces no provider API, payment processing, extra environment variable or second customer login. Quotes are Northside-entered records; PSA is confirmed but no live service price is configured. “BGP” remains unconfirmed and hidden from customer provider choices. Apply the two customer grading migrations listed in [CUSTOMER-GRADING.md](CUSTOMER-GRADING.md) after the photo/exam migration on the reviewed hosted target; neither has been applied remotely here.
+
+Read-only inspection confirmed the public Northside site is Square Online/Weebly, separate from this Next.js app and planned Shopify commerce authority. The user said “later” for its live navigation connection. [WEBSITE-GRADING-ENTRY.md](WEBSITE-GRADING-ENTRY.md) prepares the link to the eventual verified HTTPS portal `/grading`; no Square editor, live navigation, Shopify product or deployment was changed. Actual hosted login, callback/refresh/logout, Storage and multi-connection approval/dispatch checks remain outstanding.
+
+## Staff grading operations extension
+
+PSA remains the only confirmed offered provider; BGP remains unconfirmed. The new custody/scan/manifest/outcome/pickup paths use staff evidence and reviewed spreadsheets, not live grading-company APIs. Examination payment references retain verified Shopify linkage or clearly labeled staff evidence. Decision/pickup notifications reuse the existing inbox, preferences, queue and configured delivery adapter. Real email/push remain disabled; Google Workspace is preferred if setup is needed. No real test message or new integration was performed. See [staff operations](STAFF-GRADING-OPERATIONS.md) for exact boundaries.

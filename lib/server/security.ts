@@ -95,10 +95,27 @@ export function sameOrigin(request: Request) {
     throw new AccessError(403, "cross_site_request");
 }
 export function safeReturn(value: unknown) {
-  return typeof value === "string" &&
-    ["/", "/account", "/my-cards", "/rewards", "/staff"].includes(value)
-    ? value
-    : "/account";
+  if (typeof value !== "string") return "/account";
+  if (
+    [
+      "/",
+      "/account",
+      "/my-cards",
+      "/rewards",
+      "/staff",
+      "/my-cards/grading",
+      "/grading",
+    ].includes(value)
+  )
+    return value;
+  // Only explicit portal routes are allowed, without arbitrary query/host input.
+  if (
+    /^\/my-cards\/grading\/(?:card|exam)\/[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
+      value,
+    )
+  )
+    return value;
+  return "/account";
 }
 export function uuid(value: string) {
   if (

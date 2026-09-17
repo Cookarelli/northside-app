@@ -4,6 +4,9 @@ const config: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite", "zxing-wasm"],
   outputFileTracingIncludes: {
     "/api/show-qr/*": ["./public/vendor/zxing-wasm/3.1.4/zxing_writer.wasm"],
+    "/api/private/grading/operations": [
+      "./public/vendor/zxing-wasm/3.1.4/zxing_writer.wasm",
+    ],
     "/api/private/store": [
       "./public/vendor/zxing-wasm/3.1.4/zxing_writer.wasm",
     ],

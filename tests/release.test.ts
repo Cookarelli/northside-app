@@ -72,14 +72,17 @@ test("isolated database backup restores rows, reserved points, privacy roles and
   const f = await loyaltyFixture();
   let restored: PGlite | undefined;
   try {
-    for (const suffix of [
-      "005_consignment",
-      "007_breaks",
-      "008_store",
-      "009_engagement",
-    ])
+    // The grading preview now needs consignment/break notification schemas.
+    // Add only the remaining store schema before the full restore rehearsal.
+    if (
+      !(
+        await f.db.query<{ present: string | null }>(
+          "select to_regclass('ns.store_aisles')::text present",
+        )
+      ).rows[0].present
+    )
       await f.db.exec(
-        await readFile(`supabase/migrations/202609120${suffix}.sql`, "utf8"),
+        await readFile("supabase/migrations/202609120008_store.sql", "utf8"),
       );
     await f.run("a", (db, a) =>
       reserveReward(db, a, f.reward.id, randomUUID(), "sample"),

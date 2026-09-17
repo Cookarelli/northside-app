@@ -39,4 +39,20 @@ The supplied Supabase project has not been inspected after login. Backup coverag
 
 ## Local sample preservation
 
-The sample directory is not a real customer backup. Before copying `work/grading-preview/`, stop the single preview server cleanly and confirm it has exited. Copy the complete directory into a new timestamped private local location; never open the same directory with two processes. Test a copy in an isolated rehearsal rather than replacing the working preview. `tests/release.test.ts` uses its own temporary database/archive, leaves the user's saved preview untouched, and removes only its own temporary fixture afterward.
+The sample directory is not a real customer backup. Before copying `work/grading-preview/` and its paired `work/grading-photos/`, stop the single preview server cleanly and confirm it has exited. Copy both complete directories into a new timestamped private local location; never open the same directory with two processes. Test a copy in an isolated rehearsal rather than replacing the working preview. `tests/release.test.ts` uses its own temporary database/archive, leaves the user's saved preview untouched, and removes only its own temporary fixture afterward.
+
+## Northside Exam recovery addition — September 16
+
+Include the five exam tables from migration `20260916174953_grading_photos_and_northside_exam.sql`, their RLS/immutability triggers, and every referenced `northside-private` photograph, including images retained by older published revisions. Do not prune objects merely because they are no longer active. Preserve pending upload metadata as well as confirmed records, raw-file identity hashes and stored-byte hashes.
+
+After restoration, confirm front/back downloads against their stored hashes, reopen drafts and every selected published revision, inspect a printed report, and verify private notes/paper images remain hidden from customers. A missing or mismatched object must not be marked complete or silently replaced. Resume uncertain attempts with the same file and card identity. `tests/exam.test.ts` closes/reopens an isolated database and local image directory to prove local persistence; it does not certify a coordinated hosted restore.
+
+## Customer grading approval recovery addition — September 16
+
+Preserve `ns.grading_quotes`, `ns.grading_approval_requests` and `ns.grading_approval_cards`, their immutable revision/order identities, exact selection snapshots, actor/time and linked exam/photo evidence. Include batch service, card membership and immutable grading audit history: dispatch history freezes service/membership even when a card's later status is On hold. Restore the two customer grading migrations' functions, RLS and dispatch guards with the same data point. Never manufacture approval from a Ready to submit status or upgrade a historical legacy consent into current approval.
+
+After isolated restoration, compare quote/exam/decision revisions, selected returns and current approval results. Verify that stale or absent approval still blocks single-card and selected-batch dispatch, including a service mismatch. Reopen an owned receipt/report/CSV and deny another owner/tenant. A response-loss retry must resolve the original immutable request, without duplicate decisions or recreated cards. `tests/grading-portal.test.ts` closes/reopens database and private images for local persistence evidence; coordinated hosted restore and multiple concurrent PostgreSQL connections still need acceptance.
+
+## Staff custody recovery addition — September 16
+
+Include the new custody migration, all staged scan histories, dispatch headers/exact manifests, outcome revisions, pickup headers/selected cards/returned photo references, operation requests, status import mappings/versions/fingerprints, withdrawal reviews and grading notification topic/jobs. Preserve original and returned private image bytes, including snapshots no longer active. Restore immutable evidence and original request keys; never regenerate manifests, approvals, recipient acknowledgments or queue jobs from status alone. Reconcile physical cards and any externally accepted notifications before resuming. Local operations tests close/reopen the paired database and images, then verify manifest/release/retry/notification persistence and cross-owner denial. This is not hosted restore evidence.

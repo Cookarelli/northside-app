@@ -5,6 +5,7 @@ import { requireRole } from "./db";
 import { AccessError, uuid } from "./security";
 import {
   gradingWriter,
+  lockGradingCustody,
   text,
   integer,
   audit,
@@ -75,6 +76,7 @@ export async function settings(
 }
 export async function batch(db: Sql, actor: Actor, b: Record<string, unknown>) {
   gradingWriter(actor);
+  await lockGradingCustody(db, actor);
   const why = text(b.reason, 1000, true),
     id = b.id ? uuid(text(b.id, 36, true)) : randomUUID();
   if (b.operation === "create") {
@@ -89,7 +91,7 @@ export async function batch(db: Sql, actor: Actor, b: Record<string, unknown>) {
     )
       throw new AccessError(400, "unknown_provider");
     await db.query(
-      "insert into ns.grading_batches(tenant_id,id,reference,provider,carrier,tracking) values($1,$2,$3,$4,$5,$6)",
+      "insert into ns.grading_batches(tenant_id,id,reference,provider,carrier,tracking,service) values($1,$2,$3,$4,$5,$6,$7)",
       [
         actor.tenant_id,
         id,
@@ -97,30 +99,41 @@ export async function batch(db: Sql, actor: Actor, b: Record<string, unknown>) {
         provider,
         text(b.carrier ?? "", 80),
         text(b.tracking ?? "", 150),
+        text(b.service ?? "", 120),
       ],
     );
     await audit(db, actor, id, "batch.created", why);
     return { id };
   }
   const found = (
-    await db.query<{ version: number }>(
-      "select version from ns.grading_batches where tenant_id=$1 and id=$2 for update",
+    await db.query<{ version: number; service: string }>(
+      "select version,service from ns.grading_batches where tenant_id=$1 and id=$2 for update",
       [actor.tenant_id, id],
     )
   ).rows[0];
   if (!found || found.version !== integer(b.version, 1, 100000000))
     throw new AccessError(409, "batch_changed_refresh_required");
   if (b.operation === "tracking") {
-    await db.query(
-      "update ns.grading_batches set reference=$3,carrier=$4,tracking=$5,version=version+1 where tenant_id=$1 and id=$2",
-      [
-        actor.tenant_id,
-        id,
-        text(b.reference, 120, true),
-        text(b.carrier ?? "", 80),
-        text(b.tracking ?? "", 150),
-      ],
-    );
+    try {
+      await db.query(
+        "update ns.grading_batches set reference=$3,carrier=$4,tracking=$5,service=$6,version=version+1 where tenant_id=$1 and id=$2",
+        [
+          actor.tenant_id,
+          id,
+          text(b.reference, 120, true),
+          text(b.carrier ?? "", 80),
+          text(b.tracking ?? "", 150),
+          text(b.service ?? found.service, 120),
+        ],
+      );
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("after dispatch"))
+        throw new AccessError(
+          409,
+          "batch_service_locked_after_dispatch_create_new_batch",
+        );
+      throw e;
+    }
   } else if (b.operation === "cards") {
     if (!Array.isArray(b.cards) || !b.cards.length || b.cards.length > 100)
       throw new AccessError(400, "select_up_to_100_cards");
@@ -138,16 +151,16 @@ export async function batch(db: Sql, actor: Actor, b: Record<string, unknown>) {
         throw new AccessError(409, "card_already_in_another_batch");
       if (b.assign !== true && card.batch_id !== id)
         throw new AccessError(409, "card_not_in_selected_batch");
-      await updateGradingCard(db, actor, cardId, {
-        version: item.version,
-        status_key: b.status_key,
-        reason: why,
-      });
       if (b.assign === true)
         await db.query(
           "update ns.card_items set batch_id=$3 where tenant_id=$1 and id=$2",
           [actor.tenant_id, cardId, id],
         );
+      await updateGradingCard(db, actor, cardId, {
+        version: item.version,
+        status_key: b.status_key,
+        reason: why,
+      });
     }
     await db.query(
       "update ns.grading_batches set version=version+1 where tenant_id=$1 and id=$2",

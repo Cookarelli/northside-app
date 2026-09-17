@@ -19,6 +19,7 @@ import {
   gradingWriter,
   audit,
 } from "./grading";
+import { quoteWorkspace, saveQuote } from "./grading-portal";
 import { contact, settings, batch } from "./grading-operations";
 import {
   previewImport,
@@ -59,6 +60,8 @@ export async function gradingApi(
 ) {
   const url = new URL(request.url);
   if (request.method === "GET") {
+    if (url.searchParams.has("quote"))
+      return quoteWorkspace(db, actor, uuid(url.searchParams.get("quote")!));
     if (url.searchParams.has("card"))
       return gradingDetail(db, actor, uuid(url.searchParams.get("card")!));
     if (url.searchParams.has("import"))
@@ -91,6 +94,8 @@ export async function gradingApi(
   const b = await boundedJson(request),
     why = () => text(b.reason, 1000, true);
   switch (b.action) {
+    case "quote":
+      return saveQuote(db, actor, b);
     case "sample-image": {
       if (!fixture) throw new AccessError(404, "not_found");
       gradingWriter(actor);

@@ -249,7 +249,7 @@ export async function reverseImport(
   for (const c of cards) {
     const activity = (
       await db.query(
-        "select 1 from ns.file_objects where tenant_id=$1 and card_id=$2 union all select 1 from ns.grading_payments where tenant_id=$1 and case_id=$3 union all select 1 from ns.grading_claim_tokens where tenant_id=$1 and case_id=$3 union all select 1 from ns.grading_claim_requests where tenant_id=$1 and case_id=$3",
+        "select 1 from ns.file_objects where tenant_id=$1 and card_id=$2 union all select 1 from ns.grading_photos where tenant_id=$1 and card_id=$2 union all select 1 from ns.grading_exam_drafts where tenant_id=$1 and card_id=$2 union all select 1 from ns.grading_quotes where tenant_id=$1 and card_id=$2 union all select 1 from ns.grading_approval_cards where tenant_id=$1 and card_id=$2 union all select 1 from ns.grading_payments where tenant_id=$1 and case_id=$3 union all select 1 from ns.grading_claim_tokens where tenant_id=$1 and case_id=$3 union all select 1 from ns.grading_claim_requests where tenant_id=$1 and case_id=$3",
         [actor.tenant_id, c.card_id, c.case_id],
       )
     ).rows.length;

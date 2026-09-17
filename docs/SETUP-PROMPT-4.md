@@ -1,5 +1,9 @@
 # Prompt 4 — grading operations
 
+Current customer flow: [CUSTOMER-GRADING.md](CUSTOMER-GRADING.md) supersedes this stage's original single-card submit/return action. Collectors now review exact selected cards against published exams and itemized quote revisions. Unset fees prevent submission approval; changed exams/quotes require renewal. Dispatch requires current approval and a matching confirmed batch provider/service. The old decision endpoint rejects new decisions. Receipts, photos, reports and exports use the same owner-scoped portal. Website connection is deferred as requested; see [the inspected Square handoff](WEBSITE-GRADING-ENTRY.md).
+
+September 16 update: [Card photography and the digital Northside Exam](NORTHSIDE-EXAM.md) supersedes the earlier sample-illustration attachment workflow below. The current preview supports actual SAMPLE image file uploads into private local storage, saved drafts, signed published revisions and customer print reports; hosted/device verification is still pending.
+
 Stage-specific implementation record. For the current combined handoff, see [RELEASE-REPORT.md](RELEASE-REPORT.md).
 
 Implemented locally. No hosted migration, real customer/staff login, private image upload to Supabase, provider API, Shopify payment or deployment has been verified. Do not enter real customer information in the local sample workspace. All public purchase, loyalty and future in-store gates remain off.
@@ -11,7 +15,7 @@ Start with `./scripts/preview.sh` from the project root. The preview is http://1
 Staff: http://127.0.0.1:3000/staff/grading
 
 1. New intake → choose Sample collector A → enter a **SAMPLE** description and quantity 3. At the default 500-cent rate, the examination subtotal is $15. Save with a staff reason. Each physical card has a different permanent UUID.
-2. Cards → select a saved card. Attach a labeled sample illustration; real image upload is available only in the authenticated, configured live workspace. Edit findings and customer notes; both are customer visible. Private staff verification reasons stay in the audit record.
+2. Cards → select a saved card → Photos & Northside Exam. Upload labeled SAMPLE front/back files, save the assessment draft, then sign and publish explicitly. See NORTHSIDE-EXAM.md for formats, recovery and immutable corrections. Earlier findings remain a separate legacy field; they do not replace a published exam. Private staff verification reasons stay in the audit record.
 3. Change status to Awaiting customer decision. Open the customer path below to request submission or return. Then reload staff records to see the persisted decision.
 4. Batches → create a PSA batch with a sample reference/carrier/tracking. Select cards belonging to A and B and record Sent to grader. Select only one included card and record Returned to Northside. Other cards retain their previous status. Per-card results and certificate references are edited in Cards. All of these are Northside-recorded milestones, not provider-verified events.
 5. Imports → download the sanitized sample CSV. The included customer UUIDs match only the local sample accounts. Upload it, map columns, use a stable source namespace, build a preview, review every row and confirm with a reason. Re-uploading identical IDs under that source skips them; changing their data produces an error. A committed import can be reversed while untouched, retaining its events and reserving its external IDs.

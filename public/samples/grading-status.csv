@@ -1,0 +1,2 @@
+external_id,card_id,status_key,result_kind,result,certificate,reason
+SAMPLE-status-001,REPLACE_WITH_EXACT_SAVED_CARD_ID,grader_received,,,,SAMPLE only — replace with actual verified receipt evidence

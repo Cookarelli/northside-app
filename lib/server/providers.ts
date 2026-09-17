@@ -31,7 +31,7 @@ export function authReadiness() {
     ),
   };
 }
-export function supabase(privileged = false) {
+export function supabase(privileged = false, requestTimeout?: number) {
   const url = process.env.SUPABASE_URL;
   const key =
     process.env[
@@ -41,6 +41,23 @@ export function supabase(privileged = false) {
   if (new URL(url).protocol !== "https:")
     throw new AccessError(503, "supabase_https_required");
   return createClient(url, key, {
+    ...(requestTimeout
+      ? {
+          global: {
+            fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+              fetch(input, {
+                ...init,
+                cache: "no-store",
+                signal: init?.signal
+                  ? AbortSignal.any([
+                      init.signal,
+                      AbortSignal.timeout(requestTimeout),
+                    ])
+                  : AbortSignal.timeout(requestTimeout),
+              }),
+          },
+        }
+      : {}),
     auth: {
       persistSession: false,
       autoRefreshToken: false,

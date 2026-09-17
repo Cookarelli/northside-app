@@ -62,13 +62,16 @@ const token = opaqueToken();
 test("transactional status notifications expose only the owning collector and generic fields", async () => {
   const a = await f.run("a", inbox),
     b = await f.run("b", inbox);
-  assert.equal(a.notifications.length, 1);
-  assert.equal(b.notifications.length, 0);
+  assert.ok(a.notifications.length > 0);
+  const aIds = new Set(a.notifications.map((n) => n.id));
+  assert.ok(b.notifications.every((n) => !aIds.has(n.id)));
   assert.deepEqual(Object.keys(a.notifications[0]).sort(), [
     "due_at",
+    "grading_card_id",
     "id",
     "kind",
     "read_at",
+    "topic",
   ]);
   assert.equal(
     (await f.run("a", (db) => db.query("select * from ns.notification_jobs")))

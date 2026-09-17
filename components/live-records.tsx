@@ -11,7 +11,9 @@ import { loadCustomerAccount } from "@/lib/server/customer-commerce";
 export function SignOut() {
   return <LogoutControl />;
 }
-export async function LiveAccount() {
+export async function LiveAccount({
+  returnTo = "/account",
+}: { returnTo?: string } = {}) {
   const signed = await privateRequest(async (_db, actor) => {
     requireCustomer(actor);
     return true;
@@ -39,6 +41,13 @@ export async function LiveAccount() {
               {customer?.emailAddress?.emailAddress && (
                 <p>{customer.emailAddress.emailAddress}</p>
               )}
+              <Link
+                className="button secondary"
+                prefetch={false}
+                href={returnTo === "/account" ? "/my-cards/grading" : returnTo}
+              >
+                Continue to your cards →
+              </Link>
               <SignOut />
             </>
           ) : (
@@ -49,6 +58,7 @@ export async function LiveAccount() {
                   : "Shopify customer sign-in is awaiting configuration. No real login has been verified."}
               </p>
               <form action="/api/auth/shopify/login" method="post">
+                <input type="hidden" name="returnTo" value={returnTo} />
                 <button className="button" disabled={!ready.customer}>
                   Sign in with Shopify
                 </button>

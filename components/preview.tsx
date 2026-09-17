@@ -121,6 +121,9 @@ export function Shell({
       <main id="main">{children}</main>
       <footer>
         <span>For the love of the collection.</span>
+        <Link prefetch={false} href="/grading">
+          Grading / Track My Cards
+        </Link>
         <span>
           Northside app ·{" "}
           <Link href="/staff">

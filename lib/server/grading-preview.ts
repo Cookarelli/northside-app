@@ -30,6 +30,73 @@ export async function openPreviewDatabase(directory: string) {
           await readFile(resolve("supabase/migrations", file), "utf8"),
         );
     }
+    if (
+      !(
+        await db.query<{ present: string | null }>(
+          "select to_regclass('ns.grading_exam_drafts')::text as present",
+        )
+      ).rows[0].present
+    )
+      await db.exec(
+        await readFile(
+          resolve(
+            "supabase/migrations/20260916174953_grading_photos_and_northside_exam.sql",
+          ),
+          "utf8",
+        ),
+      );
+    if (
+      !(
+        await db.query<{ present: string | null }>(
+          "select to_regclass('ns.grading_quotes')::text as present",
+        )
+      ).rows[0].present
+    )
+      await db.exec(
+        await readFile(
+          resolve(
+            "supabase/migrations/20260916185139_customer_grading_quotes_and_approvals.sql",
+          ),
+          "utf8",
+        ),
+      );
+    if (
+      !(
+        await db.query<{ present: string | null }>(
+          "select to_regprocedure('ns.guard_dispatched_batch_service()')::text as present",
+        )
+      ).rows[0].present
+    )
+      await db.exec(
+        await readFile(
+          resolve(
+            "supabase/migrations/20260916192111_grading_batch_service_setup.sql",
+          ),
+          "utf8",
+        ),
+      );
+    // Load all predecessor schemas before custody/outbox extensions. Existing
+    // feature initializers still own their explicitly labeled fixture seeds.
+    for (const [table, file] of [
+      ["consignment_events", "202609120005_consignment.sql"],
+      ["break_jobs", "202609120007_breaks.sql"],
+      ["notification_jobs", "202609120009_engagement.sql"],
+      [
+        "grading_dispatches",
+        "20260916195007_grading_staff_custody_and_dispatch.sql",
+      ],
+    ]) {
+      const present = (
+        await db.query<{ present: string | null }>(
+          "select to_regclass($1)::text as present",
+          ["ns." + table],
+        )
+      ).rows[0].present;
+      if (!present)
+        await db.exec(
+          await readFile(resolve("supabase/migrations", file), "utf8"),
+        );
+    }
     const tokens: Record<string, string> = {};
     for (const [name, n] of [
       ["a", 1],

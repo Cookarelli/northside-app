@@ -160,6 +160,8 @@ type Inbox = {
   notifications: {
     id: string;
     kind: Kind;
+    topic?: string;
+    grading_card_id?: string | null;
     due_at: string;
     read_at: string | null;
   }[];
@@ -330,9 +332,21 @@ export function NotificationsWorkspace({ sample }: { sample: boolean }) {
                 <article className="notification-row" key={n.id}>
                   <div>
                     <h3>
-                      {n.kind === "break"
-                        ? "A saved break reminder"
-                        : "Your " + n.kind + " records have an update"}
+                      {n.topic === "decision_required"
+                        ? "Your grading decision is needed"
+                        : n.topic === "decision_recorded"
+                          ? "Your grading decision was recorded"
+                          : n.topic === "pickup_ready"
+                            ? "Your cards are ready for pickup"
+                            : n.topic === "pickup_completed"
+                              ? "Your card pickup was recorded"
+                              : n.topic === "withdrawal_review"
+                                ? "Your withdrawal request is under staff review"
+                                : n.kind === "break"
+                                  ? "A saved break reminder"
+                                  : "Your " +
+                                    n.kind +
+                                    " records have an update"}
                     </h3>
                     <p>
                       {displayDate(n.due_at)} · {n.read_at ? "Read" : "Unread"}
@@ -344,8 +358,12 @@ export function NotificationsWorkspace({ sample }: { sample: boolean }) {
                       n.kind === "break"
                         ? "/breaks"
                         : n.kind === "grading"
-                          ? "/my-cards"
-                          : "/consignment"
+                          ? n.grading_card_id
+                            ? "/my-cards/grading/card/" +
+                              n.grading_card_id +
+                              (sample ? "?actor=" + actor : "")
+                            : "/my-cards/grading"
+                          : "/my-cards/consignment"
                     }
                     onClick={() => void action({ action: "read", id: n.id })}
                   >

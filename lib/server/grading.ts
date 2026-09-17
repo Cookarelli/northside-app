@@ -41,6 +41,11 @@ export function integer(value: unknown, min = 1, max = 50) {
     throw new AccessError(400, "invalid_number");
   return value;
 }
+export async function lockGradingCustody(db: Sql, actor: Actor) {
+  await db.query("select pg_advisory_xact_lock(hashtext($1))", [
+    actor.tenant_id + ":grading-custody",
+  ]);
+}
 export async function reasonOn(db: Sql, value: unknown, source = "northside") {
   await db.query(
     "select set_config('ns.grading_reason',$1,true),set_config('ns.grading_source',$2,true)",
@@ -105,7 +110,7 @@ export async function customerExists(db: Sql, actor: Actor, id: string) {
     throw new AccessError(400, "customer_id_not_found_no_email_matching");
 }
 const projection =
-  "g.*,c.description,c.batch_id,s.label,i.examination_cents,i.voided_at";
+  "g.*,c.description,c.batch_id,s.label,i.examination_cents,i.voided_at, (exists(select from ns.grading_photos p where p.tenant_id=g.tenant_id and p.card_id=g.card_id and p.kind='front' and p.ready and p.active) and exists(select from ns.grading_photos p where p.tenant_id=g.tenant_id and p.card_id=g.card_id and p.kind='back' and p.ready and p.active)) as photos_complete";
 const joins =
   "from ns.grading_cards g join ns.card_items c on c.tenant_id=g.tenant_id and c.id=g.card_id join ns.grading_states s on s.tenant_id=g.tenant_id and s.key=g.status_key join ns.grading_intakes i on i.tenant_id=g.tenant_id and i.case_id=g.case_id";
 function scope(actor: Actor) {
@@ -132,12 +137,24 @@ export async function gradingCard(
 ) {
   uuid(id);
   if (!actor.customer_id) requireRole(actor, [...writers, "read_only"]);
+  const params = actor.customer_id
+    ? [actor.tenant_id, actor.customer_id, id]
+    : [actor.tenant_id, id];
+  if (lock) {
+    // Lock identity first, then read the joined view in a fresh statement.
+    // A concurrent status change can invalidate the old joined state row
+    // after PostgreSQL waits for FOR UPDATE, falsely hiding an existing card.
+    const locked = await db.query(
+      `select g.card_id from ns.grading_cards g where g.tenant_id=$1 ${scope(actor)} and g.card_id=$${actor.customer_id ? 3 : 2} for update of g`,
+      params,
+    );
+    if (!locked.rows.length)
+      throw new AccessError(404, "grading_card_not_found");
+  }
   const row = (
     await db.query<GradingCard>(
-      `select ${projection} ${joins} where g.tenant_id=$1 ${scope(actor)} and g.card_id=$${actor.customer_id ? 3 : 2} ${lock ? "for update of g" : ""}`,
-      actor.customer_id
-        ? [actor.tenant_id, actor.customer_id, id]
-        : [actor.tenant_id, id],
+      `select ${projection} ${joins} where g.tenant_id=$1 ${scope(actor)} and g.card_id=$${actor.customer_id ? 3 : 2}`,
+      params,
     )
   ).rows[0];
   if (!row) throw new AccessError(404, "grading_card_not_found");
@@ -179,7 +196,7 @@ export async function gradingDashboard(
     batches: staff
       ? (
           await db.query<GradingData["batches"][number]>(
-            "select id,reference,provider,carrier,tracking,version from ns.grading_batches where tenant_id=$1 order by created_at desc limit 100",
+            "select id,reference,provider,service,carrier,tracking,version,phase from ns.grading_batches where tenant_id=$1 order by created_at desc limit 100",
             [actor.tenant_id],
           )
         ).rows
@@ -319,6 +336,7 @@ export async function updateGradingCard(
   source = "northside",
 ) {
   gradingWriter(actor);
+  await lockGradingCustody(db, actor);
   const card = await gradingCard(db, actor, id, true);
   if (card.voided_at || card.version !== integer(body.version, 1, 100000000))
     throw new AccessError(409, "record_changed_refresh_required");
@@ -344,10 +362,40 @@ export async function updateGradingCard(
       : text(body[k], k === "certificate" ? 120 : 3000),
   );
   await reasonOn(db, body.reason, source);
-  await db.query(
-    "update ns.grading_cards set status_key=$3,findings=$4,customer_notes=$5,result=$6,certificate=$7,version=version+1,updated_at=clock_timestamp() where tenant_id=$1 and card_id=$2",
-    [actor.tenant_id, id, status, ...values],
-  );
+  try {
+    await db.query(
+      "update ns.grading_cards set status_key=$3,findings=$4,customer_notes=$5,result=$6,certificate=$7,result_kind=$8,version=version+1,updated_at=clock_timestamp() where tenant_id=$1 and card_id=$2",
+      [
+        actor.tenant_id,
+        id,
+        status,
+        ...values,
+        body.result_kind ?? card.result_kind,
+      ],
+    );
+  } catch (e) {
+    if (
+      e instanceof Error &&
+      e.message.includes("Current collector approval required")
+    )
+      throw new AccessError(
+        409,
+        "current_collector_approval_required_review_current_exam_and_quote",
+      );
+    if (e instanceof Error && e.message.includes("Batch provider and service"))
+      throw new AccessError(
+        409,
+        "batch_provider_and_service_must_match_current_approved_quote",
+      );
+    if (
+      e instanceof Error &&
+      /Physical|manifest required|pickup|already released|Post-dispatch|Record an evidenced|returned front|Receive the card|physically ready/.test(
+        e.message,
+      )
+    )
+      throw new AccessError(409, e.message);
+    throw e;
+  }
   return { updated: true };
 }
 export async function decide(
@@ -358,16 +406,8 @@ export async function decide(
 ) {
   requireCustomer(actor);
   await gradingCard(db, actor, id);
-  const choice = body.choice;
-  if (choice !== "submit" && choice !== "return")
-    throw new AccessError(400, "invalid_decision");
-  await db.query("select ns.grading_decide($1,$2,$3,$4)", [
-    uuid(id),
-    integer(body.version, 1, 100000000),
-    choice,
-    uuid(text(body.request_id, 36, true)),
-  ]);
-  return { recorded: true };
+  void body;
+  throw new AccessError(409, "use_current_exam_and_quote_approval_flow");
 }
 export async function claimCode(
   db: Sql,

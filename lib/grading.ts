@@ -28,6 +28,9 @@ export type GradingCard = {
   description: string;
   batch_id: string | null;
   status_key: string;
+  custody: "northside" | "grader" | "released";
+  last_milestone: string;
+  result_kind: "graded" | "no_grade" | null;
   label: string;
   sport: string;
   year: string;
@@ -43,6 +46,7 @@ export type GradingCard = {
   updated_at: string;
   examination_cents: number;
   voided_at: string | null;
+  photos_complete: boolean;
 };
 export type ImportRow = {
   line: number;
@@ -73,6 +77,8 @@ export type GradingData = {
     id: string;
     reference: string;
     provider: string;
+    service: string;
+    phase: "draft" | "dispatched" | "legacy_dispatched" | "cancelled";
     carrier: string;
     tracking: string;
     version: number;

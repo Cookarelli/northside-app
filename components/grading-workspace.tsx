@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { GradingQuoteEditor } from "./grading-quote-editor";
 import {
   useCallback,
   useEffect,
@@ -313,6 +314,9 @@ export function GradingWorkspace({
                         <span>
                           {c.label}
                           {c.voided_at ? " · intake reversed" : ""}
+                          {staff && !c.voided_at && !c.photos_complete
+                            ? " · Photos missing"
+                            : ""}
                         </span>
                         <small>
                           Card {c.card_id.slice(-8)} ·{" "}
@@ -334,8 +338,8 @@ export function GradingWorkspace({
                         send={send}
                         get={get}
                         fixture={fixture}
+                        sampleActor={who}
                         writer={writer}
-                        reload={() => select(detail.card.card_id)}
                       />
                     ) : (
                       <div className="empty">
@@ -374,9 +378,7 @@ export function GradingWorkspace({
             {staff && writer && page === "New intake" && (
               <Intake data={data} send={send} />
             )}
-            {staff && writer && page === "Batches" && (
-              <Batches data={data} send={send} />
-            )}
+            {staff && writer && page === "Batches" && <Batches />}
             {staff && writer && page === "Imports" && (
               <Imports data={data} send={send} get={get} />
             )}
@@ -462,7 +464,47 @@ export function GradingWorkspace({
 }
 function Intake({ data, send }: { data: GradingData; send: Send }) {
   const [quantity, setQuantity] = useState(3),
-    [request, setRequest] = useState(() => crypto.randomUUID());
+    [request, setRequest] = useState(() => crypto.randomUUID()),
+    [savedCase, setSavedCase] = useState("");
+  if (savedCase)
+    return (
+      <section className="panel">
+        <h2>Cards received and saved</h2>
+        <p>
+          Next, photograph and examine each physical card. An upload failure
+          will not erase these records or repeat intake.
+        </p>
+        {data.cards
+          .filter((c) => c.case_id === savedCase)
+          .map((c) => (
+            <p key={c.card_id}>
+              <Link
+                className="button secondary"
+                prefetch={false}
+                href={`/staff/grading/exam/${c.card_id}`}
+              >
+                Add photos & Northside Exam · {c.card_id.slice(-8)}
+              </Link>
+              <Link
+                className="button secondary"
+                href={`/staff/grading/operations?card=${c.card_id}`}
+              >
+                Batch, return & pickup operations →
+              </Link>
+            </p>
+          ))}
+        <button
+          type="button"
+          className="plain"
+          onClick={() => {
+            setSavedCase("");
+            setRequest(crypto.randomUUID());
+          }}
+        >
+          Start another intake
+        </button>
+      </section>
+    );
   return (
     <div className="grading-columns">
       <section className="panel">
@@ -476,7 +518,7 @@ function Intake({ data, send }: { data: GradingData; send: Send }) {
               reason: v.reason,
               input: { ...v, quantity: Number(v.quantity) },
             });
-            if (r) setRequest(crypto.randomUUID());
+            if (r) setSavedCase(String(r.case_id));
             return r;
           }}
         >
@@ -533,8 +575,8 @@ function Intake({ data, send }: { data: GradingData; send: Send }) {
           <Reason />
         </Form>
         <p className="fine">
-          Open a saved card to add images, findings, customer notes or payment
-          references.
+          Save receipt first, then add front/back photos and the Northside Exam
+          for each physical card. Received cards remain saved if a photo fails.
         </p>
       </section>
       <section className="panel">
@@ -565,7 +607,7 @@ function CardDetail({
   get,
   fixture,
   writer,
-  reload,
+  sampleActor,
 }: {
   detail: GradingDetail;
   data: GradingData;
@@ -573,12 +615,11 @@ function CardDetail({
   get: (extra: string) => Promise<Body>;
   fixture: boolean;
   writer: boolean;
-  reload: () => Promise<void>;
+  sampleActor: string;
 }) {
   const c = detail.card,
     [code, setCode] = useState(""),
-    [fileError, setFileError] = useState(""),
-    [fileBusy, setFileBusy] = useState(false);
+    [fileError, setFileError] = useState("");
   const count = detail.intake_card_count,
     subtotal = count * c.examination_cents;
   return (
@@ -613,7 +654,38 @@ function CardDetail({
         </p>
         <small>External charges unquoted. No payment is implied.</small>
       </div>
-      <h3>Examination findings</h3>
+      <div className="grading-notice">
+        <h3>Northside Exam & card photography</h3>
+        {data.mode === "staff" && !c.voided_at && (
+          <p>
+            {c.photos_complete
+              ? "Front/back photos confirmed in storage."
+              : "Photos missing — received card saved; add front and back."}
+          </p>
+        )}
+        <Link
+          className="button secondary"
+          prefetch={false}
+          href={`${data.mode === "staff" ? "/staff" : "/my-cards"}/grading/exam/${c.card_id}${fixture && data.mode === "customer" ? `?actor=${sampleActor}` : ""}`}
+        >
+          {data.mode === "staff"
+            ? "Open photos & Northside Exam"
+            : "View published Northside Exam"}
+        </Link>
+      </div>
+      {data.mode === "staff" && (
+        <GradingQuoteEditor
+          cardId={c.card_id}
+          endpoint={
+            fixture
+              ? "/api/preview/grading?actor=staff"
+              : "/api/private/grading"
+          }
+          providers={data.providers}
+          writer={writer}
+        />
+      )}
+      <h3>Earlier examination findings</h3>
       <p className="preserve-lines">
         {c.findings || "Examination findings have not been recorded yet."}
       </p>
@@ -623,54 +695,22 @@ function CardDetail({
       </p>
       {c.result && (
         <p>
-          Recorded result: {c.result}
+          External grader’s final result (staff recorded): {c.result}
           {c.certificate ? " · certificate " + c.certificate : ""}
         </p>
       )}
-      {!writer &&
-        data.mode === "customer" &&
-        c.status_key === "awaiting_decision" &&
-        !c.voided_at && (
-          <div className="grading-notice">
-            <h3>Your decision</h3>
-            <p>
-              This records a request. It does not mean the grader has received
-              your card, authorize an unquoted fee, or complete a physical
-              return.
-            </p>
-            <div className="grading-toolbar">
-              <button
-                className="button"
-                onClick={() =>
-                  send({
-                    action: "decision",
-                    card_id: c.card_id,
-                    version: c.version,
-                    choice: "submit",
-                    request_id: crypto.randomUUID(),
-                  })
-                }
-              >
-                Request submission
-              </button>
-              <button
-                className="button secondary"
-                onClick={() =>
-                  send({
-                    action: "decision",
-                    card_id: c.card_id,
-                    version: c.version,
-                    choice: "return",
-                    request_id: crypto.randomUUID(),
-                  })
-                }
-              >
-                Request return
-              </button>
-            </div>
-          </div>
-        )}
-      <h3>Card images / files</h3>
+      {data.mode === "customer" && (
+        <Link
+          className="button"
+          href={`/my-cards/grading/card/${c.card_id}${fixture ? `?actor=${sampleActor}` : ""}`}
+        >
+          Review quote and choose cards →
+        </Link>
+      )}
+      <h3>Earlier attachments</h3>
+      <p className="fine">
+        Legacy attachments do not satisfy the new front/back photo requirement.
+      </p>
       {detail.files.map((f, i) => (
         <button
           className="plain"
@@ -688,50 +728,6 @@ function CardDetail({
         </button>
       ))}
       {!detail.files.length && <p>No images attached.</p>}
-      {writer &&
-        !c.voided_at &&
-        (fixture ? (
-          <button
-            className="button secondary"
-            onClick={() => send({ action: "sample-image", card_id: c.card_id })}
-          >
-            Attach labeled sample image
-          </button>
-        ) : (
-          <label>
-            Add card image (PNG/JPEG/WebP, up to 5 MiB)
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={fileBusy}
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setFileBusy(true);
-                try {
-                  const response = await fetch(
-                    `/api/private/cards/${c.card_id}/upload`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": file.type },
-                      body: file,
-                    },
-                  );
-                  if (!response.ok)
-                    throw Error(
-                      "Upload failed. Check file type, size and Storage configuration.",
-                    );
-                  await reload();
-                  setFileError("");
-                } catch (e) {
-                  setFileError((e as Error).message);
-                } finally {
-                  setFileBusy(false);
-                }
-              }}
-            />
-          </label>
-        ))}
       {fileError && <p role="alert">{fileError}</p>}
       <h3>Recorded history</h3>
       <ol className="timeline">
@@ -798,16 +794,13 @@ function CardDetail({
                   defaultValue={c.customer_notes}
                 />
               </label>
-              <Field
-                name="result"
-                label="Per-card result (Northside recorded)"
-                value={c.result}
-              />
-              <Field
-                name="certificate"
-                label="Certificate / grader reference"
-                value={c.certificate}
-              />
+              <p>
+                Use{" "}
+                <Link href={`/staff/grading/operations?card=${c.card_id}`}>
+                  card operations
+                </Link>{" "}
+                to record actual external results, returned photos and pickup.
+              </p>
               <Reason />
             </Form>
           </details>
@@ -891,152 +884,19 @@ function CardDetail({
     </article>
   );
 }
-function Batches({ data, send }: { data: GradingData; send: Send }) {
-  const [chosen, setChosen] = useState(""),
-    [selected, setSelected] = useState<string[]>([]),
-    batch = data.batches.find((b) => b.id === chosen);
+function Batches() {
   return (
-    <div className="grading-columns">
-      <section className="panel">
-        <h2>Shared submission batches</h2>
-        <p>
-          Batch references, tracking and other customers stay staff-only. Update
-          selected cards to record a partial return or exception.
-        </p>
-        <label>
-          Batch
-          <select
-            value={chosen}
-            onChange={(e) => {
-              setChosen(e.target.value);
-              setSelected([]);
-            }}
-          >
-            <option value="">Select a batch</option>
-            {data.batches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.reference} ·{" "}
-                {data.providers.find((p) => p.key === b.provider)?.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {batch && (
-          <>
-            <Form
-              submit="Save batch tracking"
-              onSubmit={(v) =>
-                send({
-                  action: "batch",
-                  operation: "tracking",
-                  id: batch.id,
-                  version: batch.version,
-                  ...v,
-                })
-              }
-            >
-              <Field
-                name="reference"
-                label="Batch reference"
-                value={batch.reference}
-                required
-              />
-              <Field name="carrier" label="Carrier" value={batch.carrier} />
-              <Field
-                name="tracking"
-                label="Tracking reference"
-                value={batch.tracking}
-              />
-              <Reason />
-            </Form>
-            <h3>Cards in this batch or available to add</h3>
-            {data.cards
-              .filter(
-                (c) => !c.voided_at && (!c.batch_id || c.batch_id === batch.id),
-              )
-              .map((c) => (
-                <label className="grading-check" key={c.card_id}>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(c.card_id)}
-                    onChange={(e) =>
-                      setSelected(
-                        e.target.checked
-                          ? [...selected, c.card_id]
-                          : selected.filter((x) => x !== c.card_id),
-                      )
-                    }
-                  />
-                  <span>
-                    {c.description} · {c.card_id.slice(-8)}
-                    <small>
-                      {
-                        data.customers.find((x) => x.id === c.customer_id)
-                          ?.display_name
-                      }{" "}
-                      · {c.label} ·{" "}
-                      {c.batch_id ? "in batch" : "not yet assigned"}
-                    </small>
-                  </span>
-                </label>
-              ))}
-            <Form
-              submit={`Update ${selected.length} selected cards`}
-              onSubmit={async (v) => {
-                const r = await send({
-                  action: "batch",
-                  operation: "cards",
-                  id: batch.id,
-                  version: batch.version,
-                  cards: selected.map((id) => ({
-                    card_id: id,
-                    version: data.cards.find((c) => c.card_id === id)!.version,
-                  })),
-                  assign: true,
-                  ...v,
-                });
-                if (r) setSelected([]);
-                return r;
-              }}
-            >
-              <StateSelect data={data} />
-              <Reason />
-            </Form>
-          </>
-        )}
-      </section>
-      <section className="panel">
-        <h2>Create a batch</h2>
-        <Form
-          submit="Create submission batch"
-          onSubmit={async (v) => {
-            const r = await send({
-              action: "batch",
-              operation: "create",
-              ...v,
-            });
-            if (r) setChosen(String(r.id));
-            return r;
-          }}
-        >
-          <Field name="reference" label="New batch reference" required />
-          <label>
-            Provider (internal)
-            <select name="provider">
-              {data.providers.map((p) => (
-                <option key={p.key} value={p.key}>
-                  {p.label}
-                  {p.confirmed ? "" : " · unconfirmed"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Field name="carrier" label="New batch carrier" />
-          <Field name="tracking" label="New batch tracking" />
-          <Reason />
-        </Form>
-      </section>
-    </div>
+    <section className="panel">
+      <h2>Submission batches, returns & pickup</h2>
+      <p>
+        Use the operations desk to scan approved cards, revalidate dispatch,
+        preserve the manifest, record partial returns and verify each released
+        card.
+      </p>
+      <Link className="button" href="/staff/grading/operations">
+        Open grading operations →
+      </Link>
+    </section>
   );
 }
 function Imports({

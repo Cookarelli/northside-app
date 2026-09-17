@@ -86,3 +86,15 @@ Collectors can manage service update channels, read generic in-app notices and v
 ## Prompt 10 release readiness
 
 Local functional stages 1–10 are complete. REQUIREMENTS-MATRIX.md separates local tests, prior public discovery, configuration gaps and deferred work. DEPLOYMENT.md, ENVIRONMENT.md and BACKUP-RESTORE.md provide the reviewable hosting/recovery handoff; STAFF-QUICKSTART.md and LAUNCH-CHECKLIST.md cover operations and owners. Real launch is still blocked on hosted authentication/Storage and authorized Shopify/device evidence. The dedicated design pass is now due. Native and additional Hobby Key shops remain later phases with deliberate account linking and separate Shopify installs.
+
+## Authorized grading extension — September 16
+
+[Card photography and a digital Northside Exam](NORTHSIDE-EXAM.md) add staff camera/file capture, confirmed private front/back and optional closeup/paper evidence, retry without duplicate received cards, durable drafts and explicit publication. Exact fields are four initially blank integer 1–10 scores (Centering, Surface, Edges, Corners), public Notes, a manually entered Projected grade or Unable to estimate, and authenticated examiner signoff/time. Internal notes are separate. No generated grade or score average is provided. The external grader’s final result remains independent.
+
+Publication requires complete confirmed front/back evidence, all scores, an estimate choice and signoff. Revisions and their photo snapshots are immutable; corrections retain actor, reason and prior reports. Customers see only published assessments and printable exam reports without internal notes or paper exam images. The subsequent customer extension below also exposes confirmed received card photos before publication. This is locally implemented; hosted Storage/Auth, physical device acceptance and the dedicated design pass remain outstanding.
+
+## Customer grading extension — September 16
+
+[My Cards → Grading](CUSTOMER-GRADING.md) uses the same responsive portal and verified Shopify identity for received cards/photos, intake receipts, published exams, itemized quotes, dated progress and separately recorded final results. Collectors explicitly approve selected cards or request return; decisions preserve exact card/exam/quote/provider/service revisions and authenticated actor/time. New published exams or quotes require renewed approval before dispatch. Unset external grading/shipping/insurance/other charges remain unknown and prevent submission approval; a configured zero is explicit. Dispatch requires current approval and matching batch service, enforced on server writes. Internal notes, paper exams, other owners and shared manifests never enter the customer projection.
+
+The app includes `/grading` and **Grading / Track My Cards** navigation. The actual public website is Square Online; the user deferred its live external link until later. No public portal origin or alternate login is invented. PSA is the confirmed provider; BGP remains unconfirmed. Hosted acceptance remains pending; see [website handoff](WEBSITE-GRADING-ENTRY.md) and [current evidence](STATUS.md).

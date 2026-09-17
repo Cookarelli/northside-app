@@ -87,7 +87,7 @@ export async function inbox(db: Sql, a: Actor) {
     ).rows,
     notifications: (
       await db.query(
-        "select id,kind,due_at,read_at from ns.notifications where tenant_id=$1 and customer_id=$2 and visible and not cancelled and due_at<=now() order by due_at desc limit 60",
+        "select id,kind,topic,grading_card_id,due_at,read_at from ns.notifications where tenant_id=$1 and customer_id=$2 and visible and not cancelled and due_at<=now() order by due_at desc limit 60",
         [a.tenant_id, a.customer_id],
       )
     ).rows,
