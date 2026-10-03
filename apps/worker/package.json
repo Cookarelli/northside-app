@@ -1,0 +1,6 @@
+{
+  "name":"@northside/worker",
+  "private":true,
+  "type":"module",
+  "dependencies":{"@northside/agent-runtime":"workspace:*"}
+}
