@@ -27,20 +27,32 @@ No Shopify credentials were available to this builder. The installed app, grante
 
 Use the existing canonical environment names, privately configured by the operator:
 
-| Purpose | Existing configuration |
-| --- | --- |
-| Exact shop / API | `SHOPIFY_SHOP=9i3hnb-jw.myshopify.com`; `SHOPIFY_API_VERSION=2026-07` |
-| Published catalog | `SHOPIFY_STOREFRONT_PRIVATE_TOKEN` from the actual authorized Headless channel; verify `unauthenticated_read_product_listings` and `unauthenticated_read_product_inventory` |
-| Supported Admin grant | `SHOPIFY_ADMIN_AUTH_MODE=installed_oauth` with `SHOPIFY_ADMIN_ACCESS_TOKEN` and actual `SHOPIFY_ADMIN_TOKEN_EXPIRES_AT`, supplied by an authorized installation/token broker; or the existing same-organization exchange only after its actual eligibility is verified |
-| Same-organization exchange | `SHOPIFY_SAME_ORG_CONFIRMED=true`, `SHOPIFY_APP_CLIENT_ID`, `SHOPIFY_APP_CLIENT_SECRET`; a flag alone is not proof of organization ownership |
-| App/webhook/QR origin | Registered HTTPS `APP_ORIGIN`; exact long-term `NORTHSIDE_QR_ORIGIN`; no invented production domain |
-| Staff sessions | Existing invited Supabase user/membership, separate `DATABASE_URL` and `AUTH_DATABASE_URL`, `SESSION_ENCRYPTION_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` |
-| Canonical cart/order records | Separate least-privilege `COMMERCE_DATABASE_URL`; never a migration/service-role credential |
-| Customer checkout | Existing Customer Account client/issuer configuration, real OAuth test and verified ingress for `SHOPIFY_TRUSTED_BUYER_IP_HEADER`; exact reviewed checkout hosts |
+| Purpose                      | Existing configuration                                                                                                                                                                                                                                                 |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exact shop / API             | `SHOPIFY_SHOP=9i3hnb-jw.myshopify.com`; `SHOPIFY_API_VERSION=2026-07`                                                                                                                                                                                                  |
+| Published catalog            | `SHOPIFY_STOREFRONT_PRIVATE_TOKEN` from the actual authorized Headless channel; verify `unauthenticated_read_product_listings` and `unauthenticated_read_product_inventory`                                                                                            |
+| Supported Admin grant        | `SHOPIFY_ADMIN_AUTH_MODE=installed_oauth` with `SHOPIFY_ADMIN_ACCESS_TOKEN` and actual `SHOPIFY_ADMIN_TOKEN_EXPIRES_AT`, supplied by an authorized installation/token broker; or the existing same-organization exchange only after its actual eligibility is verified |
+| Same-organization exchange   | `SHOPIFY_SAME_ORG_CONFIRMED=true`, `SHOPIFY_APP_CLIENT_ID`, `SHOPIFY_APP_CLIENT_SECRET`; a flag alone is not proof of organization ownership                                                                                                                           |
+| App/webhook/QR origin        | Registered HTTPS `APP_ORIGIN`; exact long-term `NORTHSIDE_QR_ORIGIN`; no invented production domain                                                                                                                                                                    |
+| Staff sessions               | Existing invited Supabase user/membership, separate `DATABASE_URL` and `AUTH_DATABASE_URL`, `SESSION_ENCRYPTION_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`                                                                                                       |
+| Canonical cart/order records | Separate least-privilege `COMMERCE_DATABASE_URL`; never a migration/service-role credential                                                                                                                                                                            |
+| Customer checkout            | Existing Customer Account client/issuer configuration, real OAuth test and verified ingress for `SHOPIFY_TRUSTED_BUYER_IP_HEADER`; exact reviewed checkout hosts                                                                                                       |
 
 The separate prototype package accepts `SHOPIFY_SHOP_DOMAIN` and `SHOPIFY_WEBHOOK_SECRET`; those names do not configure this canonical pilot. Use `SHOPIFY_SHOP` and the installed app's `SHOPIFY_APP_CLIENT_SECRET` for the existing canonical integration. Do not wire a second order worker to the rehearsal webhook boundary.
 
 After actual access is available, an invited owner/admin can open the inspector, confirm the exact app/install IDs and its granted scopes, then choose a published product or enter its exact GID. Record verified product/variant/SKU/barcode relationships in the existing store workspace and resolve the same stable label against Storefront. Do not activate Draft products, republish channels, change inventory/location settings or install an app to make a preview appear populated without the separately authorized store operation.
+
+### Exact scopes and customer callbacks
+
+The existing Admin reconciliation path requires `read_orders`. Its ordinary history window is 60 days; `read_all_orders` needs separate approval only if older history is required. Confirm protected customer-data access and any `read_customers` needed for the order's customer identity. This pilot requests no product, inventory, fulfillment, discount or order-write Admin permissions. There is no generic `write_webhooks` scope: order/refund subscriptions depend on the relevant resource access. Separately, Storefront cart operations need `unauthenticated_read_checkouts` / `unauthenticated_write_checkouts`; these are not Admin order-write permissions. Verify grants on the actual installed app/channel. [Shopify scope reference](https://shopify.dev/docs/api/usage/access-scopes).
+
+Use the configured Headless storefront's **confidential Customer Account client**, with `SHOPIFY_CUSTOMER_CLIENT_ID` and `SHOPIFY_CUSTOMER_CLIENT_SECRET`. The application requests OAuth scopes `openid email customer-account-api:full`; configure the channel's `customer_read_customers` and `customer_read_orders` permissions for its existing profile/history reads. Set `SHOPIFY_EXPECTED_ISSUER=https://shopify.com/authentication/103967392113`. Register exactly the chosen HTTPS `APP_ORIGIN` plus `/api/auth/shopify/callback`, and the same origin plus `/account` as the post-logout return. No placeholder origin or HTTP localhost registration is usable. These values are separate from the Admin app client and the Supabase staff callback. [Customer Account setup](https://shopify.dev/docs/storefronts/headless/building-with-the-customer-account-api/getting-started).
+
+### Where staff handle orders
+
+Real staff order operations remain in **Shopify Admin → Orders** for `9i3hnb-jw.myshopify.com`. Northside's `/staff/integrations` shows reconciliation health; `/staff/store` manages mappings; `/staff/integrations/commerce-pilot` inspects readiness. There is no live `/staff/orders` route or fulfillment queue implemented in this pilot. `/account/orders` is the authenticated customer's own history. `/in-store/staff` is solely the explicitly enabled local fixture queue; production renders the preparation screen.
+
+A Storefront cart's hosted checkout is an online checkout, and completing it can create a Shopify order. It does not populate a Shopify POS device cart. POS import requires the separately installed extension, verified device/session/staff/location, supported POS Cart APIs and one-time correlation; the prototype has no installed-device proof. Staff must reconcile actual paid order evidence before collection. Neither opening Admin Orders nor importing lines proves payment.
 
 ## Checkout handoff and remaining proof
 

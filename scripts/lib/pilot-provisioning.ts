@@ -76,10 +76,24 @@ const OPTIONAL = [
   "CONTROL_ORIGIN",
   "SUPABASE_PUBLISHABLE_KEY",
 ];
+// This operator-owned file also holds other integrations' inputs. Accept only
+// their known names, then discard them before preparing database configuration.
+const UNRELATED_OPERATOR_KEYS = new Set([
+  "SUPABASE_SECRET_KEY",
+  "SHOPIFY_STOREFRONT_PRIVATE_TOKEN",
+  "SHOPIFY_CUSTOMER_CLIENT_ID",
+  "SHOPIFY_CUSTOMER_CLIENT_SECRET",
+  "SHOPIFY_APP_CLIENT_ID",
+  "SHOPIFY_APP_CLIENT_SECRET",
+  "SHOPIFY_ADMIN_ACCESS_TOKEN",
+  "SHOPIFY_ADMIN_TOKEN_EXPIRES_AT",
+  "NORTHSIDE_OWNER_AUTH_USER_ID",
+]);
 const INPUT_KEYS = new Set([
   "MIGRATION_DATABASE_URL",
   "SUPABASE_SESSION_POOLER_HOST",
   ...OPTIONAL,
+  ...UNRELATED_OPERATOR_KEYS,
 ]);
 function fail(code: ProvisionError["code"]): never {
   throw new ProvisionError(code);
@@ -131,7 +145,7 @@ function privateDirectory(path: string) {
   )
     fail("UNSAFE_FILE");
 }
-function privateRead(path: string) {
+function privateRead(path: string, flush = false) {
   let fd: number | undefined;
   try {
     fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -144,7 +158,9 @@ function privateRead(path: string) {
       st.size > 65536
     )
       fail("UNSAFE_FILE");
-    return readFileSync(fd, "utf8");
+    const content = readFileSync(fd, "utf8");
+    if (flush) fsyncSync(fd);
+    return content;
   } catch {
     return fail("UNSAFE_FILE");
   } finally {
@@ -198,6 +214,7 @@ export function inputFrom(root: string) {
     Object.values(values).some((value) => /[\r\n\0]/.test(value))
   )
     fail("INVALID_INPUT");
+  for (const key of UNRELATED_OPERATOR_KEYS) delete values[key];
   for (const name of ["APP_ORIGIN", "CUSTOMER_ORIGIN", "CONTROL_ORIGIN"]) {
     if (!values[name]) continue;
     try {
@@ -220,7 +237,7 @@ export function inputFrom(root: string) {
     values,
     target: parseTarget(
       values.MIGRATION_DATABASE_URL,
-      values.SUPABASE_SESSION_POOLER_HOST,
+      values.SUPABASE_SESSION_POOLER_HOST || undefined,
     ),
   };
 }
@@ -458,11 +475,12 @@ export async function runProvisioning(
     checkOutputs(dir, files);
     if (!existsSync(recoveryPath)) {
       exclusiveWrite(recoveryPath, JSON.stringify(recovery) + "\n");
-      syncDirectory(dir);
     }
-    // Confirm the durable bytes before touching roles. Existing recovery is never overwritten.
-    if (privateRead(recoveryPath) !== JSON.stringify(recovery) + "\n")
+    // Flush both file and directory on every run, including a retry after a
+    // failed directory flush. Existing recovery is never overwritten.
+    if (privateRead(recoveryPath, true) !== JSON.stringify(recovery) + "\n")
       fail("RECOVERY_MISMATCH");
+    syncDirectory(dir);
     await db.query("begin");
     transaction = true;
     // Conflicts with concurrent ALTER ROLE catalog writes, including other operator tools.

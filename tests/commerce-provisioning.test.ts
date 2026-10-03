@@ -1,8 +1,10 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import {
   chmodSync,
   existsSync,
+  fstatSync,
+  fsyncSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -23,7 +25,12 @@ import {
   runProvisioning,
   safeFailure,
   matchesVerifier,
+  inputFrom,
 } from "../scripts/lib/pilot-provisioning";
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return { ...actual, fsyncSync: vi.fn(actual.fsyncSync) };
+});
 const migrationPassword = "synthetic-migration-input-only";
 const migrationUrl = `postgresql://postgres.${PROJECT}:${migrationPassword}@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full`;
 const dirs: string[] = [];
@@ -122,10 +129,10 @@ describe("operator-only pilot provisioning", () => {
     expect(existsSync(join(dir, ".runtime/pilot/recovery.json"))).toBe(false);
   });
   test("refuses broadly readable files, symlinks and client-public variables", async () => {
-    for (const variant of ["mode", "symlink", "public"]) {
+    for (const variant of ["mode", "symlink", "public", "unknown-url"]) {
       const dir = root(
-        variant === "public"
-          ? `MIGRATION_DATABASE_URL=${JSON.stringify(migrationUrl)}\nNEXT_PUBLIC_DATABASE_URL=never-copy\n`
+        ["public", "unknown-url"].includes(variant)
+          ? `MIGRATION_DATABASE_URL=${JSON.stringify(migrationUrl)}\n${variant === "public" ? "NEXT_PUBLIC_DATABASE_URL" : "OTHER_DATABASE_URL"}=never-copy\n`
           : undefined,
       );
       const file = join(dir, ".runtime/pilot/operator.env");
@@ -145,6 +152,55 @@ describe("operator-only pilot provisioning", () => {
       ).rejects.toThrow();
       expect(called).toBe(false);
     }
+  });
+  test("known private operator inputs are discarded and never exported or used by SQL", async () => {
+    const privateInputs = Object.fromEntries(
+      [
+        "SUPABASE_SECRET_KEY",
+        "SHOPIFY_STOREFRONT_PRIVATE_TOKEN",
+        "SHOPIFY_CUSTOMER_CLIENT_ID",
+        "SHOPIFY_CUSTOMER_CLIENT_SECRET",
+        "SHOPIFY_APP_CLIENT_ID",
+        "SHOPIFY_APP_CLIENT_SECRET",
+        "SHOPIFY_ADMIN_ACCESS_TOKEN",
+        "SHOPIFY_ADMIN_TOKEN_EXPIRES_AT",
+        "NORTHSIDE_OWNER_AUTH_USER_ID",
+      ].map((key, index) => [
+        key,
+        `synthetic-unrelated-private-canary-${index}`,
+      ]),
+    );
+    const input =
+      `MIGRATION_DATABASE_URL=${JSON.stringify(migrationUrl)}\nSUPABASE_SESSION_POOLER_HOST=\n` +
+      Object.entries(privateInputs)
+        .map(([key, value]) => `${key}=${JSON.stringify(value)}\n`)
+        .join("");
+    const dir = root(input),
+      { db, calls } = await database();
+    const parsed = inputFrom(dir);
+    expect(parsed.target.host).toBe("aws-1-us-east-1.pooler.supabase.com");
+    for (const key of Object.keys(privateInputs))
+      expect(parsed.values[key]).toBeUndefined();
+    const result = await runProvisioning(dir, true, (target) => {
+      expect(target).toEqual({
+        host: "aws-1-us-east-1.pooler.supabase.com",
+        password: migrationPassword,
+      });
+      return db;
+    });
+    const emitted =
+      JSON.stringify(result) +
+      calls.join("\n") +
+      ["recovery.json", "customer.env", "control.env", "loyalty.env"]
+        .map((name) => readFileSync(join(dir, ".runtime/pilot", name), "utf8"))
+        .join("\n");
+    for (const [key, canary] of Object.entries(privateInputs)) {
+      expect(emitted).not.toContain(key);
+      expect(emitted).not.toContain(canary);
+    }
+    expect(readFileSync(join(dir, ".runtime/pilot/operator.env"), "utf8")).toBe(
+      input,
+    );
   });
   test("default performs database reads only and creates no credential files", async () => {
     const dir = root(),
@@ -253,6 +309,60 @@ describe("operator-only pilot provisioning", () => {
     });
     expect(calls.some((sql) => sql.startsWith("alter role"))).toBe(false);
     expect(existsSync(join(dir, ".runtime/pilot/recovery.json"))).toBe(false);
+  });
+  test("retries flush existing recovery and its directory before beginning any role changes", async () => {
+    const dir = root();
+    const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
+    let failOn: "file" | "directory" | undefined = "directory";
+    const flushed: string[] = [];
+    vi.mocked(fsyncSync).mockImplementation((fd) => {
+      const kind = fstatSync(fd).isDirectory() ? "directory" : "file";
+      if (kind === failOn) throw Error("synthetic disk flush failure");
+      actual.fsyncSync(fd);
+      flushed.push(kind);
+    });
+    const { db, calls, pg } = await database(async (sql) => {
+      if (sql === "begin") expect(flushed).toEqual(["file", "directory"]);
+    });
+    try {
+      await expect(runProvisioning(dir, true, () => db)).rejects.toThrow();
+      const saved = readFileSync(
+        join(dir, ".runtime/pilot/recovery.json"),
+        "utf8",
+      );
+      expect(
+        calls.some((sql) => sql === "begin" || sql.startsWith("alter role")),
+      ).toBe(false);
+      for (const failure of ["file", "directory"] as const) {
+        failOn = failure;
+        flushed.length = 0;
+        calls.length = 0;
+        await expect(runProvisioning(dir, true, () => db)).rejects.toThrow();
+        expect(
+          calls.some((sql) => sql === "begin" || sql.startsWith("alter role")),
+        ).toBe(false);
+        expect(
+          readFileSync(join(dir, ".runtime/pilot/recovery.json"), "utf8"),
+        ).toBe(saved);
+      }
+      expect(
+        (
+          await pg.query<{ count: number }>(
+            "select count(*)::int as count from pg_authid where rolname like 'northside_%' and rolpassword is not null",
+          )
+        ).rows[0].count,
+      ).toBe(0);
+      failOn = undefined;
+      flushed.length = 0;
+      expect((await runProvisioning(dir, true, () => db)).mode).toBe(
+        "provisioned",
+      );
+      expect(
+        readFileSync(join(dir, ".runtime/pilot/recovery.json"), "utf8"),
+      ).toBe(saved);
+    } finally {
+      vi.mocked(fsyncSync).mockImplementation(actual.fsyncSync);
+    }
   });
   test("catalog is rechecked under its DDL-conflicting lock before applying passwords", async () => {
     const dir = root();
