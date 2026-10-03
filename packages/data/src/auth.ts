@@ -26,19 +26,15 @@ function password(role: Role) {
 function cookieName(role: Role) {
   return role === "operator" ? "northside_operator" : "northside_staff";
 }
+function applicationOrigin(request: Request): string {
+  const scope=process.env.NORTHSIDE_DATA_SCOPE;
+  const configured=scope==='control'?process.env.CONTROL_ORIGIN:scope==='customer'?process.env.CUSTOMER_ORIGIN:undefined;
+  if(process.env.VERCEL && !configured) throw fault("Application origin is not configured",503);
+  return configured ? new URL(configured).origin : new URL(request.url).origin;
+}
 export function assertSameOrigin(request: Request): void {
-  const origin = request.headers.get("origin");
-  const expected = new URL(request.url).origin;
-  const configured = [
-    process.env.CONTROL_ORIGIN,
-    process.env.CUSTOMER_ORIGIN,
-  ].filter(Boolean);
-  if (
-    !origin ||
-    origin !== expected ||
-    (configured.length > 0 && !configured.includes(origin))
-  )
-    throw fault("Origin not allowed", 403);
+  const origin=request.headers.get("origin");
+  if(!origin || origin!==applicationOrigin(request))throw fault("Origin not allowed",403);
 }
 function cookie(request: Request, role: Role) {
   return (request.headers.get("cookie") ?? "")
@@ -123,7 +119,7 @@ export async function login(
         : "Invalid credentials",
       status,
     );
-  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  const secure = new URL(applicationOrigin(request)).protocol === "https:" ? "; Secure" : "";
   return Response.json(
     { ok: true, role },
     {

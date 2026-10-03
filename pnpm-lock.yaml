@@ -188,7 +188,17 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
-  packages/agent-runtime: {}
+  apps/worker:
+    dependencies:
+      '@northside/agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agent-runtime
+
+  packages/agent-runtime:
+    dependencies:
+      '@northside/data':
+        specifier: workspace:*
+        version: link:../data
 
   packages/data:
     dependencies:
@@ -196,7 +206,11 @@ importers:
         specifier: 3.4.9
         version: 3.4.9
 
-  packages/domain: {}
+  packages/domain:
+    dependencies:
+      '@northside/data':
+        specifier: workspace:*
+        version: link:../data
 
   packages/shopify: {}
 

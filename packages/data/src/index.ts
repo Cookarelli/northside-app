@@ -1,4 +1,4 @@
-import { createRequire } from "node:module";
+import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, chmodSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import postgres from "postgres";
@@ -49,9 +49,6 @@ export class SqliteStore implements Store {
   private db: import("node:sqlite").DatabaseSync;
   constructor(path: string) {
     mkdirSync(dirname(resolve(path)), { recursive: true, mode: 0o700 });
-    const { DatabaseSync } = createRequire(import.meta.url)(
-      "node:sqlite",
-    ) as typeof import("node:sqlite");
     this.db = new DatabaseSync(path);
     this.db.exec(
       "PRAGMA busy_timeout=10000; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS app_state (namespace TEXT PRIMARY KEY, state TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0);",
@@ -157,14 +154,14 @@ export class PostgresStore implements Store {
 let store: Store | undefined;
 export function getStore(): Store {
   if (store) return store;
-  if (process.env.DATABASE_URL) {
+  if (process.env.NORTHSIDE_DATA_DATABASE_URL) {
     const scope = process.env.NORTHSIDE_DATA_SCOPE;
     if (scope !== "control" && scope !== "customer")
       throw new Error("NORTHSIDE_DATA_SCOPE must identify the application");
-    return (store = new PostgresStore(process.env.DATABASE_URL, scope));
+    return (store = new PostgresStore(process.env.NORTHSIDE_DATA_DATABASE_URL, scope));
   }
   if (process.env.VERCEL || process.env.DATA_MODE === "postgres")
-    throw new Error("Hosted persistence requires DATABASE_URL");
+    throw new Error("Hosted persistence requires NORTHSIDE_DATA_DATABASE_URL");
   if (!process.env.NORTHSIDE_DB_PATH)
     throw new Error(
       "Run pnpm setup:local and pnpm dev, or configure NORTHSIDE_DB_PATH",

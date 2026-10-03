@@ -67,3 +67,9 @@ describe("remote authorization", () => {
     ).rejects.toThrow("Too many");
   });
 });
+
+it('uses only the owning app canonical origin behind a reverse proxy',()=>{
+ vi.stubEnv('NORTHSIDE_DATA_SCOPE','control');vi.stubEnv('CONTROL_ORIGIN','https://control.example');vi.stubEnv('CUSTOMER_ORIGIN','https://shop.example');
+ expect(()=>assertSameOrigin(new Request('http://internal/api/control/commands',{headers:{origin:'https://control.example'}}))).not.toThrow();
+ expect(()=>assertSameOrigin(new Request('http://internal/api/control/commands',{headers:{origin:'https://shop.example'}}))).toThrow('Origin');
+});

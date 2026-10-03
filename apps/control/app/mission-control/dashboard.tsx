@@ -62,9 +62,12 @@ export default function Dashboard() {
     }
   }, []);
   useEffect(() => {
-    void refresh();
+    const first = setTimeout(() => void refresh(), 0);
     const id = setInterval(() => void refresh(), 4000);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, [refresh]);
   async function act(action: string, data: unknown) {
     setBusy(true);
@@ -395,7 +398,7 @@ export default function Dashboard() {
                   name="acceptanceCriteria"
                   placeholder="What must the verifier demonstrate?"
                   minLength={10}
-                  maxLength={4000}
+                  maxLength={3000}
                   required
                 />
               </label>
@@ -435,7 +438,7 @@ export default function Dashboard() {
                     type="number"
                     name="maxTokens"
                     min={1000}
-                    max={1000000}
+                    max={500000}
                     defaultValue={100000}
                     required
                   />

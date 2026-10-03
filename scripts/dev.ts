@@ -2,17 +2,28 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 if (!existsSync(".env.local")) throw new Error("Run pnpm setup:local first.");
 process.loadEnvFile(".env.local");
-function appEnv(name: string) {
-  const env = { ...process.env, NORTHSIDE_DATA_SCOPE: name };
-  delete env.WORKER_CREDENTIAL;
-  delete env.WORKER_TOKEN;
-  if (name === "customer") {
-    delete env.OPERATOR_PASSWORD;
-  } else {
-    for (const key of Object.keys(env))
-      if (key === "STAFF_PASSWORD" || key.startsWith("SHOPIFY_"))
-        delete env[key];
-  }
+function appEnv(name: string): NodeJS.ProcessEnv {
+  const keys = [
+    "PATH",
+    "HOME",
+    "TMPDIR",
+    "SHELL",
+    "LANG",
+    "LC_ALL",
+    "NODE_ENV",
+    "NORTHSIDE_DB_PATH",
+    "DATA_MODE",
+    "CONTROL_ORIGIN",
+    "CUSTOMER_ORIGIN",
+  ];
+  keys.push(
+    ...(name === "customer"
+      ? ["STAFF_PASSWORD", "NORTHSIDE_FIXTURES", "COMMERCE_MODE"]
+      : ["OPERATOR_PASSWORD"]),
+  );
+  const env: NodeJS.ProcessEnv = { NORTHSIDE_DATA_SCOPE: name, NODE_ENV: process.env.NODE_ENV ?? "development" };
+  for (const key of keys)
+    if (process.env[key] !== undefined) env[key] = process.env[key];
   return env;
 }
 const children = ["customer", "control"].map((name) =>

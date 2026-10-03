@@ -8,18 +8,10 @@
     ],
     "incremental": true,
     "paths": {
-      "@northside/data": [
-        "../../packages/data/src/index.ts"
-      ],
-      "@northside/domain": [
-        "../../packages/domain/src/index.ts"
-      ],
-      "@northside/shopify": [
-        "../../packages/shopify/src/index.ts"
-      ],
-      "@northside/agent-runtime": [
-        "../../packages/agent-runtime/src/index.ts"
-      ]
+      "@northside/data": ["../../packages/data/src/index.ts"],
+      "@northside/domain": ["../../packages/domain/src/index.ts"],
+      "@northside/shopify": ["../../packages/shopify/src/index.ts"],
+      "@northside/agent-runtime": ["../../packages/agent-runtime/src/index.ts"]
     }
   },
   "include": [
@@ -29,7 +21,5 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

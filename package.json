@@ -17,7 +17,7 @@
     "setup:local": "node --import tsx scripts/setup-local.ts",
     "qr": "node --import tsx scripts/generate-qr.ts",
     "test:core": "vitest run",
-    "lint": "eslint apps/control packages scripts tests && pnpm --filter @northside/customer lint"
+    "lint": "eslint apps/control apps/worker packages scripts tests && pnpm --filter @northside/customer lint"
   },
   "devDependencies": {
     "@types/node": "22.18.6",

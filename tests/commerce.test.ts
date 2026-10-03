@@ -219,7 +219,14 @@ describe("Shopify boundaries (mock network, no live orders)", () => {
     expect(verifyWebhook(raw, "invalid", "secret")).toBe(false);
   });
   it("uses Storefront cartCreate and rejects warnings instead of silently accepting changed inventory", async () => {
-    let sent: any;
+    let sent!: {
+      variables: {
+        input: {
+          lines: Array<{ merchandiseId: string }>;
+          attributes: Array<{ key: string }>;
+        };
+      };
+    };
     const config = {
       domain: "example.myshopify.com",
       version: "2026-07",
@@ -227,8 +234,11 @@ describe("Shopify boundaries (mock network, no live orders)", () => {
       adminToken: "",
       webhookSecret: "",
     };
-    const fetcher = async (_url: any, init: any) => {
-      sent = JSON.parse(init.body);
+    const fetcher = async (
+      _url: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      sent = JSON.parse(String(init?.body));
       return Response.json({
         data: {
           cartCreate: {

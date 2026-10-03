@@ -63,6 +63,8 @@ export function Shell({
   const [cart, setCart] = useState<Record<string, number>>({});
   const path = usePathname();
   const staff = path.startsWith("/staff");
+  // Guest in-store sessions use their own isolated navigation and basket.
+  if (path.startsWith("/in-store")) return <div id="main">{children}</div>;
   return (
     <Context.Provider value={{ data, signed, setSigned, cart, setCart }}>
       <a className="skip" href="#main">
@@ -121,6 +123,7 @@ export function Shell({
       <main id="main">{children}</main>
       <footer>
         <span>For the love of the collection.</span>
+        {data.fixture && <a href="/in-store">In-store rehearsal</a>}
         <Link prefetch={false} href="/grading">
           Grading / Track My Cards
         </Link>
