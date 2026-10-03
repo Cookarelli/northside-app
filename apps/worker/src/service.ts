@@ -10,6 +10,12 @@ export interface WorkerHealth {
   status: 'starting' | 'online' | 'degraded' | 'blocked' | 'stopping' | 'stopped';
   startedAt: number; updatedAt: number; lastPollAt: number | null;
   activeJobs: number; consecutiveFailures: number; pollMs: number; reason?: string;
+  effectivePollMs?: number;
+}
+/** Connection pacing only. Leases, job attempts, and retry eligibility are unaffected. */
+export function reconnectDelayMs(basePollMs: number, consecutiveFailures: number): number {
+  if (!Number.isInteger(basePollMs) || basePollMs < 1000 || basePollMs > 60_000 || !Number.isSafeInteger(consecutiveFailures) || consecutiveFailures < 0) throw new Error('Invalid reconnect delay input');
+  return Math.min(60_000, basePollMs * 2 ** Math.min(16, Math.max(0, consecutiveFailures - 1)));
 }
 export async function writeHealth(root: string, health: WorkerHealth): Promise<void> {
   await saveJson(join(root, 'health.json'), health);
@@ -21,7 +27,7 @@ export async function readHealth(root: string) {
   if (Number.isSafeInteger(health.pid) && health.pid > 0) {
     try { process.kill(health.pid, 0); alive = true; } catch { /* Missing/inaccessible process is unhealthy. */ }
   }
-  const fresh = Date.now() - health.updatedAt < Math.max(30_000, Math.min(180_000, health.pollMs * 3));
+  const fresh = Date.now() - health.updatedAt < Math.max(30_000, Math.min(180_000, (health.effectivePollMs ?? health.pollMs) * 3));
   return { healthy: alive && fresh && health.status === 'online', alive, fresh, health };
 }
 

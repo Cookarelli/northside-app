@@ -35,6 +35,8 @@ For a Vercel-protected preview, optionally set `WORKER_VERCEL_BYPASS_FILE` to a 
 
 The state directory must be owned by the account with mode 700. Worker health is recorded privately in `health.json`; `node --import tsx scripts/launchd.ts health /absolute/worker-state` checks freshness, process existence, status, and last successful poll. It reports `starting`, `online`, `degraded`, `blocked`, `stopping`, or `stopped`, without credentials or response bodies. A healthy fixture worker is still explicitly simulated.
 
+Connection failures use the configured poll delay on the first failure, double it on successive failures up to 60 seconds, and reset after a successful polling/claim cycle; health records the effective delay. Job retry gates and lease heartbeats are unchanged.
+
 ## Real coding runtime
 
 The supervised-pilot preparation and concrete remaining execution alternative are documented in [worker-pilot.md](worker-pilot.md). Its sanitized source export is explicitly incomplete and never accepted as verification evidence. It does not activate real mode or replace any sandbox rule.

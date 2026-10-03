@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
-import { acquireCoordinatorLock, readHealth, writeHealth } from '../apps/worker/src/service';
+import { acquireCoordinatorLock, readHealth, reconnectDelayMs, writeHealth } from '../apps/worker/src/service';
 import { renderLaunchAgent, validateLaunchEnvironment } from '../scripts/launchd-config';
 import { prepareExecutionWorkspace } from '../apps/worker/src/execution-workspace';
 import { safeEnvironment } from '../apps/worker/src/process';
@@ -19,6 +19,11 @@ function git(repo: string, args: string[]) { return execFileSync('/usr/bin/git',
 async function fixtureRepo() { const repo = await temp(); git(repo, ['init', '--quiet']); await writeFile(join(repo, 'safe.ts'), 'export const value = 1;\n'); await mkdir(join(repo, 'nested')); await writeFile(join(repo, 'nested', '.env.local'), 'EXAMPLE=private'); git(repo, ['add', '.']); git(repo, ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--quiet', '-m', 'fixture']); return repo; }
 async function until(check: () => Promise<boolean>, ms = 6000) { const end = Date.now() + ms; while (Date.now() < end) { if (await check()) return; await delay(40); } throw new Error('Timed out waiting for service condition'); }
 describe('pilot service preparation', () => {
+  it('backs off repeated connection failures to 60 seconds and resets after success', () => {
+    expect([0,1,2,3,4,5,100].map(failures=>reconnectDelayMs(5000,failures))).toEqual([5000,5000,10000,20000,40000,60000,60000]);
+    expect(reconnectDelayMs(5000,0)).toBe(5000);expect(reconnectDelayMs(60_000,1)).toBe(60_000);expect(reconnectDelayMs(1000,100)).toBe(60_000);
+    expect(()=>reconnectDelayMs(0,1)).toThrow('Invalid');expect(()=>reconnectDelayMs(1000,-1)).toThrow('Invalid');
+  });
   it('scopes optional deployment bypass to private-file HTTPS transport without subprocess exposure', async () => {
     const root=await temp();const credential=join(root,'credential');const bypass=join(root,'bypass');await writeFile(credential,'nsw_'+'a'.repeat(43),{mode:0o600});await writeFile(bypass,'dummy-bypass-value',{mode:0o600});
     for(const [key,value] of Object.entries({WORKER_CREDENTIAL_FILE:credential,WORKER_VERCEL_BYPASS_FILE:bypass,WORKER_STATE_DIR:join(root,'state'),WORKER_REPO:process.cwd(),CONTROL_PLANE_URL:'https://control.example.invalid',WORKER_ADAPTER:'simulated'}))vi.stubEnv(key,value);
@@ -61,6 +66,7 @@ describe('pilot service preparation', () => {
   it('reports stale and stopped processes unhealthy', async () => {
     const root = await temp(); const h = { version: 1 as const, pid: process.pid, mode: 'simulated' as const, status: 'online' as const, startedAt: Date.now(), updatedAt: Date.now(), lastPollAt: Date.now(), activeJobs: 0, consecutiveFailures: 0, pollMs: 1000 };
     await writeHealth(root, h); expect((await readHealth(root)).healthy).toBe(true); await writeHealth(root, { ...h, updatedAt: 0 }); expect((await readHealth(root)).healthy).toBe(false); await writeHealth(root, { ...h, status: 'stopped' }); expect((await readHealth(root)).healthy).toBe(false);
+    await writeHealth(root,{...h,status:'degraded',updatedAt:Date.now()-45_000,effectivePollMs:60_000});expect(await readHealth(root)).toMatchObject({healthy:false,fresh:true});
   });
   it('runs simulated polling, rejects a duplicate, restarts after a crash, and stops cleanly', async () => {
     const root = await temp(); const state = join(root, 'state'); const credential = join(root, 'credential'); await writeFile(credential, 'nsw_' + 'a'.repeat(43), { mode: 0o600 });
