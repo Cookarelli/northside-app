@@ -27,14 +27,38 @@ function cookieName(role: Role) {
   return role === "operator" ? "northside_operator" : "northside_staff";
 }
 function applicationOrigin(request: Request): string {
-  const scope=process.env.NORTHSIDE_DATA_SCOPE;
-  const configured=scope==='control'?process.env.CONTROL_ORIGIN:scope==='customer'?process.env.CUSTOMER_ORIGIN:undefined;
-  if(process.env.VERCEL && !configured) throw fault("Application origin is not configured",503);
-  return configured ? new URL(configured).origin : new URL(request.url).origin;
+  const scope = process.env.NORTHSIDE_DATA_SCOPE;
+  const configured =
+    scope === "control"
+      ? process.env.CONTROL_ORIGIN
+      : scope === "customer"
+        ? process.env.CUSTOMER_ORIGIN
+        : undefined;
+  // Vercel supplies this exact deployment hostname. Never trust a Host or
+  // forwarded header, another project's preview, or a wildcard *.vercel.app.
+  const previewHost =
+    process.env.VERCEL && process.env.VERCEL_ENV === "preview"
+      ? process.env.VERCEL_URL
+      : undefined;
+  const preview =
+    previewHost && /^[a-z0-9-]+\.vercel\.app$/.test(previewHost)
+      ? `https://${previewHost}`
+      : undefined;
+  const origins = [
+    configured ? new URL(configured).origin : undefined,
+    preview,
+  ].filter(Boolean);
+  const requested = request.headers.get("origin");
+  if (requested && origins.includes(requested)) return requested;
+  if (origins[0]) return origins[0];
+  if (process.env.VERCEL)
+    throw fault("Application origin is not configured", 503);
+  return new URL(request.url).origin;
 }
 export function assertSameOrigin(request: Request): void {
-  const origin=request.headers.get("origin");
-  if(!origin || origin!==applicationOrigin(request))throw fault("Origin not allowed",403);
+  const origin = request.headers.get("origin");
+  if (!origin || origin !== applicationOrigin(request))
+    throw fault("Origin not allowed", 403);
 }
 function cookie(request: Request, role: Role) {
   return (request.headers.get("cookie") ?? "")
@@ -46,12 +70,12 @@ function cookie(request: Request, role: Role) {
 export async function requireRole(
   request: Request,
   role: Role,
-  store: Store = getStore(),
+  store?: Store,
 ): Promise<Identity> {
   const token = cookie(request, role);
   if (!token || !/^[a-f0-9]{64}$/.test(token))
     throw fault("Sign in required", 401);
-  const data = await store.read("auth_" + role, initial);
+  const data = await (store ?? getStore()).read("auth_" + role, initial);
   const s = data.sessions[digest(token)];
   if (
     !s ||
@@ -119,7 +143,8 @@ export async function login(
         : "Invalid credentials",
       status,
     );
-  const secure = new URL(applicationOrigin(request)).protocol === "https:" ? "; Secure" : "";
+  const secure =
+    new URL(applicationOrigin(request)).protocol === "https:" ? "; Secure" : "";
   return Response.json(
     { ok: true, role },
     {

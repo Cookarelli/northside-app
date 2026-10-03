@@ -12,3 +12,5 @@ test-results/
 supabase/.temp/
 **/work/
 **/supabase/.temp/
+.vercel/
+**/.vercel/

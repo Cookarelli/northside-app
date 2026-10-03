@@ -42,7 +42,11 @@ function Pixel({ index }: { index: number }) {
     </svg>
   );
 }
-export default function Dashboard() {
+export default function Dashboard({
+  configured = true,
+}: {
+  configured?: boolean;
+}) {
   const [snapshot, setSnapshot] = useState<ControlSnapshot | null>(null),
     [authorized, setAuthorized] = useState<boolean | null>(null),
     [error, setError] = useState(""),
@@ -62,13 +66,14 @@ export default function Dashboard() {
     }
   }, []);
   useEffect(() => {
+    if (!configured) return;
     const first = setTimeout(() => void refresh(), 0);
     const id = setInterval(() => void refresh(), 4000);
     return () => {
       clearTimeout(first);
       clearInterval(id);
     };
-  }, [refresh]);
+  }, [refresh, configured]);
   async function act(action: string, data: unknown) {
     setBusy(true);
     setError("");
@@ -124,7 +129,13 @@ export default function Dashboard() {
             <br />A human in control.
           </h1>
           <p>Sign in to assign bounded work and review the evidence.</p>
-          {authorized === null ? (
+          {!configured ? (
+            <p role="status">
+              Pilot setup is incomplete. Operator sign-in and remote workers are
+              disabled until private configuration and access checks are
+              complete.
+            </p>
+          ) : authorized === null ? (
             <p>Connecting…</p>
           ) : (
             <form onSubmit={signIn}>
