@@ -1,6 +1,8 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Product, PublicSession, Mapping } from "@northside/domain";
 const money = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -41,7 +43,18 @@ function ProductArt({ product }: { product: Product }) {
     </div>
   );
 }
-export default function Customer({ path }: { path: string[] }) {
+export default function Customer({
+  path,
+  initialReference,
+  initialCollection,
+  requestedShared,
+}: {
+  path: string[];
+  initialReference: string;
+  initialCollection: string;
+  requestedShared: boolean;
+}) {
+  const router = useRouter();
   const page = path[0] || "home";
   const staff = page === "staff";
   const [items, setItems] = useState<Product[]>([]);
@@ -55,11 +68,11 @@ export default function Customer({ path }: { path: string[] }) {
   const [quantity, setQuantity] = useState(1);
   const [queue, setQueue] = useState<PublicSession[] | null>(null);
   const [password, setPassword] = useState("");
-  const [reference, setReference] = useState("");
-  const [collection, setCollection] = useState("");
+  const [reference, setReference] = useState(initialReference);
+  const [collection, setCollection] = useState(initialCollection);
   const [opened, setOpened] = useState<PublicSession | null>(null);
   const [lastReset, setLastReset] = useState(0);
-  const lastInteraction = useRef(Date.now());
+  const lastInteraction = useRef(0);
   const lastTouch = useRef(0);
   async function action(work: () => Promise<void>) {
     setBusy(true);
@@ -72,7 +85,7 @@ export default function Customer({ path }: { path: string[] }) {
       setBusy(false);
     }
   }
-  const reset = async (shared = session?.shared ?? false) => {
+  const reset = useCallback(async (shared: boolean) => {
     if (shared) {
       setSession(null);
       setOpened(null);
@@ -88,7 +101,11 @@ export default function Customer({ path }: { path: string[] }) {
     setPassword("");
     lastInteraction.current = Date.now();
     setLastReset(Date.now());
-  };
+  }, []);
+  const routeCode = path[1];
+  const sessionId = session?.id;
+  const sharedDevice = session?.shared ?? false;
+  const phase = session?.phase;
   useEffect(() => {
     let gone = false;
     api<{ mode: string; products: Product[] }>("catalog")
@@ -98,27 +115,34 @@ export default function Customer({ path }: { path: string[] }) {
           setMode(d.mode);
         }
       })
-      .catch((e) => setMessage(e.message));
+      .catch((e) => {
+        if (!gone) setMessage(e.message);
+      });
+    return () => {
+      gone = true;
+    };
+  }, []);
+  useEffect(() => {
+    let gone = false;
+    lastInteraction.current = Date.now();
     if (staff) {
       api<PublicSession[]>("staff/queue")
-        .then(setQueue)
-        .catch(() => setQueue(null));
-      const query = new URLSearchParams(window.location.search);
-      setReference(query.get("handoff") ?? "");
-      setCollection(query.get("collection") ?? "");
+        .then((sessions) => {
+          if (!gone) setQueue(sessions);
+        })
+        .catch(() => {
+          if (!gone) setQueue(null);
+        });
     } else {
       api<PublicSession>("session")
         .then((s) => {
           if (!gone) setSession(s);
         })
         .catch(async (e) => {
+          if (gone) return;
           if (e.status === 401) {
             const s = await api<PublicSession>("session", {
-              shared:
-                new URLSearchParams(window.location.search).get("shared") ===
-                "1"
-                  ? true
-                  : undefined,
+              shared: requestedShared ? true : undefined,
             });
             if (!gone) setSession(s);
           } else setMessage(e.message);
@@ -130,65 +154,88 @@ export default function Customer({ path }: { path: string[] }) {
     return () => {
       gone = true;
     };
-  }, [staff]);
+  }, [staff, requestedShared]);
   useEffect(() => {
-    if (page === "q" && path[1])
-      api<{ mapping: Mapping }>(`qr/${encodeURIComponent(path[1])}`)
-        .then((r) => {
-          setMapping(r.mapping);
-          if (r.mapping.kind === "product")
-            setVariant(r.mapping.variantId ?? "");
-        })
-        .catch((e) => setMessage(e.message));
-  }, [page, path[1]]);
+    if (page !== "q" || !routeCode) return;
+    let gone = false;
+    api<{ mapping: Mapping }>(`qr/${encodeURIComponent(routeCode)}`)
+      .then((r) => {
+        if (gone) return;
+        setMapping(r.mapping);
+        if (r.mapping.kind === "product") setVariant(r.mapping.variantId ?? "");
+      })
+      .catch((e) => {
+        if (!gone) setMessage(e.message);
+      });
+    return () => {
+      gone = true;
+    };
+  }, [page, routeCode]);
   useEffect(() => {
-    if (!session?.shared || staff) return;
+    if (!sharedDevice || staff) return;
+    let gone = false;
     function interact() {
-      lastInteraction.current = Date.now();
-      if (Date.now() - lastTouch.current > 15_000) {
-        lastTouch.current = Date.now();
+      const now = Date.now();
+      lastInteraction.current = now;
+      if (now - lastTouch.current > 15_000) {
+        lastTouch.current = now;
         api<PublicSession>("session/touch", {}).catch(() => {});
       }
     }
     window.addEventListener("pointerdown", interact);
     window.addEventListener("keydown", interact);
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       if (Date.now() - lastInteraction.current >= 180_000) {
         lastInteraction.current = Date.now();
         reset(true)
-          .then(() =>
-            setMessage(
-              "The shared iPad was cleared after inactivity. A new basket is ready.",
-            ),
-          )
-          .catch((e) => setMessage(e.message));
+          .then(() => {
+            if (!gone)
+              setMessage(
+                "The shared iPad was cleared after inactivity. A new basket is ready.",
+              );
+          })
+          .catch((e) => {
+            if (!gone) setMessage(e.message);
+          });
       }
     }, 1000);
     return () => {
-      clearInterval(t);
+      gone = true;
+      clearInterval(timer);
       window.removeEventListener("pointerdown", interact);
       window.removeEventListener("keydown", interact);
     };
-  }, [session?.shared, staff]);
+  }, [sharedDevice, staff, reset]);
   useEffect(() => {
-    if (page !== "status" || !session) return;
-    const timer = setInterval(
-      () =>
-        api<PublicSession>("session")
-          .then(setSession)
-          .catch((e) => setMessage(e.message)),
-      5000,
-    );
-    return () => clearInterval(timer);
-  }, [page, session?.id]);
+    if (page !== "status" || !sessionId) return;
+    let gone = false;
+    const timer = setInterval(() => {
+      api<PublicSession>("session")
+        .then((s) => {
+          if (!gone) setSession(s);
+        })
+        .catch((e) => {
+          if (!gone) setMessage(e.message);
+        });
+    }, 5000);
+    return () => {
+      gone = true;
+      clearInterval(timer);
+    };
+  }, [page, sessionId]);
   useEffect(() => {
-    if (!session?.shared || session.phase !== "collected") return;
-    const timer = setTimeout(
-      () => reset(true).catch((e) => setMessage(e.message)),
-      20_000,
-    );
-    return () => clearTimeout(timer);
-  }, [session?.phase, session?.shared]);
+    if (!sharedDevice || phase !== "collected") return;
+    let gone = false;
+    const timer = setTimeout(() => {
+      reset(true).catch((e) => {
+        if (!gone) setMessage(e.message);
+      });
+    }, 20_000);
+    return () => {
+      gone = true;
+      clearTimeout(timer);
+    };
+  }, [phase, sharedDevice, reset]);
   const selected =
     page === "product"
       ? items.find((p) => p.id === path[1])
@@ -221,7 +268,8 @@ export default function Customer({ path }: { path: string[] }) {
     return (
       <div className="product-grid">
         {list.map((p) => (
-          <a
+          <Link
+            prefetch={false}
             className="product-card"
             href={`/in-store/product/${p.id}`}
             key={p.id}
@@ -244,7 +292,7 @@ export default function Customer({ path }: { path: string[] }) {
                 </strong>
               </p>
             </div>
-          </a>
+          </Link>
         ))}
       </div>
     );
@@ -264,12 +312,20 @@ export default function Customer({ path }: { path: string[] }) {
             <br className="desktop" /> We’ll take care of the rest.
           </p>
           <div className="actions">
-            <a className="button primary" href="/in-store/scan">
+            <Link
+              prefetch={false}
+              className="button primary"
+              href="/in-store/scan"
+            >
               Scan a product <span>⌁</span>
-            </a>
-            <a className="text-link" href="/in-store/q/C001">
+            </Link>
+            <Link
+              prefetch={false}
+              className="text-link"
+              href="/in-store/q/C001"
+            >
               Explore the collection ↗
-            </a>
+            </Link>
           </div>
           <div className="hero-note">
             <span>01 / SCAN</span>
@@ -317,9 +373,9 @@ export default function Customer({ path }: { path: string[] }) {
             </span>
             <h2>The starting lineup</h2>
           </div>
-          <a href="/in-store/q/C001" className="text-link">
+          <Link prefetch={false} href="/in-store/q/C001" className="text-link">
             View collection ↗
-          </a>
+          </Link>
         </div>
         {grid()}
       </section>
@@ -355,10 +411,12 @@ export default function Customer({ path }: { path: string[] }) {
         {mode === "fixture"
           ? "LOCAL FIXTURE EXPERIENCE · Sample products · No real charges"
           : "SHOPIFY INTEGRATION · Setup required"}
-        <a href="/in-store/staff">Staff access ↗</a>
+        <Link prefetch={false} href="/in-store/staff">
+          Staff access ↗
+        </Link>
       </div>
       <header>
-        <a href="/in-store/" className="brand">
+        <Link prefetch={false} href="/in-store/" className="brand">
           <Image
             src="/northside-logo.svg"
             width={207}
@@ -366,30 +424,40 @@ export default function Customer({ path }: { path: string[] }) {
             alt="Northside Collectibles"
             priority
           />
-        </a>
+        </Link>
         <nav aria-label="Main navigation">
-          <a className={page === "home" ? "active" : ""} href="/in-store/">
+          <Link
+            prefetch={false}
+            className={page === "home" ? "active" : ""}
+            href="/in-store/"
+          >
             Explore
-          </a>
-          <a className={page === "scan" ? "active" : ""} href="/in-store/scan">
+          </Link>
+          <Link
+            prefetch={false}
+            className={page === "scan" ? "active" : ""}
+            href="/in-store/scan"
+          >
             Scan
-          </a>
-          <a
+          </Link>
+          <Link
+            prefetch={false}
             className={page === "membership" ? "active" : ""}
             href="/in-store/membership"
           >
             Membership
-          </a>
-          <a
+          </Link>
+          <Link
+            prefetch={false}
             className={page === "status" ? "active" : ""}
             href="/in-store/status"
           >
             Order status
-          </a>
+          </Link>
         </nav>
-        <a className="basket-link" href="/in-store/basket">
+        <Link prefetch={false} className="basket-link" href="/in-store/basket">
           Basket <span>{count}</span>
-        </a>
+        </Link>
       </header>
       {!staff && session?.shared && (
         <div className="shared-bar">
@@ -402,9 +470,9 @@ export default function Customer({ path }: { path: string[] }) {
           <div className="notice" role="status">
             {message}
             {message.includes("Sign out of the existing") && (
-              <a href="/signed-out" className="text-link">
+              <Link prefetch={false} href="/signed-out" className="text-link">
                 Sign out securely →
-              </a>
+              </Link>
             )}
             <button aria-label="Dismiss message" onClick={() => setMessage("")}>
               ×
@@ -427,9 +495,13 @@ export default function Customer({ path }: { path: string[] }) {
           <section className="product-detail">
             <ProductArt product={selected} />
             <div>
-              <a href="/in-store/q/C001" className="text-link">
+              <Link
+                prefetch={false}
+                href="/in-store/q/C001"
+                className="text-link"
+              >
                 ← Back to collection
-              </a>
+              </Link>
               <span className="eyebrow detail-label">
                 NORTHSIDE · FIXTURE PRODUCT
               </span>
@@ -482,9 +554,13 @@ export default function Customer({ path }: { path: string[] }) {
                 Your basket doesn’t reserve inventory. Staff retrieves
                 merchandise after payment.
               </p>
-              <a className="text-link" href="/in-store/basket">
+              <Link
+                prefetch={false}
+                className="text-link"
+                href="/in-store/basket"
+              >
                 View basket →
-              </a>
+              </Link>
             </div>
           </section>
         )}
@@ -507,7 +583,7 @@ export default function Customer({ path }: { path: string[] }) {
                   const result = await api<{ code: string }>(
                     `qr/${encodeURIComponent(lookup.trim())}`,
                   );
-                  window.location.assign(`/in-store/q/${result.code}`);
+                  router.push(`/in-store/q/${result.code}`);
                 });
               }}
             >
@@ -527,9 +603,15 @@ export default function Customer({ path }: { path: string[] }) {
             </form>
             <div className="sample-codes">
               <span>Try a fixture label</span>
-              <a href="/in-store/q/N001">N001 · Pack</a>
-              <a href="/in-store/q/N002">N002 · Box or case</a>
-              <a href="/in-store/q/C001">C001 · Collection</a>
+              <Link prefetch={false} href="/in-store/q/N001">
+                N001 · Pack
+              </Link>
+              <Link prefetch={false} href="/in-store/q/N002">
+                N002 · Box or case
+              </Link>
+              <Link prefetch={false} href="/in-store/q/C001">
+                C001 · Collection
+              </Link>
             </div>
           </section>
         )}
@@ -542,9 +624,13 @@ export default function Customer({ path }: { path: string[] }) {
                   Your basket <small>({count})</small>
                 </h1>
               </div>
-              <a href="/in-store/scan" className="text-link">
+              <Link
+                prefetch={false}
+                href="/in-store/scan"
+                className="text-link"
+              >
                 Scan another item +
-              </a>
+              </Link>
             </div>
             {!session?.lines.length ? (
               <div className="empty">
@@ -553,9 +639,13 @@ export default function Customer({ path }: { path: string[] }) {
                 <p>
                   Scan a label or explore the collection to start your basket.
                 </p>
-                <a href="/in-store/q/C001" className="button primary">
+                <Link
+                  prefetch={false}
+                  href="/in-store/q/C001"
+                  className="button primary"
+                >
                   Explore the collection →
-                </a>
+                </Link>
               </div>
             ) : (
               <div className="basket-layout">
@@ -653,7 +743,7 @@ export default function Customer({ path }: { path: string[] }) {
                                 version: session.version,
                               }),
                             );
-                            window.location.assign("/in-store/status");
+                            router.push("/in-store/status");
                           })
                         }
                       >
@@ -661,9 +751,13 @@ export default function Customer({ path }: { path: string[] }) {
                       </button>
                     </>
                   ) : (
-                    <a className="button primary full" href="/in-store/status">
+                    <Link
+                      prefetch={false}
+                      className="button primary full"
+                      href="/in-store/status"
+                    >
                       View handoff / order status →
-                    </a>
+                    </Link>
                   )}
                   <p className="muted">
                     {session.shared
@@ -683,9 +777,13 @@ export default function Customer({ path }: { path: string[] }) {
               <div className="empty">
                 <h2>Your next find starts here.</h2>
                 <p>Review your basket and choose a payment path first.</p>
-                <a href="/in-store/basket" className="button primary">
+                <Link
+                  prefetch={false}
+                  href="/in-store/basket"
+                  className="button primary"
+                >
                   Open basket →
-                </a>
+                </Link>
               </div>
             ) : (
               <div className="status-card">
@@ -710,12 +808,13 @@ export default function Customer({ path }: { path: string[] }) {
                 {session.phase === "awaiting_counter_payment" &&
                   session.handoff && (
                     <>
-                      <img
+                      <Image
+                        unoptimized
                         className="qr-image"
                         src="/api/in-store/code-image"
                         alt="Unpaid counter handoff QR"
-                        width="288"
-                        height="288"
+                        width={288}
+                        height={288}
                       />
                       <div className="code-label">UNPAID COUNTER HANDOFF</div>
                       <strong className="fallback-code">
@@ -740,7 +839,7 @@ export default function Customer({ path }: { path: string[] }) {
                           onClick={() =>
                             action(async () => {
                               setSession(await api("handoff/revoke", {}));
-                              window.location.assign("/in-store/basket");
+                              router.push("/in-store/basket");
                             })
                           }
                         >
@@ -751,12 +850,13 @@ export default function Customer({ path }: { path: string[] }) {
                   )}
                 {session.collectionCode && session.phase !== "collected" && (
                   <>
-                    <img
+                    <Image
+                      unoptimized
                       className="qr-image"
                       src="/api/in-store/code-image?type=collection"
                       alt="Paid collection code"
-                      width="288"
-                      height="288"
+                      width={288}
+                      height={288}
                     />
                     <div className="code-label">
                       PAID COLLECTION · STAFF MUST VERIFY
@@ -769,7 +869,7 @@ export default function Customer({ path }: { path: string[] }) {
                 {session.phase === "collected" && (
                   <button
                     className="button primary"
-                    onClick={() => action(() => reset())}
+                    onClick={() => action(() => reset(sharedDevice))}
                   >
                     Start a fresh basket →
                   </button>
@@ -802,9 +902,13 @@ export default function Customer({ path }: { path: string[] }) {
               <div className="coming">
                 IN THE WORKS · No earning rules or rewards are active
               </div>
-              <a href="/in-store/" className="button primary">
+              <Link
+                prefetch={false}
+                href="/in-store/"
+                className="button primary"
+              >
                 Keep exploring →
-              </a>
+              </Link>
             </div>
             <div className="member-card">
               <span>NORTHSIDE / MEMBERSHIP</span>
@@ -1090,19 +1194,21 @@ export default function Customer({ path }: { path: string[] }) {
         ].includes(page) && (
           <section className="empty">
             <h1>That page isn’t here.</h1>
-            <a href="/in-store/">Return to Northside</a>
+            <Link prefetch={false} href="/in-store/">
+              Return to Northside
+            </Link>
           </section>
         )}
       </main>
       <footer>
-        <a className="brand" href="/in-store/">
+        <Link prefetch={false} className="brand" href="/in-store/">
           <Image
             src="/northside-logo.svg"
             width={160}
             height={44}
             alt="Northside Collectibles"
           />
-        </a>
+        </Link>
         <p>A good place to find your next favorite.</p>
         <div>
           <span>Local fixture prototype · USD sample prices</span>
@@ -1119,10 +1225,18 @@ export default function Customer({ path }: { path: string[] }) {
         </div>
       </footer>
       <div className="mobile-nav">
-        <a href="/in-store/">Explore</a>
-        <a href="/in-store/scan">Scan</a>
-        <a href="/in-store/basket">Basket ({count})</a>
-        <a href="/in-store/status">Status</a>
+        <Link prefetch={false} href="/in-store/">
+          Explore
+        </Link>
+        <Link prefetch={false} href="/in-store/scan">
+          Scan
+        </Link>
+        <Link prefetch={false} href="/in-store/basket">
+          Basket ({count})
+        </Link>
+        <Link prefetch={false} href="/in-store/status">
+          Status
+        </Link>
       </div>
     </div>
   );
