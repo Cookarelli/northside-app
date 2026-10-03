@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-03T15:57:00.766Z",
+  "commit": "de97c422dde1cf36e1b54b0b8c63f35220e80dc3",
+  "node": "v24.19.0",
+  "results": [
+    {
+      "id": "bea6881d-9cbf-4c9b-89c9-f160254d1f78",
+      "command": "pnpm typecheck",
+      "commit": "de97c422dde1cf36e1b54b0b8c63f35220e80dc3",
+      "passed": false,
+      "startedAt": 1791043020097,
+      "finishedAt": 1791043020766,
+      "output": "Scope: all 8 workspace projects\n[EPERM] EPERM: operation not permitted, open '[isolated-checkout]/_tmp_96545_bbd952b9ba01ae188f3f93874719e2d3'\n\n\n\n[ERROR] Command failed with exit code 255: [pinned-node]/bin/node [pinned-pnpm]/bin/pnpm.mjs install\n\npnpm: Command failed with exit code 255: [pinned-node]/bin/node [pinned-pnpm]/bin/pnpm.mjs install\n    at getFinalError (file://[pinned-pnpm]/dist/pnpm.mjs:89986:14)\n    at makeError (file://[pinned-pnpm]/dist/pnpm.mjs:92293:21)\n    at getSyncResult (file://[pinned-pnpm]/dist/pnpm.mjs:94137:10)\n    at spawnSubprocessSync (file://[pinned-pnpm]/dist/pnpm.mjs:94097:14)\n    at execaCoreSync (file://[pinned-pnpm]/dist/pnpm.mjs:94027:23)\n    at callBoundExeca (file://[pinned-pnpm]/dist/pnpm.mjs:96555:23)\n    at boundExeca (file://[pinned-pnpm]/dist/pnpm.mjs:96532:49)\n    at sync2 (file://[pinned-pnpm]/dist/pnpm.mjs:96691:10)\n    at runPnpmCli (file://[pinned-pnpm]/dist/pnpm.mjs:276904:5)\n    at runDepsStatusCheck (file://[pinned-pnpm]/dist/pnpm.mjs:278122:7)\n",
+      "simulated": false
+    }
+  ],
+  "context": "Actual isolated verifier run with normal pnpm dependency verification restored. The typecheck script did not start: pnpm dependency verification invoked install, which was denied creating a checkout-root temporary file. Tests and build were not reached. Earlier 3dfdeb3 evidence is historical and used the subsequently removed dependency-verification override."
+}
