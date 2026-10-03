@@ -49,7 +49,7 @@ export async function acquireCoordinatorLock(root: string): Promise<{ release: (
   const closed = new Promise<void>(resolve => child.once('close', () => { if (!released) loss.abort(); resolve(); }));
   await new Promise<void>((resolve, reject) => {
     let settled = false; let output = '';
-    const finish = (error?: Error) => { if (settled) return; settled = true; clearTimeout(timer); error ? reject(error) : resolve(); };
+    const finish = (error?: Error) => { if (settled) return; settled = true; clearTimeout(timer); if(error) reject(error); else resolve(); };
     const timer = setTimeout(() => { child.stdin.end(); child.kill('SIGTERM'); finish(new Error('Coordinator lock acquisition timed out')); }, 5000);
     child.once('error', e => finish(e));
     child.once('close', () => finish(new Error('Another worker process owns this state directory, or the OS lock is unavailable')));
