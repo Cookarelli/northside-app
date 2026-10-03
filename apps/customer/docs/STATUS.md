@@ -558,3 +558,11 @@ New loyalty shared types, server ledger/discount/order/worker/redemption/reporti
 ## Prompt 7 changed areas
 
 New break types, schedule/calendar/purchase/commerce/worker/API/fixture services, public/customer/staff routes, shared client workspace, sample illustration, migration 007, worker/smoke scripts and 17 SQL/service tests. Existing general cart guard, order-job fan-out, home/account/staff links, responsive forms, environment inventory and project documentation were updated. Setup and before-sale checklist added. The requested design milestone reminder was created in this task. No new dependency, paid plugin or credentialed provider connection was added.
+
+## October 3, 2026 — monorepo and local in-store integration
+
+This existing application is preserved under `apps/customer` in Cookarelli/northside-app. Its original grading, identity/privacy, loyalty, commerce, engagement and disabled-public-feature boundaries remain in force. Additive `/in-store` routes provide an explicitly local-only fixture rehearsal for QR confirmation, basket/counter handoff and separate staff collection. The supplied Northside logo is retained. The rehearsal does not replace the existing customer-account or invited-staff identity.
+
+The dedicated new Supabase project `nrsuosydvjqovrevmych` has all 13 original migrations plus a new additive trigger-search-path hardening migration; original source checksums are preserved. Remote readback found 111 customer tables with RLS, the private Storage bucket, and no security-advisor findings. Runtime role login provisioning, owner invitation, live Storage and Shopify verification remain pending. See root `docs/HOSTING.md` before configuring; prior project references in older entries are historical.
+
+Integrated verification passed 261 tests, typecheck, lint (one root warning), and both Next production builds. Phone/iPad fixture browser journeys and the separately authenticated Mission Control HTTP simulation passed. Exact evidence and limits are in root `docs/VERIFICATION.md`; no live payments, inventory changes, store installs, customer notifications, deployment or feature activation occurred.

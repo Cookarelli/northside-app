@@ -123,7 +123,11 @@ export function Shell({
       <main id="main">{children}</main>
       <footer>
         <span>For the love of the collection.</span>
-        {data.fixture && <a href="/in-store">In-store rehearsal</a>}
+        {data.fixture && (
+          // A document navigation clears the original preview's in-memory identity before guest rehearsal.
+          // eslint-disable-next-line @next/next/no-html-link-for-pages
+          <a href="/in-store">In-store rehearsal</a>
+        )}
         <Link prefetch={false} href="/grading">
           Grading / Track My Cards
         </Link>

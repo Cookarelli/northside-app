@@ -1,6 +1,6 @@
 # Northside App + supervised development
 
-This monorepo continues **Cookarelli/northside-app** at `ef7d01b`. The existing customer application, supplied logo, grading workflows, identity/privacy controls, loyalty foundations, tests and all 13 migrations are preserved under `apps/customer`. New in-store work is additive at `/in-store`; Mission Control is a separate app at `/mission-control`. Northside HQ is outside this repository and was not changed.
+This monorepo continues **Cookarelli/northside-app** at `ef7d01b`. The existing customer application, supplied logo, grading workflows, identity/privacy controls, loyalty foundations, tests and all 13 original migrations are preserved under `apps/customer`. New in-store work is additive at `/in-store`; Mission Control is a separate app at `/mission-control`. Northside HQ is outside this repository and was not changed.
 
 **Local first.** No hosted deployment, live Shopify purchase, inventory change, store integration installation, or launchd service installation has been performed. See [verification evidence](docs/VERIFICATION.md), [hosting setup](docs/HOSTING.md), and [next tasks](docs/STATUS.md).
 
@@ -36,7 +36,7 @@ pnpm qr
 
 `pnpm test` runs the new queue, persistence, security and commerce tests plus the preserved customer application's tests. `pnpm qr` writes decoded sample labels to `outputs/qr-samples`. Their loopback URLs are for local inspection; set the verified app origin before printing real labels, and test physical devices first.
 
-The new in-store rehearsal demonstrates confirmation after QR lookup, basket editing, expiring counter handoff, staff retrieval, **explicit simulated payment**, preparation and atomic collection. Pay Now remains blocked until real Shopify pickup/location/tax/plan checks and test orders are verified. See [commerce requirements](docs/commerce.md) for the integration boundaries.
+The new in-store rehearsal demonstrates confirmation after QR lookup, basket editing, expiring counter handoff, staff retrieval, **explicit simulated payment**, preparation and atomic collection. Pay Now remains blocked until real Shopify pickup/location/tax/plan checks and test orders are verified. See [commerce requirements](docs/commerce-rehearsal.md) for the integration boundaries.
 
 ## Layout
 
@@ -50,9 +50,9 @@ The new in-store rehearsal demonstrates confirmation after QR lookup, basket edi
 | `packages/data` | Atomic local SQLite and hosted Postgres persistence/auth |
 | `packages/shopify` | Server-side Shopify adapters |
 | `packages/agent-runtime` | Durable queue, fencing, commands and approval contracts |
-| `apps/customer/supabase/migrations` | Preserved original 13-migration chain |
+| `apps/customer/supabase/migrations` | Preserved 13-migration chain plus additive search-path hardening |
 | `supabase/migrations` | Separate new control/retail aggregate schema and restricted roles |
 
 Read `apps/customer/AGENTS.md` and its linked documents before changing existing modules. New ordinary coding tasks cannot edit their own runtime policy, credentials or approval gates. The worker has no public inbound listener or remote shell. Merge and production deployment are disabled.
 
-See [worker setup](docs/worker.md) for registration, dedicated-account isolation, launchd and limits. Existing application setup remains in [the preserved README](apps/customer/README.md); run its package-local commands from `apps/customer`, or use `pnpm --filter @northside/customer <script>` from the root. Earlier hosted project references are historical: Steve is creating a **new dedicated Supabase database** for this integration.
+See [worker setup](docs/worker-operations.md) for registration, dedicated-account isolation, launchd and limits. Existing application setup remains in [the preserved README](apps/customer/README.md); run its package-local commands from `apps/customer`, or use `pnpm --filter @northside/customer <script>` from the root. Earlier hosted project references are historical. The new dedicated Supabase project is **nrsuosydvjqovrevmych**. Its schema has been applied and security advisors are clean; restricted runtime credentials and hosted app connections still need configuration.

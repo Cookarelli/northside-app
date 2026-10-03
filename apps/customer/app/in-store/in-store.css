@@ -174,6 +174,8 @@
   margin: auto;
 }
 .northside-in-store .hero {
+  background: var(--ink);
+  color: white;
   display: grid;
   grid-template-columns: 1.1fr 1fr;
   padding: 68px 5% 44px;
@@ -191,7 +193,7 @@
 }
 .northside-in-store .hero p {
   font-size: 15px;
-  color: var(--muted);
+  color: #d8e9f2;
   line-height: 1.8;
 }
 .northside-in-store .actions {
@@ -220,6 +222,13 @@
 .northside-in-store .button.primary:hover {
   background: #235c7a;
 }
+.northside-in-store .hero .button.primary {
+  background: var(--lime);
+  color: var(--ink);
+}
+.northside-in-store .hero .button.primary:hover {
+  background: #d8eef8;
+}
 .northside-in-store .button.secondary {
   background: transparent;
   color: var(--ink);
@@ -243,7 +252,7 @@
   margin-top: 55px;
   font-size: 9px;
   letter-spacing: 1px;
-  color: var(--muted);
+  color: #d8e9f2;
 }
 .northside-in-store .hero-art {
   position: relative;

@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { PNG } from "pngjs";
 import jsQR from "jsqr";
 async function main() {
-  const base = process.env.NORTHSIDE_PUBLIC_URL || "http://localhost:3100";
+  const base = process.env.NORTHSIDE_PUBLIC_URL || "http://127.0.0.1:3100";
   const url = new URL(base);
   if (
     !["http:", "https:"].includes(url.protocol) ||

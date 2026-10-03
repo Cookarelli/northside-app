@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-03T15:44:35.050Z",
+  "geometry": "Standard square modules, 4-module quiet zone. Start at 35mm square or larger. Print/device testing required.",
+  "artwork": "No logo or rounded modules applied; placeholder design.",
+  "samples": [
+    {
+      "code": "N001",
+      "label": "Product — Rookie Series pack",
+      "url": "http://127.0.0.1:3100/in-store/q/N001",
+      "decodeVerified": true
+    },
+    {
+      "code": "N002",
+      "label": "Product — explicit box/case selection",
+      "url": "http://127.0.0.1:3100/in-store/q/N002",
+      "decodeVerified": true
+    },
+    {
+      "code": "C001",
+      "label": "Collection — Starting lineup",
+      "url": "http://127.0.0.1:3100/in-store/q/C001",
+      "decodeVerified": true
+    },
+    {
+      "code": "STORE",
+      "label": "Store entry",
+      "url": "http://127.0.0.1:3100/in-store/q/STORE",
+      "decodeVerified": true
+    }
+  ]
+}

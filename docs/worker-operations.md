@@ -14,7 +14,7 @@ This worker targets the concrete monorepo source paths in `apps/worker/src/polic
 2. Copy `apps/worker/.env.example` to `.runtime/worker.env`, set private file mode 600, and fill local settings. Values below are examples of non-secret settings; use absolute paths for launchd:
 
    ```dotenv
-   CONTROL_PLANE_URL=http://localhost:3101
+   CONTROL_PLANE_URL=http://127.0.0.1:3101
    WORKER_ALLOW_LOCALHOST=1
    WORKER_CREDENTIAL_FILE=/absolute/northside-app/.runtime/worker-credential
    WORKER_ADAPTER=simulated
