@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { createClient } from "@supabase/supabase-js";
 import { privateCommand, SetupError } from "./private-command.mjs";
+import { databaseConfig } from "../lib/server/database-config.mjs";
 await privateCommand("Owner setup", async () => {
   const id = process.env.NORTHSIDE_OWNER_AUTH_USER_ID;
   if (
@@ -12,6 +13,7 @@ await privateCommand("Owner setup", async () => {
     throw new SetupError(
       "Supply owner Supabase user ID and server connection settings privately.",
     );
+  const connection = databaseConfig(process.env.AUTH_DATABASE_URL);
   const client = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SECRET_KEY,
@@ -23,7 +25,7 @@ await privateCommand("Owner setup", async () => {
       "Owner must be a real invited or confirmed Supabase user.",
     );
   const pool = new Pool({
-    connectionString: process.env.AUTH_DATABASE_URL,
+    ...connection,
     max: 1,
   });
   try {

@@ -1,6 +1,7 @@
 import "server-only";
 import { Pool } from "pg";
 import { AccessError, hashToken, validToken } from "./security";
+import { databaseConfig } from "./database-config.mjs";
 export type Sql = {
   query<T = Record<string, unknown>>(
     sql: string,
@@ -30,8 +31,14 @@ function pool(kind: DatabaseKind) {
               : "COMMERCE_DATABASE_URL"
     ];
   if (!value) throw new AccessError(503, "database_not_configured");
+  let config;
+  try {
+    config = databaseConfig(value);
+  } catch {
+    throw new AccessError(503, "unsafe_database_transport");
+  }
   return (pools[kind] ??= new Pool({
-    connectionString: value,
+    ...config,
     max: 5,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 5000,

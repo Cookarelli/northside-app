@@ -1,5 +1,7 @@
 # Environment inventory
 
+The five application SQL connections and owner bootstrap require verified TLS for every remote database. Their URLs accept no query parameters except `sslmode=require` or `sslmode=verify-full`, both enforced as certificate-verified TLS. A URL cannot supply certificate paths, override its host, or disable verification. With the explicit local option below, a loopback development URL may omit `sslmode` or use `sslmode=disable`; an explicit secure mode still uses TLS. The migration CLI has separate operator configuration and is outside this application helper.
+
 All provider access stays on the server. `.env.example` contains placeholders; copy it only to ignored `.env.local` for private local setup. No real secrets have been configured. Deployment values must be entered privately in the selected host. A nonempty value is configuration, not verification. No variable below enables the six code-level purchase/loyalty/store gates.
 
 | Variable(s) | Scope and required condition | Owner / value rule |
@@ -11,6 +13,7 @@ All provider access stays on the server. `.env.example` contains placeholders; c
 | `COMMERCE_DATABASE_URL` | Web cart/webhook and order/break workers: northside_commerce | Separate private credential, no auth/private cards access. |
 | `LOYALTY_DATABASE_URL` | Loyalty worker: northside_loyalty | Separate private credential; website staff actions use runtime. |
 | `ENGAGEMENT_DATABASE_URL` | Web engagement/contact/attribution and notification/measurement workers: northside_engagement | Separate private credential; no operational cards/payouts/loyalty tables. |
+| `NORTHSIDE_ALLOW_INSECURE_LOCAL_DATABASE` | Optional loopback development only: 1 | Permits plaintext only for exact localhost/127.0.0.1/::1 with NODE_ENV=development or test and no VERCEL marker. Leave unset on hosts. |
 | `MIGRATION_DATABASE_URL` | Migration CLI only | Private migration-owner connection. Never website/worker runtime. |
 | `SESSION_ENCRYPTION_KEY` | Web/auth/cart: stable random 32 bytes, base64 | Private backup in secret manager; rotating requires session/cart recovery plan. |
 | `SUPABASE_URL` | Web/auth/bootstrap: exact project HTTPS URL | Supplied project zuqktfohxqzkzumtqibg; inspect before use. |

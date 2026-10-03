@@ -6,6 +6,12 @@ Public Northside discovery was freshly verified (HTTP 200, expected issuer, RS25
 
 # Northside status — September 17, 2026
 
+## Pilot database TLS hardening — October 3, 2026
+
+The five application SQL pools and owner bootstrap now share explicit PostgreSQL connection options. Remote connections verify certificates; unsafe or overriding URL query parameters fail closed without logging values. Plaintext requires exact loopback, an explicit development/test opt-in, and no Vercel marker. Owner setup validates transport before a provider request. No roles, grants, migrations, provider identity behavior, or activation flags changed.
+
+On Node 24.19.0, eight focused driver/configuration and setup redaction tests pass, customer TypeScript checking passes, and changed-file ESLint passes. Tests exercise the installed pg driver's resolved options; they do not establish a hosted TLS connection. Full integrated release checks and independent review remain the coordinator's responsibility before pilot publication.
+
 ## Grading repository checkpoint — September 17, 2026
 
 Steve authorized committing and pushing the completed grading work to `Cookarelli/northside-app` on `main`. This checkpoint includes private card photography, signed Northside Exam revisions/reports, the customer grading portal and approvals, staff custody/dispatch/returns/pickup, four additive migrations, recovery/concurrency tests and operating documentation. Earlier statements that these extensions were uncommitted describe their September 16 handoffs. Connected GitHub write access was verified again; no password reset is needed for this publication.
