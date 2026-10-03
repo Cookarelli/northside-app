@@ -1099,6 +1099,9 @@ export default function Customer({
                                     await api("staff/fixture-payment", {
                                       id: s.id,
                                     });
+                                    setOpened((current) =>
+                                      current?.id === s.id ? null : current,
+                                    );
                                     await loadQueue();
                                   })
                                 }
