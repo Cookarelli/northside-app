@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { WorkerLog } from '../apps/worker/src/storage';
 import { safeEnvironment } from '../apps/worker/src/process';
-const root=resolve(process.env.WORKER_STATE_DIR??'.runtime/worker');const log=new WorkerLog(join(root,'logs','worker.log'));
+const root=resolve(process.env.WORKER_STATE_DIR??'.runtime/worker');const log=new WorkerLog(join(root,'logs','launcher.log'));
 const configKeys=['CONTROL_PLANE_URL','CODEX_BINARY','PNPM_BINARY'];
 const env={...safeEnvironment(),...Object.fromEntries(Object.entries(process.env).filter(([k])=>k.startsWith('WORKER_')||configKeys.includes(k)))};
 const child=spawn(process.execPath,['--import','tsx','apps/worker/src/main.ts'],{cwd:process.cwd(),env,stdio:['ignore','pipe','pipe']});

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { chmod, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join } from 'node:path';
 import type { Evidence, Finding, Task, Usage } from '@northside/agent-runtime';
 import { runProcess, safeEnvironment } from './process';
 import { applyChanges, validateChanges } from './policy';
@@ -26,6 +26,8 @@ export class CodexAdapter implements RuntimeAdapter {
   async preflight():Promise<void> {
     if(process.platform!=='darwin')throw new Error('Real worker currently requires macOS verification sandbox');
     if(!this.config.isolatedAccount)throw new Error('Real runtime blocked: provision a dedicated unprivileged macOS account and set WORKER_ISOLATED_ACCOUNT=1 after auditing its files and credentials.');
+    if(!isAbsolute(this.config.pnpmBinary))throw new Error('PNPM_BINARY must point directly to the installed pinned pnpm bin/pnpm.mjs or bin/pnpm.cjs, not a Corepack shim');
+    const packageManager=JSON.parse(await readFile(join(dirname(dirname(await realpath(this.config.pnpmBinary))),'package.json'),'utf8'));if(packageManager.name!=='pnpm')throw new Error('PNPM_BINARY must use the direct pnpm implementation');
     const help=await runProcess(this.config.codexBinary,['exec','--help'],{cwd:this.config.repo});for(const flag of ['--ignore-user-config','--ignore-rules','--output-schema','--json','--ephemeral'])if(!help.output.includes(flag))throw new Error(`Installed Codex does not support required ${flag}`);
     const auth=await runProcess(this.config.codexBinary,['login','status'],{cwd:this.config.repo,env:{...safeEnvironment(),CODEX_HOME:this.config.codexHome}});if(auth.code)throw new Error('Codex authentication is unavailable in WORKER_CODEX_HOME. Log in under the dedicated worker account.');
     await probeSandbox(this.config);
@@ -59,9 +61,11 @@ export class CodexAdapter implements RuntimeAdapter {
   async *verify(_task:Task,directory:string,signal:AbortSignal,commit:string):AsyncIterable<Evidence> {
     // A deny-by-default macOS profile prevents test code reading the worker credential,
     // login keychain, or control-plane environment and denies outbound network.
-    const work=await realpath(directory);await snapshotDependencies(this.config.repo,work);const sandboxTemp=join(work,'.runtime','verification');await mkdir(sandboxTemp,{recursive:true});
+    const work=await realpath(directory);await snapshotDependencies(this.config.repo,work,signal);const sandboxTemp=join(work,'.runtime','verification');await mkdir(sandboxTemp,{recursive:true});
+    const toolDir=join(work,'node_modules','.northside-tools');await mkdir(toolDir,{recursive:true});const quote=(s:string)=>"'"+s.replace(/'/g,"'\\''")+"'";const launcher=join(toolDir,'pnpm');await writeFile(launcher,`#!/bin/sh\nexec ${quote(process.execPath)} ${quote(this.config.pnpmBinary)} "$@"\n`,{mode:0o700});await chmod(launcher,0o700);
+    const commandEnvironment={PATH:[toolDir,dirname(process.execPath),'/opt/homebrew/bin','/usr/bin','/bin'].join(':'),HOME:sandboxTemp,TMPDIR:sandboxTemp,CI:'1',NEXT_TELEMETRY_DISABLED:'1',DATA_MODE:'memory',COMMERCE_MODE:'fixture'};
     for(const command of ['typecheck','test','build']){
-      signal.throwIfAborted();const startedAt=Date.now();let passed=false,output='';try{const result=await runProcess(this.config.codexBinary,['sandbox','-P','northside','-C',directory,...codexPolicyArgs(this.config,'write'),this.config.pnpmBinary,'--config.manage-package-manager-versions=false','--config.verify-deps-before-run=false','run',command],{cwd:directory,env:{...safeEnvironment(),CODEX_HOME:this.config.codexHome,HOME:sandboxTemp,TMPDIR:sandboxTemp,NODE_ENV:command==='build'?'production':'test',DATA_MODE:'memory',COMMERCE_MODE:'fixture'},signal,timeoutMs:300000});passed=result.code===0;output=result.output||`Process exit ${result.code}`;}catch(e){output=(e as Error).message;}
+      signal.throwIfAborted();const startedAt=Date.now();let passed=false,output='';try{const result=await runProcess(this.config.codexBinary,['sandbox','-P','northside','-C',directory,...codexPolicyArgs(this.config,'verify',{...commandEnvironment,NODE_ENV:command==='build'?'production':'test'}),process.execPath,this.config.pnpmBinary,'--config.manage-package-manager-versions=false','--config.verify-deps-before-run=false','run',command],{cwd:directory,env:{...safeEnvironment(),CODEX_HOME:this.config.codexHome,HOME:sandboxTemp,TMPDIR:sandboxTemp,NODE_ENV:command==='build'?'production':'test',DATA_MODE:'memory',COMMERCE_MODE:'fixture'},signal,timeoutMs:300000});passed=result.code===0;output=result.output||`Process exit ${result.code}`;}catch(e){output=(e as Error).message;}
       yield {id:randomUUID(),command:`pnpm ${command}`,commit,passed,startedAt,finishedAt:Date.now(),output:output.slice(-12000),simulated:false};if(!passed)return;
     }
     if(await git(directory,['rev-parse','HEAD'],signal)!==commit||await git(directory,['diff','--name-only','HEAD'],signal))throw new Error('Verification modified reviewed source; approval invalidated');
