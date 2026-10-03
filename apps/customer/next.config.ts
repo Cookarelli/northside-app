@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ["@electric-sql/pglite", "zxing-wasm"],
+  transpilePackages: ["@northside/data", "@northside/domain", "@northside/shopify"],
+  serverExternalPackages: ["@electric-sql/pglite", "zxing-wasm", "postgres"],
   outputFileTracingIncludes: {
     "/api/show-qr/*": ["./public/vendor/zxing-wasm/3.1.4/zxing_writer.wasm"],
     "/api/private/grading/operations": [

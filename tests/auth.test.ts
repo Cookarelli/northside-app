@@ -1,0 +1,69 @@
+import { afterEach, describe, it, expect, vi } from "vitest";
+import {
+  MemoryStore,
+  login,
+  logout,
+  requireRole,
+  assertSameOrigin,
+} from "../packages/data/src/index";
+const url = "http://127.0.0.1:3101/api/control/login";
+const request = (password: string, origin = "http://127.0.0.1:3101") =>
+  new Request(url, {
+    method: "POST",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+afterEach(() => vi.unstubAllEnvs());
+describe("remote authorization", () => {
+  it("requires same-origin and separately scoped sessions, revokes on logout/password rotation", async () => {
+    vi.stubEnv("OPERATOR_PASSWORD", "operator-strong-password-for-test");
+    vi.stubEnv("STAFF_PASSWORD", "staff-strong-password-for-test");
+    const store = new MemoryStore();
+    await expect(
+      requireRole(new Request(url), "operator", store),
+    ).rejects.toThrow("Sign in");
+    expect(() =>
+      assertSameOrigin(request("x", "https://evil.example")),
+    ).toThrow("Origin");
+    const r = await login(
+        request("operator-strong-password-for-test"),
+        "operator",
+        store,
+      ),
+      cookie = r.headers.get("set-cookie")!.split(";")[0];
+    const sessionReq = new Request(url, {
+      method: "POST",
+      headers: { cookie, origin: "http://127.0.0.1:3101" },
+    });
+    expect((await requireRole(sessionReq, "operator", store)).id).toBe("steve");
+    await expect(requireRole(sessionReq, "staff", store)).rejects.toThrow();
+    await logout(sessionReq, "operator", store);
+    await expect(requireRole(sessionReq, "operator", store)).rejects.toThrow();
+    const again = await login(
+      request("operator-strong-password-for-test"),
+      "operator",
+      store,
+    );
+    vi.stubEnv("OPERATOR_PASSWORD", "new-operator-strong-password");
+    await expect(
+      requireRole(
+        new Request(url, {
+          headers: { cookie: again.headers.get("set-cookie")!.split(";")[0] },
+        }),
+        "operator",
+        store,
+      ),
+    ).rejects.toThrow("expired");
+  });
+  it("limits failed login attempts persistently", async () => {
+    vi.stubEnv("OPERATOR_PASSWORD", "operator-strong-password-for-test");
+    const store = new MemoryStore();
+    for (let n = 0; n < 10; n++)
+      await expect(login(request("bad"), "operator", store)).rejects.toThrow(
+        "Invalid",
+      );
+    await expect(
+      login(request("operator-strong-password-for-test"), "operator", store),
+    ).rejects.toThrow("Too many");
+  });
+});
