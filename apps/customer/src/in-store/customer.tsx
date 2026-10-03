@@ -116,7 +116,9 @@ export default function Customer({ path }: { path: string[] }) {
             const s = await api<PublicSession>("session", {
               shared:
                 new URLSearchParams(window.location.search).get("shared") ===
-                "1",
+                "1"
+                  ? true
+                  : undefined,
             });
             if (!gone) setSession(s);
           } else setMessage(e.message);

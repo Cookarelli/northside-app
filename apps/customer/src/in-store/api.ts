@@ -36,6 +36,10 @@ function sessionResponse(
     "Set-Cookie",
     `${cookieName}=${result.secret}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`,
   );
+  response.headers.append(
+    "Set-Cookie",
+    `northside_instore_shared=${(result.session as { shared?: boolean }).shared ? "1" : "0"}; HttpOnly; Path=/; SameSite=Lax; Max-Age=31536000${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`,
+  );
   if ((result.session as { shared?: boolean }).shared)
     response.headers.append(
       "Set-Cookie",
@@ -124,8 +128,14 @@ export async function handle(request: Request, path: string[]) {
       return json(await commerce.current(secret));
     if (route === "session" && request.method === "POST") {
       const b = await body(request);
+      const shared =
+        b.shared === undefined
+          ? /(?:^|;\s*)northside_instore_shared=1(?:;|$)/.test(
+              request.headers.get("cookie") ?? "",
+            )
+          : b.shared === true;
       if (
-        b.shared === true &&
+        shared &&
         /(?:^|;\s*)__Host-ns_session=[^;]+/.test(
           request.headers.get("cookie") ?? "",
         )
@@ -134,10 +144,7 @@ export async function handle(request: Request, path: string[]) {
           "Sign out of the existing Northside account before using this as a shared iPad.",
           409,
         );
-      return sessionResponse(
-        request,
-        await commerce.reset(secret, b.shared === true),
-      );
+      return sessionResponse(request, await commerce.reset(secret, shared));
     }
     if (route === "session/touch" && request.method === "POST")
       return json(await commerce.current(secret, true));

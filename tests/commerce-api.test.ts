@@ -148,4 +148,40 @@ describe("customer HTTP authorization boundary", () => {
       fetcher.mockRestore();
     }
   });
+  it("preserves shared iPad mode after expiry/reload until an explicit personal-device switch", async () => {
+    const created = await handle(request("session", "POST", { shared: true }), [
+      "session",
+    ]);
+    expect((await created.json()).shared).toBe(true);
+    const cookies = created.headers
+      .getSetCookie()
+      .map((c) => c.split(";")[0])
+      .join("; ");
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 180_001);
+    try {
+      expect(
+        (
+          await handle(request("session", "GET", undefined, cookies), [
+            "session",
+          ])
+        ).status,
+      ).toBe(401);
+      const restarted = await handle(request("session", "POST", {}, cookies), [
+        "session",
+      ]);
+      expect((await restarted.json()).shared).toBe(true);
+      const personal = await handle(
+        request("session", "POST", { shared: false }, cookies),
+        ["session"],
+      );
+      expect((await personal.json()).shared).toBe(false);
+      expect(
+        personal.headers
+          .getSetCookie()
+          .some((c) => c.startsWith("northside_instore_shared=0;")),
+      ).toBe(true);
+    } finally {
+      clock.mockRestore();
+    }
+  });
 });
