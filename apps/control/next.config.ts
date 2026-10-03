@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 const config: NextConfig = {
+  turbopack: { root: path.resolve(__dirname, "../..") },
   transpilePackages: [
     "@northside/data",
     "@northside/domain",

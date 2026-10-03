@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 const config: NextConfig = {
+  turbopack: { root: path.resolve(__dirname, "../..") },
   poweredByHeader: false,
   transpilePackages: ["@northside/data", "@northside/domain", "@northside/shopify"],
   serverExternalPackages: ["@electric-sql/pglite", "zxing-wasm", "postgres"],
