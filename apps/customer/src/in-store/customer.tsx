@@ -85,7 +85,8 @@ export default function Customer({
       setBusy(false);
     }
   }
-  const reset = useCallback(async (shared: boolean) => {
+  const reset = useCallback(async (shared: boolean, completionNotice = "") => {
+    setMessage("");
     if (shared) {
       setSession(null);
       setOpened(null);
@@ -101,6 +102,7 @@ export default function Customer({
     setPassword("");
     lastInteraction.current = Date.now();
     setLastReset(Date.now());
+    setMessage(completionNotice);
   }, []);
   const routeCode = path[1];
   const sessionId = session?.id;
@@ -173,7 +175,6 @@ export default function Customer({
   }, [page, routeCode]);
   useEffect(() => {
     if (!sharedDevice || staff) return;
-    let gone = false;
     function interact() {
       const now = Date.now();
       lastInteraction.current = now;
@@ -187,20 +188,13 @@ export default function Customer({
     const timer = setInterval(() => {
       if (Date.now() - lastInteraction.current >= 180_000) {
         lastInteraction.current = Date.now();
-        reset(true)
-          .then(() => {
-            if (!gone)
-              setMessage(
-                "The shared iPad was cleared after inactivity. A new basket is ready.",
-              );
-          })
-          .catch((e) => {
-            if (!gone) setMessage(e.message);
-          });
+        reset(
+          true,
+          "The shared iPad was cleared after inactivity. A new basket is ready.",
+        ).catch((e) => setMessage(e.message));
       }
     }, 1000);
     return () => {
-      gone = true;
       clearInterval(timer);
       window.removeEventListener("pointerdown", interact);
       window.removeEventListener("keydown", interact);
@@ -225,16 +219,10 @@ export default function Customer({
   }, [page, sessionId]);
   useEffect(() => {
     if (!sharedDevice || phase !== "collected") return;
-    let gone = false;
     const timer = setTimeout(() => {
-      reset(true).catch((e) => {
-        if (!gone) setMessage(e.message);
-      });
+      reset(true).catch((e) => setMessage(e.message));
     }, 20_000);
-    return () => {
-      gone = true;
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, [phase, sharedDevice, reset]);
   const selected =
     page === "product"
