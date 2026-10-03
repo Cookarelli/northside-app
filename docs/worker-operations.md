@@ -31,7 +31,13 @@ This worker targets the concrete monorepo source paths in `apps/worker/src/polic
 
 For hosted control, use its HTTPS origin and remove `WORKER_ALLOW_LOCALHOST`. The worker initiates outbound requests only to `/api/worker/poll`, `/claim`, `/heartbeat`, and `/report`. No public listener, shell endpoint, or port forwarding exists. Redirects are rejected so worker credentials are not forwarded to another origin. Only explicit loopback HTTP development is accepted.
 
+For a Vercel-protected preview, optionally set `WORKER_VERCEL_BYPASS_FILE` to a separate mode-600 regular file owned by the worker account, with no symlink components. This option requires the exact HTTPS `CONTROL_PLANE_URL` origin. The coordinator sends its contents only as the `x-vercel-protection-bypass` header on those four control requests, never in a URL, task, log, or Codex subprocess environment. The worker bearer credential remains required. Omit the option locally. Provision and revoke this narrowly scoped project bypass separately; see [Vercel's automation-bypass documentation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation).
+
+The state directory must be owned by the account with mode 700. Worker health is recorded privately in `health.json`; `node --import tsx scripts/launchd.ts health /absolute/worker-state` checks freshness, process existence, status, and last successful poll. It reports `starting`, `online`, `degraded`, `blocked`, `stopping`, or `stopped`, without credentials or response bodies. A healthy fixture worker is still explicitly simulated.
+
 ## Real coding runtime
+
+The supervised-pilot preparation and concrete remaining execution alternative are documented in [worker-pilot.md](worker-pilot.md). Its sanitized source export is explicitly incomplete and never accepted as verification evidence. It does not activate real mode or replace any sandbox rule.
 
 Use a dedicated, non-administrator macOS account and a dedicated clone with installed pinned dependencies. Keep business/provider/control-plane credentials out of that account except the worker's revocable credential and the dedicated Codex login. Do not grant Accessibility, automation, or broad keychain permissions. Configure `WORKER_CODEX_HOME` outside the checkout, authenticate privately under that account using the installed supported CLI, and check `CODEX_HOME=/absolute/dedicated-codex-home codex login status`.
 

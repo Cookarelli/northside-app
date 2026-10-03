@@ -7,8 +7,8 @@ import type { WorkerConfig } from './config';
 import { createWorktree, saveJson, WorkerLog } from './storage';
 export interface WorkerTransport {call<T>(action:'poll'|'claim'|'heartbeat'|'report',input?:unknown):Promise<T>}
 export class HttpTransport implements WorkerTransport {
-  constructor(private config:Pick<WorkerConfig,'url'|'credential'>){}
-  async call<T>(action:'poll'|'claim'|'heartbeat'|'report',input:unknown={}):Promise<T> {const response=await fetch(`${this.config.url}/api/worker/${action}`,{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${this.config.credential}`},body:JSON.stringify(input),redirect:'error',signal:AbortSignal.timeout(10000)});if(!response.ok)throw new Error(`Control plane rejected ${action} (${response.status})`);return await response.json() as T;}
+  constructor(private config:Pick<WorkerConfig,'url'|'credential'|'vercelBypass'>){if(config.vercelBypass&&(new URL(config.url).protocol!=='https:'||new URL(config.url).origin!==config.url))throw new Error('Deployment-protection bypass requires the exact HTTPS control origin');}
+  async call<T>(action:'poll'|'claim'|'heartbeat'|'report',input:unknown={}):Promise<T> {const headers:Record<string,string>={'content-type':'application/json',authorization:`Bearer ${this.config.credential}`};if(this.config.vercelBypass)headers['x-vercel-protection-bypass']=this.config.vercelBypass;const response=await fetch(`${this.config.url}/api/worker/${action}`,{method:'POST',headers,body:JSON.stringify(input),redirect:'error',signal:AbortSignal.timeout(10000)});if(!response.ok)throw new Error(`Control plane rejected ${action} (${response.status})`);return await response.json() as T;}
 }
 export async function executeClaim(claim:Claim,adapter:RuntimeAdapter,transport:WorkerTransport,config:Pick<WorkerConfig,'root'|'repo'>,stop:AbortSignal,log:WorkerLog):Promise<void> {
   const task=structuredClone(claim.task);const controller=new AbortController();let cancellation=false;let leaseLost=false;let heartbeatBusy=false;let ended=false;let latest:{kind:string;commit?:string;at:number}={kind:'claimed',at:Date.now()};
