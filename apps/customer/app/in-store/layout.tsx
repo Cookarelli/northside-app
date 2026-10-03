@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import "./in-store.css";
 export const metadata: Metadata = {
-  title: "In-store rehearsal · Northside",
+  title: "In-store · Northside",
   description:
-    "Local fixture shopping and counter handoff rehearsal. No real charges.",
+    "Northside in-store shopping preparation and local transaction rehearsal.",
 };
 export default function InStoreLayout({
   children,

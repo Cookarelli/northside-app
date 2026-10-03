@@ -1,3 +1,9 @@
+# Shopify pilot preparation — October 3, 2026
+
+The new production `/in-store` screen reports preparation status and links to the canonical shop; local rehearsal fixtures remain forbidden in production. The invited owner/admin-only `/staff/integrations/commerce-pilot` inspector reuses existing Shopify services for read-only app/scopes/plan, published variant/current-price/availability and sanitized webhook checks. It grants no new purchase, pickup or POS capability. The original live cart/session and durable order pipeline remain canonical.
+
+Public Northside discovery was freshly verified (HTTP 200, expected issuer, RS256/S256; discovery now advertises2026-10). The implementation retains its tested2026-07 version. Credentialed provider checks remain pending. Typecheck, scoped lint and32 focused commerce/store/pilot tests pass. Full setup, proof limits, source references and exact activation blockers are in [the pilot guide](../../../docs/commerce-pilot.md). No provider write or live sale occurred.
+
 # Northside status — September 17, 2026
 
 ## Grading repository checkpoint — September 17, 2026

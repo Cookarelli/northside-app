@@ -135,6 +135,11 @@ export default async function Page() {
       <Link className="back" href="/staff">
         ← Staff workspace
       </Link>
+      <p>
+        <Link prefetch={false} href="/staff/integrations/commerce-pilot">
+          Owner / admin Shopify pilot checks →
+        </Link>
+      </p>
     </>
   );
 }

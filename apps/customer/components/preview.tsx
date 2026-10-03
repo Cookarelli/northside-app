@@ -128,6 +128,11 @@ export function Shell({
           // eslint-disable-next-line @next/next/no-html-link-for-pages
           <a href="/in-store">In-store rehearsal</a>
         )}
+        {!data.fixture && (
+          <Link prefetch={false} href="/in-store">
+            In-store pilot
+          </Link>
+        )}
         <Link prefetch={false} href="/grading">
           Grading / Track My Cards
         </Link>
