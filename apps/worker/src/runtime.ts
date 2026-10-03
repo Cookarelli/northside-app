@@ -58,13 +58,16 @@ export class CodexAdapter implements RuntimeAdapter {
     if(await git(directory,['rev-parse','HEAD'],signal)!==commit||await git(directory,['status','--porcelain','--untracked-files=all'],signal))throw new Error('Reviewer changed repository');
     return {findings:result.findings.map(f=>({id:createHash('sha256').update(`${f.file??''}:${f.message.toLowerCase()}`).digest('hex').slice(0,24),severity:f.severity,message:f.message,file:f.file??undefined})),summary:result.summary,usage};
   }
-  async *verify(_task:Task,directory:string,signal:AbortSignal,commit:string):AsyncIterable<Evidence> {
+  async *verify(_task:Task,directory:string,signal:AbortSignal,commit:string):AsyncIterable<Evidence> {yield* this.verifyCommands(directory,signal,commit,['typecheck','test','build']);}
+  /** Local operator diagnostic only; the remote task protocol cannot select commands. */
+  async *diagnoseBuild(directory:string,signal:AbortSignal,commit:string):AsyncIterable<Evidence> {yield* this.verifyCommands(directory,signal,commit,['build']);}
+  private async *verifyCommands(directory:string,signal:AbortSignal,commit:string,commands:readonly ('typecheck'|'test'|'build')[]):AsyncIterable<Evidence> {
     // A deny-by-default macOS profile prevents test code reading the worker credential,
     // login keychain, or control-plane environment and denies outbound network.
     const work=await realpath(directory);await snapshotDependencies(this.config.repo,work,signal);const sandboxTemp=join(work,'.runtime','verification');await mkdir(sandboxTemp,{recursive:true});
     const toolDir=join(work,'node_modules','.northside-tools');await mkdir(toolDir,{recursive:true});const quote=(s:string)=>"'"+s.replace(/'/g,"'\\''")+"'";const launcher=join(toolDir,'pnpm');await writeFile(launcher,`#!/bin/sh\nexec ${quote(process.execPath)} ${quote(this.config.pnpmBinary)} "$@"\n`,{mode:0o700});await chmod(launcher,0o700);
     const commandEnvironment={PATH:[toolDir,dirname(process.execPath),'/opt/homebrew/bin','/usr/bin','/bin'].join(':'),HOME:sandboxTemp,TMPDIR:sandboxTemp,CI:'1',NEXT_TELEMETRY_DISABLED:'1',DATA_MODE:'memory',COMMERCE_MODE:'fixture'};
-    for(const command of ['typecheck','test','build']){
+    for(const command of commands){
       signal.throwIfAborted();const startedAt=Date.now();let passed=false,output='';try{const result=await runProcess(this.config.codexBinary,['sandbox','-P','northside','-C',directory,...codexPolicyArgs(this.config,'verify',{...commandEnvironment,NODE_ENV:command==='build'?'production':'test'}),process.execPath,this.config.pnpmBinary,'--config.manage-package-manager-versions=false','--config.verify-deps-before-run=false','run',command],{cwd:directory,env:{...safeEnvironment(),CODEX_HOME:this.config.codexHome,HOME:sandboxTemp,TMPDIR:sandboxTemp,NODE_ENV:command==='build'?'production':'test',DATA_MODE:'memory',COMMERCE_MODE:'fixture'},signal,timeoutMs:300000});passed=result.code===0;output=result.output||`Process exit ${result.code}`;}catch(e){output=(e as Error).message;}
       yield {id:randomUUID(),command:`pnpm ${command}`,commit,passed,startedAt,finishedAt:Date.now(),output:output.slice(-12000),simulated:false};if(!passed)return;
     }
