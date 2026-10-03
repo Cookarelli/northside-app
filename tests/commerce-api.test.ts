@@ -112,4 +112,40 @@ describe("customer HTTP authorization boundary", () => {
     ).toBe(503);
     vi.stubEnv("NODE_ENV", "test");
   });
+  it("never contacts Shopify from fixture webhook or reconciliation routes", async () => {
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("No network allowed"));
+    try {
+      expect(
+        (
+          await handle(request("shopify/webhook", "POST", {}), [
+            "shopify",
+            "webhook",
+          ])
+        ).status,
+      ).toBe(403);
+      const login = await handle(request("staff/login", "POST", { password }), [
+        "staff",
+        "login",
+      ]);
+      const cookie = login.headers.get("set-cookie")!.split(";")[0];
+      expect(
+        (
+          await handle(
+            request(
+              "staff/reconcile",
+              "POST",
+              { orderId: "gid://shopify/Order/1" },
+              cookie,
+            ),
+            ["staff", "reconcile"],
+          )
+        ).status,
+      ).toBe(403);
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally {
+      fetcher.mockRestore();
+    }
+  });
 });

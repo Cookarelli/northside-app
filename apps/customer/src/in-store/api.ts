@@ -65,16 +65,21 @@ function integer(value: unknown) {
   return value;
 }
 export async function handle(request: Request, path: string[]) {
-  const commerce = new Commerce(
-    getStore(),
-    Date.now,
-    process.env.COMMERCE_MODE === "fixture" &&
-      process.env.NODE_ENV !== "production",
-  );
   const route = path.join("/");
   const secret = cookie(request);
   try {
+    const commerce = new Commerce(
+      getStore(),
+      Date.now,
+      process.env.COMMERCE_MODE === "fixture" &&
+        process.env.NODE_ENV !== "production",
+    );
     if (route === "shopify/webhook" && request.method === "POST") {
+      if (commerce.fixture)
+        throw new CommerceError(
+          "Live webhook processing is disabled in fixture mode.",
+          403,
+        );
       const config = configuration();
       const raw = Buffer.from(await request.arrayBuffer());
       if (raw.length > 1_000_000)
@@ -217,6 +222,11 @@ export async function handle(request: Request, path: string[]) {
         );
       }
       if (route === "staff/reconcile" && request.method === "POST") {
+        if (commerce.fixture)
+          throw new CommerceError(
+            "Live order reconciliation is disabled in fixture mode.",
+            403,
+          );
         const b = await body(request);
         const order = await verifyOrder(configuration(), string(b.orderId));
         return json(
