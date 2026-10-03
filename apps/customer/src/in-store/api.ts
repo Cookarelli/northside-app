@@ -72,12 +72,15 @@ export async function handle(request: Request, path: string[]) {
   const route = path.join("/");
   const secret = cookie(request);
   try {
-    const commerce = new Commerce(
-      getStore(),
-      Date.now,
+    const fixture =
       process.env.COMMERCE_MODE === "fixture" &&
-        process.env.NODE_ENV !== "production",
-    );
+      process.env.NODE_ENV !== "production";
+    if (!fixture)
+      throw new CommerceError(
+        "In-store rehearsal requires explicit local fixture mode. Live in-store operations are not enabled.",
+        503,
+      );
+    const commerce = new Commerce(getStore(), Date.now, fixture);
     if (route === "shopify/webhook" && request.method === "POST") {
       if (commerce.fixture)
         throw new CommerceError(

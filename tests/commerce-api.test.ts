@@ -110,6 +110,9 @@ describe("customer HTTP authorization boundary", () => {
         ])
       ).status,
     ).toBe(503);
+    expect(
+      (await handle(request("session", "POST", {}), ["session"])).status,
+    ).toBe(503);
     vi.stubEnv("NODE_ENV", "test");
   });
   it("never contacts Shopify from fixture webhook or reconciliation routes", async () => {

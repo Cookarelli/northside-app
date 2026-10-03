@@ -122,6 +122,9 @@ export default function Customer({ path }: { path: string[] }) {
             });
             if (!gone) setSession(s);
           } else setMessage(e.message);
+        })
+        .catch((e) => {
+          if (!gone) setMessage(e.message);
         });
     }
     return () => {
