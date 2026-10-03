@@ -28,6 +28,10 @@
     {
       "reviewedCommit": "de97c422dde1cf36e1b54b0b8c63f35220e80dc3",
       "conclusion": "Approved removal of dependency-verification override; no new source finding. Earlier diagnostics are historical and final configuration requires new evidence."
+    },
+    {
+      "reviewedCommit": "8257002202a6b22436be5602ef50c50ed83c6ad3",
+      "conclusion": "Final-configuration diagnostic accurately records pnpm dependency preparation blocked before typecheck/tests/build. Historical diagnostics correctly distinguished; no source changes since reviewed de97c42."
     }
   ]
 }
