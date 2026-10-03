@@ -2,7 +2,7 @@
 
 This monorepo continues **Cookarelli/northside-app** at `ef7d01b`. The existing customer application, supplied logo, grading workflows, identity/privacy controls, loyalty foundations, tests and all 13 original migrations are preserved under `apps/customer`. New in-store work is additive at `/in-store`; Mission Control is a separate app at `/mission-control`. Northside HQ is outside this repository and was not changed.
 
-**Local first.** No hosted deployment, live Shopify purchase, inventory change, store integration installation, or launchd service installation has been performed. See [verification evidence](docs/VERIFICATION.md), [hosting setup](docs/HOSTING.md), and [next tasks](docs/STATUS.md).
+**Protected pilot previews are deployed; operational activation remains gated.** See the [current pilot report, preview links and exact setup steps](docs/PILOT-REPORT.md). Live Shopify purchases, inventory changes, POS installation and real worker activation remain disabled. Earlier [local verification](docs/VERIFICATION.md) is retained as historical evidence.
 
 ## Start on this Mac
 
@@ -50,7 +50,7 @@ The new in-store rehearsal demonstrates confirmation after QR lookup, basket edi
 | `packages/data` | Atomic local SQLite and hosted Postgres persistence/auth |
 | `packages/shopify` | Server-side Shopify adapters |
 | `packages/agent-runtime` | Durable queue, fencing, commands and approval contracts |
-| `apps/customer/supabase/migrations` | Preserved 13-migration chain plus additive search-path hardening |
+| `apps/customer/supabase/migrations` | Preserved 13-migration chain plus additive search-path and function-grant hardening |
 | `supabase/migrations` | Separate new control/retail aggregate schema and restricted roles |
 
 Read `apps/customer/AGENTS.md` and its linked documents before changing existing modules. New ordinary coding tasks cannot edit their own runtime policy, credentials or approval gates. The worker has no public inbound listener or remote shell. Merge and production deployment are disabled.

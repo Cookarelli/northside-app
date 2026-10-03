@@ -1,5 +1,7 @@
 # Hosting and private configuration
 
+> Historical baseline: the [current supervised pilot report](PILOT-REPORT.md) supersedes deployment, credential and migration counts below. Original evidence is retained.
+
 Steve supplied the new dedicated Supabase project [nrsuosydvjqovrevmych](https://supabase.com/dashboard/project/nrsuosydvjqovrevmych). On October 3, 2026, its schema was initialized through the authenticated Supabase connector. No hosted app was deployed. Do not use the historical Northside project or any Northside HQ database. Production deployment needs explicit authorization after review.
 
 ## Database

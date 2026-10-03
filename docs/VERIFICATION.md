@@ -1,5 +1,7 @@
 # Verification — October 3, 2026
 
+> Historical baseline: the [current supervised pilot report](PILOT-REPORT.md) supersedes deployment, credential and migration counts below. Original evidence is retained.
+
 All results below were executed on the Northside Mac mini (Apple M4 Pro, macOS 26.6.2) using Node 24.19.0 and pnpm 11.25.0. This report distinguishes ordinary local development checks from the worker's stricter sandbox.
 
 ## Integrated local checks

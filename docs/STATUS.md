@@ -1,5 +1,7 @@
 # Northside App integration status — October 3, 2026
 
+> Historical baseline: the [current supervised pilot report](PILOT-REPORT.md) supersedes deployment, credential and migration counts below. Original evidence is retained.
+
 The working branch `integration/supervised-store` continues `Cookarelli/northside-app` from `ef7d01b`. The existing customer application and directives live in `apps/customer`; the supplied logo, grading/exam/customer portal, privacy boundaries, original tests and migration history were preserved. Northside HQ was not modified. Changes are committed locally; no push, merge or hosted deployment is claimed.
 
 | Capability | Evidence-based status |
