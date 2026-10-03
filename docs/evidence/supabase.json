@@ -1,0 +1,16 @@
+{
+  "verifiedDate": "2026-10-03",
+  "projectRef": "nrsuosydvjqovrevmych",
+  "region": "us-east-2",
+  "postgresVersion": "17.11",
+  "migrationApplications": 15,
+  "customerMigrationChecksums": 14,
+  "customerTables": 111,
+  "customerTablesWithoutRls": 0,
+  "privateAggregateRows": 0,
+  "storageBucket": {"id": "northside-private", "public": false},
+  "securityAdvisor": {"lints": []},
+  "method": "Authenticated Supabase management connector, migration application and SQL/advisor readback",
+  "runtimeRoleConnectionVerified": false,
+  "limitations": ["Restricted role passwords not provisioned", "Management SET ROLE denied by Postgres membership", "Hosted TLS and application-role operations unverified", "No live identity/Storage/device/Shopify verification"]
+}
