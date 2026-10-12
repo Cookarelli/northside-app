@@ -24,6 +24,10 @@ merge, live commerce, inventory write or production worker activation is authori
   Both production builds pass. Client scans pass for 26 customer artifacts
   and 10 Mission Control artifacts; no production secrets were supplied.
 - Independent source review accepted the corrected patch and compatibility tests.
+- The first Git Customer preview exposed a packaging mismatch: its app-level
+  Vercel ignore file removed tests/support while the type-checked grading
+  concurrency script imports that support module. Tracked tests are now retained
+  in build inputs; secret/runtime ignore rules and full TypeScript checks remain.
 
 ## Vercel targets
 
