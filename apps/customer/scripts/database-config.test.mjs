@@ -9,6 +9,12 @@ const development = {
   NORTHSIDE_ALLOW_INSECURE_LOCAL_DATABASE: "1",
 };
 
+test("explicit CA preserves certificate verification without URL file options", () => {
+  const ca = "synthetic-ca-configuration";
+  const actual = new Client(databaseConfig(remote, { NORTHSIDE_DATABASE_CA_CERT: ca })).connectionParameters;
+  assert.deepEqual(actual.ssl, { rejectUnauthorized: true, ca });
+});
+
 test("remote driver options always verify TLS and preserve encoded credentials", () => {
   for (const suffix of ["", "?sslmode=require", "?sslmode=verify-full"]) {
     for (const environment of [{}, development, { NODE_ENV: "production" }]) {

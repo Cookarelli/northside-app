@@ -101,7 +101,12 @@ export class PostgresStore implements Store {
     this.sql = postgres(url, {
       max: 3,
       prepare: false,
-      ssl: { rejectUnauthorized: true },
+      ssl: {
+        rejectUnauthorized: true,
+        ...(process.env.NORTHSIDE_DATABASE_CA_CERT
+          ? { ca: process.env.NORTHSIDE_DATABASE_CA_CERT }
+          : {}),
+      },
       connect_timeout: 10,
       idle_timeout: 20,
     });

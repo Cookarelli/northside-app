@@ -483,10 +483,12 @@ export async function runProvisioning(
     syncDirectory(dir);
     await db.query("begin");
     transaction = true;
-    // Conflicts with concurrent ALTER ROLE catalog writes, including other operator tools.
-    await db.query(
-      "lock table pg_catalog.pg_authid in share row exclusive mode",
-    );
+    // Serialize helpers, then acquire native catalog tuple write locks without
+    // requiring unsupported system-table privileges. Recheck after all locks.
+    await db.query("select pg_advisory_xact_lock(1853059910, 7)");
+    for (const role of ROLES) {
+      await db.query(`alter role "${role}" login`);
+    }
     await checkDatabase(db);
     const locked = await readRoles(db, true);
     proveReuse(locked, recovery);

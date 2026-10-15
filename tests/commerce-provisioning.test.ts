@@ -294,7 +294,7 @@ describe("operator-only pilot provisioning", () => {
     expect(
       readFileSync(join(dir, ".runtime/pilot/recovery.json"), "utf8"),
     ).toBe(before);
-    expect(calls.slice(count).some((sql) => sql.startsWith("alter role"))).toBe(
+    expect(calls.slice(count).some((sql) => /alter role.*password/i.test(sql))).toBe(
       false,
     );
   });
@@ -364,10 +364,10 @@ describe("operator-only pilot provisioning", () => {
       vi.mocked(fsyncSync).mockImplementation(actual.fsyncSync);
     }
   });
-  test("catalog is rechecked under its DDL-conflicting lock before applying passwords", async () => {
+  test("catalog is rechecked after native role writes before applying passwords", async () => {
     const dir = root();
     const { db, calls } = await database(async (sql, pg) => {
-      if (sql.startsWith("lock table"))
+      if (sql === 'alter role "northside_auth" login')
         await pg.exec(
           "alter role northside_auth password 'independently-set-password'",
         );
@@ -375,7 +375,7 @@ describe("operator-only pilot provisioning", () => {
     await expect(runProvisioning(dir, true, () => db)).rejects.toMatchObject({
       code: "RECOVERY_MISMATCH",
     });
-    expect(calls.some((sql) => sql.startsWith("alter role"))).toBe(false);
+    expect(calls.some((sql) => /alter role.*password/i.test(sql))).toBe(false);
     expect(calls.at(-1)).toBe("rollback");
   });
   test("failed ALTER rolls back, preserves recovery, hides raw errors and can resume", async () => {
@@ -406,17 +406,17 @@ describe("operator-only pilot provisioning", () => {
     expect(recovery(dir)).toEqual(r);
     expect(safeFailure(Error(migrationUrl))).not.toContain(migrationPassword);
   });
-  test("missing catalog-lock permission leaves saved recovery but changes no roles", async () => {
+  test("missing native role-management permission rolls back and preserves recovery", async () => {
     const dir = root();
     const { db, calls } = await database(async (sql) => {
-      if (sql.startsWith("lock table"))
-        throw Error("permission denied for pg_authid");
+      if (sql === 'alter role "northside_runtime" login')
+        throw Error("permission denied to alter role");
     });
     await expect(runProvisioning(dir, true, () => db)).rejects.toMatchObject({
       code: "DATABASE_UNAVAILABLE",
     });
     expect(existsSync(join(dir, ".runtime/pilot/recovery.json"))).toBe(true);
-    expect(calls.some((sql) => sql.startsWith("alter role"))).toBe(false);
+    expect(calls.some((sql) => /alter role.*password/i.test(sql))).toBe(false);
     expect(calls.at(-1)).toBe("rollback");
     expect(existsSync(join(dir, ".runtime/pilot/customer.env"))).toBe(false);
   });

@@ -41,7 +41,12 @@ export function databaseConfig(value, environment = process.env) {
       password: password || (() => ""),
       database: decodeURIComponent(url.pathname.slice(1)),
       ssl: localPlaintext && (mode === null || mode === "disable")
-        ? false : { rejectUnauthorized: true },
+        ? false : {
+          rejectUnauthorized: true,
+          ...(environment.NORTHSIDE_DATABASE_CA_CERT
+            ? { ca: environment.NORTHSIDE_DATABASE_CA_CERT }
+            : {}),
+        },
       sslnegotiation: "postgres",
     };
   } catch {
