@@ -281,7 +281,8 @@ function keys(password: string, salt: Buffer, iterations: number) {
 }
 export function scramVerifier(password: string) {
   const salt = randomBytes(16),
-    iterations = 32768,
+    // Match PostgreSQL's default and the managed pooler's SCRAM challenge.
+    iterations = 4096,
     k = keys(password, salt, iterations);
   return `SCRAM-SHA-256$${iterations}:${salt.toString("base64")}$${k.stored.toString("base64")}:${k.server.toString("base64")}`;
 }

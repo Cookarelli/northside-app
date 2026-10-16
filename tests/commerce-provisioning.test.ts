@@ -16,6 +16,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
+import { createHash, createHmac, pbkdf2Sync } from "node:crypto";
 import {
   PROJECT,
   ROLES,
@@ -25,6 +26,7 @@ import {
   runProvisioning,
   safeFailure,
   matchesVerifier,
+  scramVerifier,
   inputFrom,
 } from "../scripts/lib/pilot-provisioning";
 vi.mock("node:fs", async (importOriginal) => {
@@ -32,6 +34,24 @@ vi.mock("node:fs", async (importOriginal) => {
   return { ...actual, fsyncSync: vi.fn(actual.fsyncSync) };
 });
 const migrationPassword = "synthetic-migration-input-only";
+test("new SCRAM verifiers use the managed-pooler-compatible PostgreSQL default", () => {
+  const password = "synthetic-random-role-password-for-test-only";
+  const verifier = scramVerifier(password);
+  expect(verifier.startsWith("SCRAM-SHA-256$4096:")).toBe(true);
+  expect(matchesVerifier(password, verifier)).toBe(true);
+  expect(matchesVerifier(password + "wrong", verifier)).toBe(false);
+  const salt = Buffer.alloc(16, 1);
+  const key = pbkdf2Sync(password, salt, 32768, 32, "sha256");
+  const stored = createHash("sha256")
+    .update(createHmac("sha256", key).update("Client Key").digest())
+    .digest("base64");
+  const server = createHmac("sha256", key)
+    .update("Server Key")
+    .digest("base64");
+  const prior = `SCRAM-SHA-256$32768:${salt.toString("base64")}$${stored}:${server}`;
+  expect(matchesVerifier(password, prior)).toBe(true);
+  expect(matchesVerifier(password + "wrong", prior)).toBe(false);
+});
 const migrationUrl = `postgresql://postgres.${PROJECT}:${migrationPassword}@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full`;
 const dirs: string[] = [];
 const databases: PGlite[] = [];
@@ -294,9 +314,9 @@ describe("operator-only pilot provisioning", () => {
     expect(
       readFileSync(join(dir, ".runtime/pilot/recovery.json"), "utf8"),
     ).toBe(before);
-    expect(calls.slice(count).some((sql) => /alter role.*password/i.test(sql))).toBe(
-      false,
-    );
+    expect(
+      calls.slice(count).some((sql) => /alter role.*password/i.test(sql)),
+    ).toBe(false);
   });
   test("existing unknown passwords are never replaced and no recovery is fabricated", async () => {
     const dir = root(),
