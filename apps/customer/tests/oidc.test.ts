@@ -37,7 +37,12 @@ function jwt(overrides: Record<string, unknown> = {}, badSignature = false) {
     ).toString("base64url")
   );
 }
-function client(overrides: Record<string, unknown> = {}, badSignature = false) {
+function client(
+  overrides: Record<string, unknown> = {},
+  badSignature = false,
+  id = "northside-test",
+  secret = "test-secret",
+) {
   const config = configureOidc(
     {
       issuer,
@@ -46,21 +51,30 @@ function client(overrides: Record<string, unknown> = {}, badSignature = false) {
       jwks_uri: issuer + "/jwks",
       id_token_signing_alg_values_supported: ["RS256"],
     },
-    "northside-test",
-    "test-secret",
+    id,
+    secret,
   );
   config[oidc.customFetch] = async (url, options) => {
     if (url.endsWith("/jwks")) return Response.json({ keys: [jwk] });
+    const body = new URLSearchParams(String(options.body));
     assert.equal(
-      new URLSearchParams(String(options.body)).get("code_verifier"),
-      "test-verifier",
+      new Headers(options.headers).get("authorization"),
+      `Basic ${Buffer.from(`${id}:${secret}`, "utf8").toString("base64")}`,
     );
+    assert.equal(body.get("client_id"), id);
+    assert.equal(body.has("client_secret"), false);
+    if (body.get("grant_type") === "authorization_code") {
+      assert.equal(body.get("code_verifier"), "test-verifier");
+    } else {
+      assert.equal(body.get("grant_type"), "refresh_token");
+      assert.equal(body.get("refresh_token"), "test-refresh");
+    }
     return Response.json({
       token_type: "Bearer",
       access_token: "test-access",
       refresh_token: "test-refresh",
       expires_in: 300,
-      id_token: jwt(overrides, badSignature),
+      id_token: jwt({ aud: id, ...overrides }, badSignature),
     });
   };
   return config;
@@ -74,9 +88,29 @@ const checks = {
   pkceCodeVerifier: "test-verifier",
   idTokenExpected: true,
 };
-test("real OIDC library validates signed ID token and uses PKCE verifier", async () => {
+test("Shopify confidential auth preserves client ID punctuation, signed ID token and PKCE", async () => {
   const result = await oidc.authorizationCodeGrant(client(), callback, checks);
   assert.equal(result.claims()?.sub, "verified-test-subject");
+});
+test("Shopify refresh uses the same confidential authentication without a body secret", async () => {
+  const result = await oidc.refreshTokenGrant(client(), "test-refresh");
+  assert.equal(result.claims()?.sub, "verified-test-subject");
+  assert.equal(result.expires_in, 300);
+});
+test("Shopify confidential auth preserves a UUID client ID and reserved secret characters", async () => {
+  const id = "00000000-0000-4000-8000-000000000000";
+  const secret = "synthetic-only:+/=&%value";
+  const result = await oidc.authorizationCodeGrant(
+    client({}, false, id, secret),
+    callback,
+    checks,
+  );
+  assert.equal(result.claims()?.aud, id);
+  const refreshed = await oidc.refreshTokenGrant(
+    client({}, false, id, secret),
+    "test-refresh",
+  );
+  assert.equal(refreshed.claims()?.aud, id);
 });
 for (const [name, overrides] of [
   ["issuer", { iss: "https://evil.test" }],

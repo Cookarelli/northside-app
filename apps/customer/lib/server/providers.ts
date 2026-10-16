@@ -118,11 +118,21 @@ export function configureOidc(
   id: string,
   secret: string,
 ) {
+  // Shopify documents raw client_id:secret Basic credentials and a body client_id.
+  // Keep this provider adapter separate from the library's OIDC validation.
+  const authenticate: oidc.ClientAuth = (_server, client, body, headers) => {
+    headers.set(
+      "authorization",
+      `Basic ${Buffer.from(`${client.client_id}:${secret}`, "utf8").toString("base64")}`,
+    );
+    body.delete("client_secret");
+    body.set("client_id", client.client_id);
+  };
   const config = new oidc.Configuration(
     metadata,
     id,
     { id_token_signed_response_alg: "RS256" },
-    oidc.ClientSecretBasic(secret),
+    authenticate,
   );
   oidc.enableNonRepudiationChecks(config);
   config.timeout = 10;
