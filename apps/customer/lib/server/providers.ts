@@ -66,6 +66,20 @@ export function supabase(privileged = false, requestTimeout?: number) {
   });
 }
 let cached: { at: number; config: oidc.Configuration } | undefined;
+const clientSecrets = new WeakMap<oidc.Configuration, string>();
+export function isolatedOidc(config: oidc.Configuration) {
+  const secret = clientSecrets.get(config);
+  if (!secret) throw new AccessError(503, "shopify_auth_not_configured");
+  const clone = configureOidc(
+    config.serverMetadata(),
+    config.clientMetadata().client_id,
+    secret,
+    config.clientMetadata(),
+  );
+  if (config[oidc.customFetch])
+    clone[oidc.customFetch] = config[oidc.customFetch]!;
+  return clone;
+}
 export async function shopifyOidc() {
   liveOnly();
   if (cached && Date.now() - cached.at < 3600000) return cached.config;
@@ -117,6 +131,7 @@ export function configureOidc(
   metadata: oidc.ServerMetadata,
   id: string,
   secret: string,
+  clientMetadata: Partial<oidc.ClientMetadata> = {},
 ) {
   // Shopify documents raw client_id:secret Basic credentials and a body client_id.
   // Keep this provider adapter separate from the library's OIDC validation.
@@ -131,10 +146,11 @@ export function configureOidc(
   const config = new oidc.Configuration(
     metadata,
     id,
-    { id_token_signed_response_alg: "RS256" },
+    { ...clientMetadata, id_token_signed_response_alg: "RS256" },
     authenticate,
   );
   oidc.enableNonRepudiationChecks(config);
   config.timeout = 10;
+  clientSecrets.set(config, secret);
   return config;
 }

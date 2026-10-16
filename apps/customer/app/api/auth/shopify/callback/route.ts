@@ -1,4 +1,4 @@
-import * as oidc from "openid-client";
+import { shopifyAuthorizationCodeGrant } from "@/lib/server/shopify-tokens";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { transaction } from "@/lib/server/db";
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     const callback = new URL(appOrigin() + "/api/auth/shopify/callback");
     callback.search = incoming.search;
     stage = "token_exchange";
-    const tokens = await oidc.authorizationCodeGrant(config, callback, {
+    const tokens = await shopifyAuthorizationCodeGrant(config, callback, {
       expectedState: attempt.state,
       expectedNonce: attempt.nonce,
       pkceCodeVerifier: attempt.verifier,

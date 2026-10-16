@@ -1,6 +1,5 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import * as oidc from "openid-client";
 import { type Sql, transaction } from "./db";
 import {
   AccessError,
@@ -11,6 +10,7 @@ import {
   validToken,
 } from "./security";
 import { SHOP, TENANT, shopifyOidc, supabase } from "./providers";
+import { shopifyRefreshTokenGrant } from "./shopify-tokens";
 export type Tokens = {
   access_token: string;
   refresh_token?: string;
@@ -133,9 +133,10 @@ export async function ensureFresh(token: unknown) {
     refreshOn(db, token, async (session, tokens) => {
       if (session.provider === "shopify") {
         const config = await shopifyOidc();
-        const next = await oidc.refreshTokenGrant(
+        const next = await shopifyRefreshTokenGrant(
           config,
           tokens.refresh_token!,
+          tokens.subject!,
         );
         const claims = next.claims();
         if (claims && claims.sub !== tokens.subject) throw Error();

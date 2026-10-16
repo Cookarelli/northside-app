@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 import * as oidc from "openid-client";
 import { configureOidc } from "../lib/server/providers";
+import {
+  shopifyAuthorizationCodeGrant,
+  shopifyRefreshTokenGrant,
+} from "../lib/server/shopify-tokens";
 const pair = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const jwk = {
   ...pair.publicKey.export({ format: "jwk" }),
@@ -42,6 +46,8 @@ function client(
   badSignature = false,
   id = "northside-test",
   secret = "test-secret",
+  tokenOverrides: Record<string, unknown> = {},
+  clientOverrides: Partial<oidc.ClientMetadata> = {},
 ) {
   const config = configureOidc(
     {
@@ -53,6 +59,7 @@ function client(
     },
     id,
     secret,
+    clientOverrides,
   );
   config[oidc.customFetch] = async (url, options) => {
     if (url.endsWith("/jwks")) return Response.json({ keys: [jwk] });
@@ -75,6 +82,7 @@ function client(
       refresh_token: "test-refresh",
       expires_in: 300,
       id_token: jwt({ aud: id, ...overrides }, badSignature),
+      ...tokenOverrides,
     });
   };
   return config;
@@ -89,26 +97,35 @@ const checks = {
   idTokenExpected: true,
 };
 test("Shopify confidential auth preserves client ID punctuation, signed ID token and PKCE", async () => {
-  const result = await oidc.authorizationCodeGrant(client(), callback, checks);
+  const result = await shopifyAuthorizationCodeGrant(
+    client(),
+    callback,
+    checks,
+  );
   assert.equal(result.claims()?.sub, "verified-test-subject");
 });
 test("Shopify refresh uses the same confidential authentication without a body secret", async () => {
-  const result = await oidc.refreshTokenGrant(client(), "test-refresh");
+  const result = await shopifyRefreshTokenGrant(
+    client(),
+    "test-refresh",
+    "verified-test-subject",
+  );
   assert.equal(result.claims()?.sub, "verified-test-subject");
   assert.equal(result.expires_in, 300);
 });
 test("Shopify confidential auth preserves a UUID client ID and reserved secret characters", async () => {
   const id = "00000000-0000-4000-8000-000000000000";
   const secret = "synthetic-only:+/=&%value";
-  const result = await oidc.authorizationCodeGrant(
+  const result = await shopifyAuthorizationCodeGrant(
     client({}, false, id, secret),
     callback,
     checks,
   );
   assert.equal(result.claims()?.aud, id);
-  const refreshed = await oidc.refreshTokenGrant(
+  const refreshed = await shopifyRefreshTokenGrant(
     client({}, false, id, secret),
     "test-refresh",
+    "verified-test-subject",
   );
   assert.equal(refreshed.claims()?.aud, id);
 });
@@ -121,19 +138,137 @@ for (const [name, overrides] of [
 ] as const)
   test(`OIDC rejects invalid ${name}`, async () => {
     await assert.rejects(
-      oidc.authorizationCodeGrant(client(overrides), callback, checks),
+      shopifyAuthorizationCodeGrant(client(overrides), callback, checks),
     );
   });
 test("OIDC rejects forged signature", async () => {
   await assert.rejects(
-    oidc.authorizationCodeGrant(client({}, true), callback, checks),
+    shopifyAuthorizationCodeGrant(client({}, true), callback, checks),
   );
 });
 test("OIDC rejects wrong state before accepting login", async () => {
   await assert.rejects(
-    oidc.authorizationCodeGrant(client(), callback, {
+    shopifyAuthorizationCodeGrant(client(), callback, {
       ...checks,
       expectedState: "other",
     }),
   );
+});
+test("Shopify numeric subject is canonicalized only after signature and claim verification", async () => {
+  const result = await shopifyAuthorizationCodeGrant(
+    client({ sub: 123456789 }),
+    callback,
+    checks,
+  );
+  assert.equal(result.claims()?.sub, "123456789");
+  const refreshed = await shopifyRefreshTokenGrant(
+    client({ sub: 123456789 }),
+    "test-refresh",
+    "123456789",
+  );
+  assert.equal(refreshed.claims()?.sub, "123456789");
+});
+for (const [name, overrides] of [
+  ["null", { sub: null }],
+  ["object", { sub: { id: 1 } }],
+  ["array", { sub: [1] }],
+  ["zero", { sub: 0 }],
+  ["negative", { sub: -1 }],
+  ["fraction", { sub: 1.5 }],
+  ["unsafe integer", { sub: Number.MAX_SAFE_INTEGER + 1 }],
+  ["issuer", { sub: 123, iss: "https://evil.test" }],
+  ["audience", { sub: 123, aud: "other" }],
+  [
+    "multi audience without azp",
+    { sub: 123, aud: ["northside-test", "other"] },
+  ],
+  ["azp", { sub: 123, azp: "other" }],
+  ["nonce", { sub: 123, nonce: "wrong" }],
+  ["missing nonce", { sub: 123, nonce: undefined }],
+  ["expiry", { sub: 123, exp: 1 }],
+  ["future issued", { sub: 123, iat: 9999999999 }],
+  ["missing issued", { sub: 123, iat: undefined }],
+  ["not before", { sub: 123, nbf: 9999999999 }],
+  ["auth time", { sub: 123, auth_time: "invalid" }],
+] as const)
+  test(`numeric subject compatibility rejects invalid ${name}`, async () => {
+    await assert.rejects(
+      shopifyAuthorizationCodeGrant(client(overrides), callback, checks),
+    );
+  });
+test("numeric compatibility rejects forged signatures and changed refresh identity", async () => {
+  await assert.rejects(
+    shopifyAuthorizationCodeGrant(client({ sub: 123 }, true), callback, checks),
+  );
+  await assert.rejects(
+    shopifyRefreshTokenGrant(client({ sub: 123 }), "test-refresh", "456"),
+  );
+});
+for (const [name, body] of [
+  ["empty access token", { access_token: "" }],
+  ["token type", { token_type: "unsupported" }],
+  ["zero expiry", { expires_in: 0 }],
+  ["invalid expiry", { expires_in: "invalid" }],
+  ["empty refresh", { refresh_token: "" }],
+  ["scope", { scope: [] }],
+  ["oversized", { padding: "x".repeat(65536) }],
+] as const)
+  test(`numeric compatibility rejects token body ${name}`, async () => {
+    await assert.rejects(
+      shopifyAuthorizationCodeGrant(
+        client({ sub: 123 }, false, "northside-test", "test-secret", body),
+        callback,
+        checks,
+      ),
+    );
+  });
+test("concurrent grants on a cached source config never share captured identities", async () => {
+  const source = client({ sub: 123 });
+  const [first, second] = await Promise.all([
+    shopifyAuthorizationCodeGrant(source, callback, checks),
+    shopifyAuthorizationCodeGrant(source, callback, checks),
+  ]);
+  assert.equal(first.claims()?.sub, "123");
+  assert.equal(second.claims()?.sub, "123");
+  await assert.rejects(
+    shopifyRefreshTokenGrant(client(), "test-refresh", "other"),
+  );
+});
+for (const policy of [{ default_max_age: 300 }, { require_auth_time: true }])
+  test("numeric compatibility preserves configured authentication-time policy", async () => {
+    const source = client(
+      { sub: 123 },
+      false,
+      "northside-test",
+      "test-secret",
+      {},
+      policy,
+    );
+    await assert.rejects(
+      shopifyAuthorizationCodeGrant(source, callback, checks),
+    );
+    await assert.rejects(
+      shopifyRefreshTokenGrant(source, "test-refresh", "123"),
+    );
+  });
+test("concurrent grants retain distinct captured numeric subjects", async () => {
+  const source = client();
+  let count = 0;
+  const originalFetch = source[oidc.customFetch]!;
+  source[oidc.customFetch] = async (url, options) => {
+    if (url.endsWith("/jwks")) return originalFetch(url, options);
+    const sub = ++count;
+    await Promise.resolve();
+    return Response.json({
+      access_token: "test-access",
+      token_type: "Bearer",
+      expires_in: 300,
+      id_token: jwt({ sub }),
+    });
+  };
+  const results = await Promise.all([
+    shopifyAuthorizationCodeGrant(source, callback, checks),
+    shopifyAuthorizationCodeGrant(source, callback, checks),
+  ]);
+  assert.deepEqual(results.map((r) => r.claims()?.sub).sort(), ["1", "2"]);
 });

@@ -120,6 +120,9 @@ importers:
       csv-parse:
         specifier: 7.0.2
         version: 7.0.2
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
       lucide-react:
         specifier: 1.44.0
         version: 1.44.0(react@19.3.0)
