@@ -1,0 +1,90 @@
+{
+  "at": "2026-10-03T15:45:18.019Z",
+  "adapter": "SIMULATED",
+  "transport": "Actual local HTTP, authenticated browser and separate worker process",
+  "taskId": "d511bf6e-a3a3-4fb0-ad53-6c3aaef6cd45",
+  "states": [
+    {
+      "type": "task_created",
+      "message": "SIMULATED local workflow verification 1791042317442"
+    },
+    {
+      "type": "task_claimed",
+      "message": "SIMULATED SIMULATED local workflow verification 1791042317442: attempt 1"
+    },
+    {
+      "type": "task_ready_for_approval",
+      "message": "SIMULATED local workflow verification 1791042317442"
+    }
+  ],
+  "commit": "simulated-366b6d60991386eaad3c09d22933d8c5612cc426ca9d02fdea219bba56bed6a7",
+  "verification": [
+    {
+      "id": "53fd23a8-9e21-4580-9743-3369f929d6a8",
+      "command": "pnpm typecheck",
+      "commit": "simulated-366b6d60991386eaad3c09d22933d8c5612cc426ca9d02fdea219bba56bed6a7",
+      "passed": true,
+      "startedAt": 1791042317595,
+      "finishedAt": 1791042317595,
+      "output": "SIMULATED: pnpm typecheck was NOT executed. Fixture transition only.",
+      "simulated": true
+    },
+    {
+      "id": "3ecbc7dc-7ada-45ae-bee1-c8ee1da28e03",
+      "command": "pnpm test",
+      "commit": "simulated-366b6d60991386eaad3c09d22933d8c5612cc426ca9d02fdea219bba56bed6a7",
+      "passed": true,
+      "startedAt": 1791042317603,
+      "finishedAt": 1791042317603,
+      "output": "SIMULATED: pnpm test was NOT executed. Fixture transition only.",
+      "simulated": true
+    },
+    {
+      "id": "9fb82521-123b-40e0-89fb-baba9e808cc7",
+      "command": "pnpm build",
+      "commit": "simulated-366b6d60991386eaad3c09d22933d8c5612cc426ca9d02fdea219bba56bed6a7",
+      "passed": true,
+      "startedAt": 1791042317610,
+      "finishedAt": 1791042317610,
+      "output": "SIMULATED: pnpm build was NOT executed. Fixture transition only.",
+      "simulated": true
+    }
+  ],
+  "executions": [
+    {
+      "id": "6d59371b-b5fb-4bcc-99ec-8e03f567c0bc",
+      "role": "builder",
+      "startedAt": 1791042317556,
+      "simulated": true,
+      "finishedAt": 1791042317565,
+      "commit": "simulated-366b6d60991386eaad3c09d22933d8c5612cc426ca9d02fdea219bba56bed6a7"
+    },
+    {
+      "id": "471bc68e-530f-40f2-9759-1aae83a40de1",
+      "role": "reviewer",
+      "startedAt": 1791042317572,
+      "simulated": true,
+      "commit": "simulated-366b6d60991386eaad3c09d22933d8c5612cc426ca9d02fdea219bba56bed6a7",
+      "finishedAt": 1791042317583
+    },
+    {
+      "id": "87f2f8bc-77a0-40a8-a6d6-b8013e369470",
+      "role": "verifier",
+      "startedAt": 1791042317589,
+      "simulated": true,
+      "commit": "simulated-366b6d60991386eaad3c09d22933d8c5612cc426ca9d02fdea219bba56bed6a7",
+      "finishedAt": 1791042317616
+    }
+  ],
+  "approval": "Matched exact simulated commit and all evidence IDs; no real code approved.",
+  "checks": [
+    "Unauthenticated dashboard API denied",
+    "Browser operator login",
+    "Revocable worker registered",
+    "Separate --once worker completed simulated build/review/verify via HTTP",
+    "Specific simulated evidence approved",
+    "Pause/resume and queued cancellation",
+    "Merge and deployment disabled"
+  ],
+  "pageErrors": []
+}

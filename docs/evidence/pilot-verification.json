@@ -1,0 +1,45 @@
+{
+  "recordedAt": "2026-10-03T17:52:41.742603+00:00",
+  "testedSourceCommit": "bce0f6cc633759bc1f340f8aaf1910d7300ec57f",
+  "baseCommit": "f713f47ffd240673f3404bb5533cf16cfa8e2943",
+  "tests": {
+    "core": 72,
+    "customerScripts": 16,
+    "customerTypescript": 208,
+    "total": 296,
+    "failed": 0,
+    "skipped": 0
+  },
+  "commands": {
+    "fullSuite": "pnpm test (before final worker-only change)",
+    "finalAffectedSuite": "pnpm test:core",
+    "typecheck": "pnpm typecheck",
+    "lint": "pnpm lint; 0 errors, 1 existing warning",
+    "build": "pnpm build; customer rebuilt after TLS change"
+  },
+  "supabase": {
+    "project": "nrsuosydvjqovrevmych",
+    "managementMigrations": 16,
+    "sourceChecksums": 15,
+    "exactChecksumMatches": 15,
+    "privateTables": 112,
+    "tablesWithoutRLS": 0,
+    "publicFunctionExecuteGrants": 0,
+    "explicitRuntimeFunctionGrants": 15,
+    "securityAdvisorFindings": 0,
+    "rolePasswordsConfigured": 0,
+    "authUsers": 0,
+    "applicationLoginsVerified": false
+  },
+  "deployedEvidence": "pilot-preview.json",
+  "liveCheckoutVerified": false,
+  "staffCollectionVerified": false,
+  "realWorkersActivated": false,
+  "launchAgentInstalled": false,
+  "review": {
+    "tls": "root review of 734c19b plus focused parser/driver tests and customer build",
+    "provisioning": "independent review of d8055bc + 1f12d00; recovery durability finding fixed",
+    "authAndServicePreparation": "independent review and 12 executed auth/service tests",
+    "finalReconnectChange": "root review of 9135216; full72 core suite passed"
+  }
+}

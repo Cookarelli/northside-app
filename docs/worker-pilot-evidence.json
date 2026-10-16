@@ -1,0 +1,191 @@
+{
+  "recordedAt": "2026-10-03T17:20:00.946Z",
+  "implementationCommit": "a15bba5936f2543453c9e33f9aef6280a94b3b30",
+  "baseCommit": "f713f47ffd240673f3404bb5533cf16cfa8e2943",
+  "node": "v24.19.0",
+  "codex": "0.158.0-alpha.2.1",
+  "typecheck": {
+    "command": "node node_modules/typescript/bin/tsc --noEmit",
+    "exitCode": 0
+  },
+  "tests": {
+    "command": "node node_modules/vitest/vitest.mjs run --config tests/worker-vitest.config.ts",
+    "success": true,
+    "total": 26,
+    "passed": 26,
+    "failed": 0,
+    "files": [
+      {
+        "file": "worker-control.test.ts",
+        "status": "passed",
+        "checks": [
+          {
+            "name": "durable control plane stores only a credential hash; rejects invalid and revoked credentials",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane claims one task once atomically and caps all model work at two jobs",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane lease expiry blocks uncertain work and fences a late completion",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane rejects an older attempt after an explicit eligible retry",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane pause stops claims; cancellation stays pending until a worker acknowledges",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane requires completed dependencies, bounded inputs, and operator retry limits",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane requires distinct reviewer and actual command evidence before readiness",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane rejects commands with mismatched approval evidence and invalidates code evidence on change",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane deduplicates findings and records unknown cost honestly",
+            "status": "passed"
+          },
+          {
+            "name": "durable control plane survives SQLite restart with durable claims and pending cancellation",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary executes deterministic simulated build/review/verification with separate role IDs",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary escalates after exactly two fix/review cycles and never recursively creates tasks",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary preserves the fix-cycle counter on eligible retry",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary rejects policy, credentials, auth, dependency and traversal edits",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary rejects symlink escapes before writing approved-looking paths",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary allows only HTTPS and explicitly enabled loopback development origins",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary does not pass operator, Shopify, database, or worker credentials to subprocesses",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary redacts a credential split across subprocess output chunks",
+            "status": "passed"
+          },
+          {
+            "name": "worker pipeline and boundary safe cleanup preserves worktrees and checkpoints",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "file": "worker-service.test.ts",
+        "status": "passed",
+        "checks": [
+          {
+            "name": "pilot service preparation scopes optional deployment bypass to private-file HTTPS transport without subprocess exposure",
+            "status": "passed"
+          },
+          {
+            "name": "pilot service preparation renders a valid private LaunchAgent with restart/login settings and separate arguments",
+            "status": "passed"
+          },
+          {
+            "name": "pilot service preparation rejects public or tracked environment files without reading their values",
+            "status": "passed"
+          },
+          {
+            "name": "pilot service preparation holds one OS lock across contenders, then releases it without deleting its inode",
+            "status": "passed"
+          },
+          {
+            "name": "pilot service preparation exports only committed regular source with deterministic omissions and blocks symlinks",
+            "status": "passed"
+          },
+          {
+            "name": "pilot service preparation reports stale and stopped processes unhealthy",
+            "status": "passed"
+          },
+          {
+            "name": "pilot service preparation runs simulated polling, rejects a duplicate, restarts after a crash, and stops cleanly",
+            "status": "passed"
+          }
+        ]
+      }
+    ]
+  },
+  "sourcePreparation": {
+    "status": "prepared-only",
+    "executable": false,
+    "sourceCommit": "f713f47ffd240673f3404bb5533cf16cfa8e2943",
+    "includedFiles": 411,
+    "excluded": [
+      {
+        "path": ".env.example",
+        "reason": "Credential/configuration/data filename"
+      },
+      {
+        "path": "apps/control/.env.example",
+        "reason": "Credential/configuration/data filename"
+      },
+      {
+        "path": "apps/customer/.env.example",
+        "reason": "Credential/configuration/data filename"
+      },
+      {
+        "path": "apps/customer/.npmrc",
+        "reason": "Credential/configuration/data filename"
+      },
+      {
+        "path": "apps/worker/.env.example",
+        "reason": "Credential/configuration/data filename"
+      }
+    ],
+    "dependenciesCopied": false
+  },
+  "sandbox": {
+    "command": "node --import tsx tests/worker-sandbox-probe.ts",
+    "exitCode": 1,
+    "status": "blocked",
+    "output": "Installed Codex sandbox cannot remove its own temporary directories with required credential-denial rules. Real execution is blocked; security rules were preserved.",
+    "policyChanged": false
+  },
+  "service": {
+    "launchAgentInstalled": false,
+    "modelTasksRun": 0,
+    "localSimulatedProcessLifecycleTested": true,
+    "plistValidatedWithPlutil": true,
+    "protectedPreviewTransportTested": "mock only; no bypass credential provisioned or remote preview request"
+  },
+  "alternativeRuntime": {
+    "availableExecutables": [],
+    "checked": [
+      "docker",
+      "podman",
+      "colima",
+      "limactl",
+      "orb",
+      "container"
+    ],
+    "installed": false
+  }
+}
