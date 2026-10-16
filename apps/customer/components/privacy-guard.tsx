@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { privacyDocumentId } from "../lib/privacy-client";
 export function PrivacyGuard() {
   useEffect(() => {
     const publicExit = () => location.pathname === "/signed-out";
@@ -32,7 +33,10 @@ export function PrivacyGuard() {
       typeof BroadcastChannel !== "undefined"
         ? new BroadcastChannel("northside-session")
         : null;
-    if (channel) channel.onmessage = close;
+    if (channel)
+      channel.onmessage = (event) => {
+        if (event.data?.source !== privacyDocumentId()) close();
+      };
     if (locked()) close();
     else document.documentElement.classList.remove("privacy-hidden");
     window.addEventListener("pageshow", restore);

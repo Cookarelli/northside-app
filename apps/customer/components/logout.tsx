@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
+import { privacyDocumentId } from "../lib/privacy-client";
 export function lockScreens() {
   try {
     localStorage.setItem("ns-privacy-lock", "1");
     const channel = new BroadcastChannel("northside-session");
-    channel.postMessage("lock");
+    channel.postMessage({ type: "lock", source: privacyDocumentId() });
     channel.close();
   } catch {}
   navigator.serviceWorker?.controller?.postMessage({ type: "LOGOUT" });
@@ -30,9 +31,23 @@ export async function localLogout() {
     document.documentElement.classList.remove("privacy-hidden");
   }
 }
-export function LogoutControl({ finish = false }: { finish?: boolean }) {
+export function LogoutControl({
+  finish = false,
+  providerLogout = false,
+}: {
+  finish?: boolean;
+  providerLogout?: boolean;
+}) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  if (providerLogout)
+    return (
+      <form action="/api/auth/logout" method="post" onSubmit={lockScreens}>
+        <button className="button secondary" type="submit">
+          Sign out
+        </button>
+      </form>
+    );
   return (
     <>
       <button

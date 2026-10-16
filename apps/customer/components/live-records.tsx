@@ -8,8 +8,12 @@ import { consignmentStates } from "@/lib/consignment";
 import { ConsignmentWorkspace } from "./consignment-workspace";
 import { requireRole, requireCustomer } from "@/lib/server/db";
 import { loadCustomerAccount } from "@/lib/server/customer-commerce";
-export function SignOut() {
-  return <LogoutControl />;
+export function SignOut({
+  providerLogout = false,
+}: {
+  providerLogout?: boolean;
+}) {
+  return <LogoutControl providerLogout={providerLogout} />;
 }
 export async function LiveAccount({
   returnTo = "/account",
@@ -48,7 +52,7 @@ export async function LiveAccount({
               >
                 Continue to your cards →
               </Link>
-              <SignOut />
+              <SignOut providerLogout />
             </>
           ) : (
             <>
