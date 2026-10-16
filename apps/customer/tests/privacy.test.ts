@@ -362,16 +362,17 @@ test("encryption is bound to session and rejects tampering; same origin and exac
   assert.ok(!encrypted.includes("secret"));
   assert.deepEqual(unseal(encrypted, "one"), { secret: "test" });
   assert.throws(() => unseal(encrypted, "two"), forbidden(401));
-  assert.throws(
-    () =>
-      sameOrigin(
-        new Request("https://preview.example.test/api/auth/logout", {
-          method: "POST",
-          headers: { origin: "https://evil.test" },
-        }),
-      ),
-    forbidden(403),
-  );
+  for (const origin of ["https://evil.test", "null", undefined])
+    assert.throws(
+      () =>
+        sameOrigin(
+          new Request("https://preview.example.test/api/auth/logout", {
+            method: "POST",
+            headers: origin === undefined ? {} : { origin },
+          }),
+        ),
+      forbidden(403),
+    );
   sameOrigin(
     new Request("https://preview.example.test/api/auth/logout", {
       method: "POST",

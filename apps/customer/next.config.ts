@@ -30,6 +30,11 @@ const config: NextConfig = {
           { key: "Referrer-Policy", value: "no-referrer" },
         ],
       },
+      {
+        source: "/account",
+        // Native same-origin login POSTs need Origin; external referrers stay hidden.
+        headers: [{ key: "Referrer-Policy", value: "same-origin" }],
+      },
     ];
   },
 };
