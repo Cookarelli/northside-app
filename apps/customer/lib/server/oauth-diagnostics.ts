@@ -87,11 +87,12 @@ function responseReason(error: unknown) {
 }
 export function callbackDiagnostic(stage: CallbackStage, error: unknown) {
   const cause = field(error, "cause");
+  const reason = responseReason(error);
   return {
     event: "customer_oauth_callback_failed",
     stage: allowed(stage, stages),
     code: allowed(field(error, "code") ?? field(cause, "code"), codes),
-    reason: responseReason(error),
+    reason: reason !== "UNKNOWN" ? reason : responseReason(cause),
     oauthError: allowed(
       field(error, "error") ?? field(cause, "error"),
       oauthErrors,

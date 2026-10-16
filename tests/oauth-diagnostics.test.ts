@@ -54,6 +54,17 @@ test("callback diagnostics never serialize poisoned provider or credential data"
 test("callback reason maps exact library messages without serializing arbitrary text", () => {
   expect(
     callbackDiagnostic("token_exchange", {
+      message: "invalid response encountered",
+      cause: { message: "JWT signature verification failed" },
+    }).reason,
+  ).toBe("jwt_signature");
+  expect(
+    callbackDiagnostic("token_exchange", {
+      cause: { message: "PRIVATE_CANARY" },
+    }).reason,
+  ).toBe("UNKNOWN");
+  expect(
+    callbackDiagnostic("token_exchange", {
       message: "JWT signature verification failed",
     }).reason,
   ).toBe("jwt_signature");
