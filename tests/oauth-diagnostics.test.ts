@@ -18,6 +18,7 @@ test("callback diagnostics retain only fixed stages and allowlisted categories",
     event: "customer_oauth_callback_failed",
     stage: "token_exchange",
     code: "OAUTH_JWT_CLAIM_COMPARISON_FAILED",
+    reason: "UNKNOWN",
     oauthError: "UNKNOWN",
     claim: "nonce",
   });
@@ -45,9 +46,30 @@ test("callback diagnostics never serialize poisoned provider or credential data"
     event: "customer_oauth_callback_failed",
     stage: "UNKNOWN",
     code: "UNKNOWN",
+    reason: "UNKNOWN",
     oauthError: "UNKNOWN",
     claim: "UNKNOWN",
   });
+});
+test("callback reason maps exact library messages without serializing arbitrary text", () => {
+  expect(
+    callbackDiagnostic("token_exchange", {
+      message: "JWT signature verification failed",
+    }).reason,
+  ).toBe("jwt_signature");
+  expect(
+    callbackDiagnostic("token_exchange", {
+      message: 'unexpected JWT "alg" header parameter',
+    }).reason,
+  ).toBe("jwt_algorithm");
+  expect(
+    callbackDiagnostic("token_exchange", {
+      message: "JWT signature verification failed PRIVATE",
+    }).reason,
+  ).toBe("UNKNOWN");
+  expect(
+    callbackDiagnostic("token_exchange", { message: "__proto__" }).reason,
+  ).toBe("UNKNOWN");
 });
 test("callback logging failures and poisoned property getters do not escape", () => {
   const error = Object.defineProperty({}, "code", {
