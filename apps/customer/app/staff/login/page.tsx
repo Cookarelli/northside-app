@@ -1,5 +1,6 @@
 import { authReadiness } from "@/lib/server/providers";
 import { fixturesAllowed } from "@/lib/policy.mjs";
+import { StaffAuthForm } from "@/components/staff-auth-form";
 export default async function Page({
   searchParams,
 }: {
@@ -21,7 +22,7 @@ export default async function Page({
           the sign-in link. Delivery is not confirmed here.
         </p>
       )}
-      <form action="/api/auth/staff/request" method="post">
+      <StaffAuthForm step="request" disabled={!ready}>
         <label>
           Email
           <input
@@ -32,10 +33,7 @@ export default async function Page({
             disabled={!ready}
           />
         </label>
-        <button className="button" disabled={!ready}>
-          Email a sign-in link
-        </button>
-      </form>
+      </StaffAuthForm>
       {!ready && (
         <p className="notice">
           Real staff authentication is not configured for this preview. No

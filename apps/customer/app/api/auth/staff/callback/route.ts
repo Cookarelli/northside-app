@@ -59,6 +59,8 @@ export async function POST(request: Request) {
       );
     });
     jar.set(SESSION_COOKIE, tokenValue, { ...cookieOptions, maxAge: 8 * 3600 });
+    if (request.headers.get("accept") === "application/json")
+      return NextResponse.json({ ok: true });
     return NextResponse.redirect(new URL("/staff", appOrigin()), 303);
   } catch (e) {
     return errorResponse(e);

@@ -1,5 +1,29 @@
 # Shopify pilot preparation — October 3, 2026
 
+## October 17, 2026 — staff form Origin correction
+
+The protected customer Preview completed real Shopify sign-in, persistent session
+reload, customer denial from owner/admin tools, and sign-out with the other private
+tab closed. The restricted Headless catalog/inventory query passed but returned no
+products. Purchases, collection, POS and real workers remain disabled.
+
+The real invited-staff sign-in form exposed `invalid_origin`: native POST navigation
+under `no-referrer` sends `Origin: null`. Both staff forms now use a small client
+component with fixed endpoints, CORS-mode fetch, same-origin credentials, no
+referrer and rejected redirects. Their handlers opt into a minimal JSON success
+only after all existing security checks. One-time confirmation URLs retain
+`no-referrer`; no callback token is logged or sent to a redirect destination.
+Pending submission blocks duplicate clicks, and errors remain generic without
+automatic retries. Server Origin, membership and token validation are unchanged.
+
+Independent review accepted the implementation. The actual browser test reproduced
+the native null Origin, verified correct Origin plus absent Referer for both fixed
+POSTs, and blocked a synthetic 307 without reaching its target. TypeScript, lint
+(one existing warning), and 349 tests passed. Both builds and the client configuration scan passed. Hosted email confirmation and existing
+private-object Storage authorization remain pending. See the current update in
+root `docs/PILOT-REPORT.md`; historical configuration statements below are not
+current deployment evidence.
+
 The new production `/in-store` screen reports preparation status and links to the canonical shop; local rehearsal fixtures remain forbidden in production. The invited owner/admin-only `/staff/integrations/commerce-pilot` inspector reuses existing Shopify services for read-only app/scopes/plan, published variant/current-price/availability and sanitized webhook checks. It grants no new purchase, pickup or POS capability. The original live cart/session and durable order pipeline remain canonical.
 
 Public Northside discovery was freshly verified (HTTP 200, expected issuer, RS256/S256; discovery now advertises2026-10). The implementation retains its tested2026-07 version. Credentialed provider checks remain pending. Typecheck, scoped lint and32 focused commerce/store/pilot tests pass. Full setup, proof limits, source references and exact activation blockers are in [the pilot guide](../../../docs/commerce-pilot.md). No provider write or live sale occurred.

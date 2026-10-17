@@ -1,4 +1,23 @@
-# Northside supervised pilot — October 3, 2026
+# Northside supervised pilot — current update October 17, 2026
+
+This update supersedes the October 3 configuration and preview status below.
+The integration branch reached `dd5d471` before this verification; an older local
+checkout and its uncommitted worker work have been preserved.
+
+- Existing protected branch previews: [Customer](https://northside-customer-pilot-git-in-a7ee5f-steves-projects-e37a4ef4.vercel.app/account) and [Mission Control](https://northside-control-pilot-git-int-d1af17-steves-projects-e37a4ef4.vercel.app/mission-control). Both were READY Preview deployments at `dd5d471`. Runtime secrets already exist as sensitive, branch-scoped Preview variables, with different Customer and Control database roles. They were not overwritten during this verification.
+- The later [provisioning report](commerce-provisioning.md#october-16-pooler-repair) records seven successful restricted pooler logins and hosted operator authentication on October 16. This checkout's separate operator-only migration URL still fails authentication with `28P01`; that failure must not be confused with the deployed runtime connections or used to justify resetting their working passwords. No database credential was rotated or provisioned on October 17.
+- The existing Shopify Headless storefront `392058` has a confidential Customer Account client. Its existing credentials were preserved privately. Saved Storefront grants are only product-listing and inventory reads; Customer Account grants are only customer and order reads. All other displayed grants are off. The exact callback and logout URLs still match the Customer branch preview. The existing installed Northside Admin app was preserved.
+- A fresh read-only Storefront query, including variant inventory and price fields, returned HTTP 200 with no GraphQL errors and zero products. No catalog publication, inventory change, cart or order was created.
+- Real customer sign-in completed on the protected Customer preview and survived reload. The private cards page opened; the owner/admin inspector still denied the customer session. Logout returned to sign-in, closed the other private tab, remained signed out after reload, and private orders again returned `sign_in_required`. This does not establish two-customer or existing-object Storage isolation.
+- Fresh invited staff sign-in exposed `invalid_origin` from native POSTs under `no-referrer`. The accompanying narrow fix uses CORS-mode fetch to fixed same-origin endpoints, same-origin credentials, `no-referrer`, and `redirect:error`; success navigates only to fixed destinations. Both staff handlers retain all existing Origin, provider, membership and session checks. The one-time confirmation page retains its no-referrer policy. No new credential or role is introduced.
+- The actual browser regression reproduced native `Origin: null`, then verified correct Origin and absent Referer on both corrected POSTs. A synthetic 307 was rejected without reaching its destination. Independent security review found no actionable issues. TypeScript, lint (one existing warning), and 349 tests passed; both builds and the client configuration scan passed. Deployment and real staff email confirmation require subsequent evidence. No email delivery is inferred from the request acknowledgment.
+
+Purchases, collection, POS, loyalty earning/redemption and real workers remain
+disabled. Staff owner verification, existing private-object Storage authorization,
+second-customer isolation, catalog mapping and live webhook delivery remain
+acceptance requirements. No merge or production publication is authorized.
+
+## Historical October 3 report
 
 The integration continues `f713f47` on `integration/supervised-store` in **Cookarelli/northside-app**. The starting checkout was clean, the existing implementation was retained, and previous child-worktree scratch files were preserved. This report supersedes the earlier local-only status in `STATUS.md`, `VERIFICATION.md` and historical customer deployment notes.
 

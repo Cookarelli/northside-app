@@ -21,6 +21,8 @@ export async function POST(request: Request) {
         emailRedirectTo: appOrigin() + "/api/auth/staff/callback",
       },
     });
+    if (request.headers.get("accept") === "application/json")
+      return NextResponse.json({ ok: true });
     return NextResponse.redirect(
       new URL("/staff/login?requested=1", appOrigin()),
       303,

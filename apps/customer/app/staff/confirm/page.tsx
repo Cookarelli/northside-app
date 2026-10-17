@@ -1,4 +1,5 @@
 import { authReadiness } from "@/lib/server/providers";
+import { StaffAuthForm } from "@/components/staff-auth-form";
 export default async function Page({
   searchParams,
 }: {
@@ -19,7 +20,7 @@ export default async function Page({
         Confirm to use this one-time email link. Only an active invited
         membership can access staff records.
       </p>
-      <form method="post" action="/api/auth/staff/callback">
+      <StaffAuthForm step="confirm">
         <input
           type="hidden"
           name="token_hash"
@@ -30,8 +31,7 @@ export default async function Page({
           name="type"
           value={query.type === "invite" ? "invite" : "email"}
         />
-        <button className="button">Continue</button>
-      </form>
+      </StaffAuthForm>
     </section>
   );
 }
