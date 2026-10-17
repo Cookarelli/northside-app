@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type {
   ControlSnapshot,
   ControlCommand,
@@ -54,11 +54,16 @@ export default function Dashboard({
     [project, setProject] = useState("northside-app"),
     [selected, setSelected] = useState<string | null>(null),
     [credential, setCredential] = useState("");
+  const authGeneration = useRef(0);
   const refresh = useCallback(async () => {
+    const generation = authGeneration.current;
     try {
-      setSnapshot(await api("snapshot"));
+      const nextSnapshot = await api("snapshot");
+      if (generation !== authGeneration.current) return;
+      setSnapshot(nextSnapshot);
       setAuthorized(true);
     } catch (e) {
+      if (generation !== authGeneration.current) return;
       if ((e as { status?: number }).status === 401) {
         setAuthorized(false);
         setSnapshot(null);
@@ -79,6 +84,7 @@ export default function Dashboard({
     setError("");
     try {
       const result = await api(action, data);
+      if (action === "login" || action === "logout") authGeneration.current++;
       await refresh();
       return result;
     } catch (e) {
@@ -202,15 +208,6 @@ export default function Dashboard({
             <br />
             deployment disabled
           </p>
-          <button
-            className="quiet"
-            onClick={async () => {
-              await act("logout", {});
-              setAuthorized(false);
-            }}
-          >
-            Sign out
-          </button>
         </div>
       </aside>
       <main className="main">
@@ -254,6 +251,20 @@ export default function Dashboard({
               {snapshot?.projects.find((p) => p.id === project)?.paused
                 ? "Resume project"
                 : "Pause project"}
+            </button>
+            <button
+              className="secondary"
+              disabled={busy}
+              onClick={async () => {
+                if (await act("logout", {})) {
+                  setAuthorized(false);
+                  setSnapshot(null);
+                  setSelected(null);
+                  setCredential("");
+                }
+              }}
+            >
+              Sign out
             </button>
           </div>
         </section>
