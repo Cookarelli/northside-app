@@ -1,5 +1,17 @@
 # Shopify pilot: current connection and activation boundary
 
+## October 17 catalog update
+
+The user approved one Headless-only pilot publication. **Zion Slab Case XL** is now Active only on **Northside Collectibles Loves Park Headless**. Its other selected sales channels were removed and saved while still Draft, before activation. Online Store, Shop, Point of Sale and Fanatics are off; Shopify Catalog showed Unpublished after activation. All other products were left untouched.
+
+The app's `/shop` and product-detail page now display the real item. Read-only Storefront verification matched product `15993305465201`, variant `64522145857905`, handle `zion-slab-case-xl-regular`, USD 144.95 and four available units. Admin price and inventory were unchanged. The item has no image, SKU or barcode. No QR registry mapping or physical scan is claimed.
+
+The original empty response was caused by Draft status: the store's Active view was empty, despite Headless already being selected on the inspected product. Shopify only exposes eligible published products through Storefront; see [product status and publishing](https://help.shopify.com/en/manual/products/details/product-details-page) and [Headless channel publication](https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/manage-headless-channels).
+
+Product/inventory read permissions and server credentials remain unchanged. Purchases, collection, POS integration and real workers remain disabled. The deployed cart API returned `purchases_disabled` after publication. App gates are not a Shopify-wide checkout prohibition. Before adding further products, select the exact set and review all channel selections while still Draft; a blanket Draft-to-Active operation could expose imported products on unrelated channels. The evidence is recorded in [PILOT-REPORT.md](PILOT-REPORT.md#october-17-shopify-catalog-connection).
+
+## Historical October 3 preparation
+
 October 3, 2026. This pilot continues the existing customer app. It does not enable production fixtures, replace invited staff authentication, create a Shopify cart/order, install an app, publish products, change inventory, or activate a sale.
 
 ## What is available
@@ -44,7 +56,9 @@ After actual access is available, an invited owner/admin can open the inspector,
 
 ### Exact scopes and customer callbacks
 
-The existing Admin reconciliation path requires `read_orders`. Its ordinary history window is 60 days; `read_all_orders` needs separate approval only if older history is required. Confirm protected customer-data access and any `read_customers` needed for the order's customer identity. This pilot requests no product, inventory, fulfillment, discount or order-write Admin permissions. There is no generic `write_webhooks` scope: order/refund subscriptions depend on the relevant resource access. Separately, Storefront cart operations need `unauthenticated_read_checkouts` / `unauthenticated_write_checkouts`; these are not Admin order-write permissions. Verify grants on the actual installed app/channel. [Shopify scope reference](https://shopify.dev/docs/api/usage/access-scopes).
+The existing Admin reconciliation path requires `read_orders`. Its ordinary history window is 60 days; `read_all_orders` needs separate approval only if older history is required. Confirm protected customer-data access and any `read_customers` needed for the order's customer identity. This pilot requests no product, inventory, fulfillment, discount or order-write Admin permissions. There is no generic `write_webhooks` scope: order/refund subscriptions depend on the relevant resource access. Verify grants on the actual installed app/channel. [Shopify scope reference](https://shopify.dev/docs/api/usage/access-scopes).
+
+Removing checkout scopes is not a global checkout prohibition: Shopify's pinned `2026-07` Storefront documentation also supports tokenless Cart read/write. Northside's server purchase gates remain the application boundary, and live checkout requires a separately reviewed activation. [Storefront authentication](https://shopify.dev/docs/api/storefront/2026-07#authentication).
 
 Use the configured Headless storefront's **confidential Customer Account client**, with `SHOPIFY_CUSTOMER_CLIENT_ID` and `SHOPIFY_CUSTOMER_CLIENT_SECRET`. The application requests OAuth scopes `openid email customer-account-api:full`; configure the channel's `customer_read_customers` and `customer_read_orders` permissions for its existing profile/history reads. Set `SHOPIFY_EXPECTED_ISSUER=https://shopify.com/authentication/103967392113`. Register exactly the chosen HTTPS `APP_ORIGIN` plus `/api/auth/shopify/callback`, and the same origin plus `/account` as the post-logout return. No placeholder origin or HTTP localhost registration is usable. These values are separate from the Admin app client and the Supabase staff callback. [Customer Account setup](https://shopify.dev/docs/storefronts/headless/building-with-the-customer-account-api/getting-started).
 
