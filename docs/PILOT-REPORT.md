@@ -1,6 +1,35 @@
 # Northside supervised pilot — current update October 19, 2026
 
-## October 19 private receiver provisioning handoff
+## October 19 receiver deployed and subscriptions verified
+
+The private provisioning handoff succeeded. The isolated receiver is deployed at
+[Preview health](https://northside-webhook-pilot-15eqolamo-steves-projects-e37a4ef4.vercel.app/health),
+READY, actual Preview target, source `1304c28`. All four minimal-field Shopify
+subscriptions (`orders/paid`, `orders/cancelled`, `orders/updated`, `refunds/create`)
+were created and re-read against that endpoint with version `2026-07` and only
+`read_orders` scope. No live order or inventory mutation was made.
+
+Independent actual TLS/isolation verification passed for the restricted receiver
+role. Public unsigned/tampered requests returned 401; signed synthetic delivery
+and replay returned 200; conflicting reuse returned 409. A separate database
+read verified exactly one persisted canary receipt. Staff/control paths are
+absent from this receiver, and both existing apps still redirect to Vercel SSO.
+
+The dedicated project remains unlinked from Git. Its four sensitive values are
+Preview-only across that project; branch filtering requires a Git connection and
+was rejected before saving values. The reviewed manual-deployment alternative
+does not enable automatic builds. Production contains only the credential-free
+404 initialization placeholder, not application code. No application production
+launch, merge, purchases, collection, POS or real workers were enabled.
+
+Remaining delivery evidence: Shopify CLI authorization is pending for its own
+synthetic delivery tool; no provider sample has been enqueued. Local signed
+canaries and API subscription readback do not prove Shopify-origin delivery or
+order/payment/collection behavior. The saved migration-operator database password
+still fails, but the dashboard fallback resolved this receiver's provisioning.
+See [receiver verification, IDs and stop procedure](shopify-webhook-receiver.md).
+
+## October 19 private receiver provisioning handoff (completed above)
 
 The authenticated Supabase dashboard now provides a working `postgres` SQL
 connection to `nrsuosydvjqovrevmych`. Read-only checks verified CREATEROLE,

@@ -1,6 +1,29 @@
 # Isolated Shopify webhook pilot receiver
 
-Status, October 19: implementation and subscription tooling prepared; **not deployed or subscribed**. The Customer and Mission Control Previews retain their existing protection. Purchases, collection, POS, real commerce processors and real coding workers remain disabled.
+Status, October 19: **receiver Preview deployed; all four subscriptions created and verified**. The Customer and Mission Control Previews retain their existing protection. Purchases, collection, POS, real commerce processors and real coding workers remain disabled. Actual Shopify-origin delivery is still unverified; the official synthetic delivery tool is awaiting CLI sign-in.
+
+## Hosted pilot verification
+
+- Receiver: [Preview health](https://northside-webhook-pilot-15eqolamo-steves-projects-e37a4ef4.vercel.app/health), deployment `dpl_3KKHhCezHS5Mb1SUNxp774eiLhNr`, project `prj_xf96xfNmquUZISLZ18difhsE6T1u`, team `team_iPL9ti94DMgRhfyzvbgjzZdG`.
+- Verified READY, `target=null`, source `1304c2819b19a083c1f0698e25690821ed04770b`, branch `integration/supervised-store`. Vercel returns the Git identity in `meta.githubCommitSha` / `meta.githubCommitRef`.
+- The only production deployment in this new project is a credential-free all-path 404 initialization placeholder. No customer/control/receiver application was promoted to production. Source is private; Git is unlinked.
+- Four sensitive variables are **Preview-only within this dedicated project**, with no Production or Development values. Vercel rejected branch-scoped variables because the project is unlinked. The independently reviewed alternative preserves manual deployments and pins the source manifest; it does not connect Git or enable automatic PR deployments. These secrets apply to every manually created Preview in this project, not just one branch.
+- Real Session-pooler TLS authentication passed as `northside_webhook_receiver`. Forced RLS, unsafe-role-attribute absence, anonymous/authenticated denial and business/control/catalog denial passed. Restricted insert/replay/conflict probes rolled back without persisted probe rows.
+- Public health returned 200 with `processesOrders:false`; staff/control/order-list paths returned 404. Unsigned and tampered signatures returned 401. A signed synthetic canary and replay both returned the generic 200 acknowledgement, while changed signed content using the same delivery ID returned 409. A separate database read verified exactly one row for delivery `ec58396a-ae72-48bf-a612-b65fa424941e`. This is locally signed evidence, not Shopify-origin delivery.
+- An independent verifier repeated the TLS/isolation probes and read the canary row. Customer and Control entry URLs still redirect to Vercel SSO. No source, gates or credentials for either existing app changed.
+
+Four Admin API subscriptions were created and re-read with exact JSON format, endpoint, minimal fields and API version `2026-07`:
+
+| Topic | Subscription ID |
+| --- | --- |
+| `ORDERS_PAID` | `gid://shopify/WebhookSubscription/2555904852337` |
+| `ORDERS_CANCELLED` | `gid://shopify/WebhookSubscription/2555904885105` |
+| `ORDERS_UPDATED` | `gid://shopify/WebhookSubscription/2555904917873` |
+| `REFUNDS_CREATE` | `gid://shopify/WebhookSubscription/2555904950641` |
+
+All point to the immutable receiver Preview above plus `/api/shopify/webhooks`. Fresh API inventory verified the exact app/installation and `read_orders` only before each create; the active Dev Dashboard version was rechecked. Attempt markers and returned IDs were saved privately before subsequent mutations. Re-running the read-only plan reports `keep` for all four; never blindly repeat a create after an uncertain response.
+
+The official pinned Shopify CLI `4.9.4` requires browser authorization for its synthetic delivery tool. The selected existing account alone did not authorize that command. No synthetic provider request has been enqueued yet. Shopify documents that [CLI sample delivery cannot validate API subscriptions](https://shopify.dev/docs/api/shopify-cli/app/app-webhook-trigger); even a successful sample does not prove real order-event or payment/collection behavior. No order or inventory change was made to obtain evidence.
 
 ## Receiver boundary
 
@@ -18,7 +41,7 @@ The additive migration creates `northside_webhook_receiver` as **NOLOGIN**, with
 
 Deduplication uses `(shop, delivery_id)`. The same delivery with matching metadata is acknowledged without another row; a reused ID with changed hash/topic/order/version/test status returns 409. A 200 is returned only after the transaction commits. `X-Shopify-Webhook-Id` identifies a delivery, not a general exactly-once business event guarantee. Reconciliation remains a separate disabled process.
 
-## Verification evidence
+## Earlier local validation
 
 Independent verification passed 389 tests, root/customer/receiver typechecks,
 all three production builds, and lint with one pre-existing warning. The new
@@ -32,8 +55,8 @@ SQL test's session-authorization setup.
 
 Existing protected Previews at `a608015` passed ten read-only application checks
 on October 19 at 13:51 UTC. Direct ingress remains blocked by Vercel; both app
-entry pages redirect unauthenticated requests to Vercel sign-in. No hosted
-receiver, migration, role login, subscription or provider delivery is claimed.
+entry pages redirected unauthenticated requests to Vercel sign-in. That earlier
+run preceded hosted receiver provisioning; the current results are recorded above.
 
 ## Required private configuration
 
@@ -60,13 +83,13 @@ The private SQL is one transaction: it checks fresh state, applies the checksum-
 
 PostgreSQL 17 automatically grants a newly created role to its nonsuperuser creator with ADMIN=true, INHERIT=false and SET=false. The guard allows only that inbound `postgres` administration membership; the receiver receives no outbound memberships. This does not give the receiver operator access. See [PostgreSQL role attributes](https://www.postgresql.org/docs/17/role-attributes.html).
 
-Browser credential rules require the user to paste and submit this initial credential SQL. Do not save it as a shared snippet. The reviewed local handoff is prepared; **user execution and actual receiver login remain pending**. After submission, inspect safe catalog results and verify real TLS login with the saved receiver credential before configuring any hosted secret or subscription. An uncertain outcome requires inspection, not blindly replaying the SQL.
+Browser credential rules required the user to paste and submit the initial credential SQL. The user completed it, and actual receiver TLS login and isolation subsequently passed. Do not save credential SQL as a shared snippet or rerun fresh-state provisioning now that the role/schema exist. An uncertain outcome requires inspection, not blindly replaying the SQL.
 
 Independent checks passed all 36 focused provisioning/receiver/subscription tests, root TypeScript and scoped lint. The eight provisioning cases include a real nonsuperuser PGlite operator, native creator membership, unsafe-default-grant rollback, partial-state refusal and private-file retry preservation. These synthetic checks do not establish hosted provisioning or delivery.
 
 ## Subscription plan and read-only inventory
 
-Verified active Dev Dashboard release: `northside-supervised-pilot`, version `1169015242753`, app `436021788673`, webhook API **2026-07**, `read_orders` only, with no app-configured topics displayed. A fresh paginated Admin API inventory returned zero subscriptions for the expected installation `1196680151409`. This observation must be refreshed immediately before creating subscriptions.
+Verified active Dev Dashboard release: `northside-supervised-pilot`, version `1169015242753`, app `436021788673`, webhook API **2026-07**, `read_orders` only, with no app-configured topics displayed. Before creation, a fresh paginated Admin API inventory returned zero subscriptions for the expected installation `1196680151409`. Current inventory contains the four exact subscriptions recorded above. Always refresh it before any subsequent subscription changes.
 
 Prepared subscriptions:
 
@@ -113,6 +136,6 @@ An exact existing subscription is kept. Conflicting destinations, versions, fiel
 7. Refresh both API and app-configured subscription inventories, review the generated four-topic plan, then create **only missing** subscriptions with the reviewed endpoint. Inspect `userErrors` and re-read all four topics, fields, URI and API version. If results are uncertain, inventory again before retrying; do not blindly repeat create mutations.
 8. Use Shopify's supported synthetic webhook delivery tooling for the installed app. Verify the delivery in provider logs and the durable inbox, including a duplicate. A locally signed canary proves receiver mechanics, not that Shopify itself delivered it. Do not create paid orders, change inventory, enable checkout, or run a business processor to obtain this evidence.
 
-If setup stops, leave subscriptions uncreated. To stop an enabled receiver, set `WEBHOOK_RECEIVER_MODE=disabled` and redeploy; it returns 503 and Shopify may retry. Removal/disablement of created subscriptions is a separate reviewed action using their recorded IDs. Customer/Control protection and all operational gates remain unchanged throughout.
+To stop intake on the currently subscribed immutable deployment, apply Vercel authentication to **only the receiver project** and verify external POSTs are blocked. Shopify may retry failed deliveries. A new deployment or environment-variable edit alone does not stop the old immutable URL; the committed Vercel configuration also sets pilot mode. Removing the four recorded subscriptions or changing their destination is a separate reviewed operator action. Do not weaken either customer/control protection policy. Inbox retention remains operator-managed; runtime cannot delete receipts. Synthetic setup receipts may be retained for verification, and no business records were created.
 
 References: [Shopify HTTPS delivery verification](https://shopify.dev/docs/apps/build/webhooks/verify-deliveries), [subscription creation](https://shopify.dev/docs/api/admin-graphql/2026-07/mutations/webhookSubscriptionCreate), [subscription input fields](https://shopify.dev/docs/api/admin-graphql/2026-07/input-objects/WebhookSubscriptionInput).
