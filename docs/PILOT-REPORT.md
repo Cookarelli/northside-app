@@ -1,5 +1,22 @@
 # Northside supervised pilot — current update October 19, 2026
 
+## October 19 private receiver provisioning handoff
+
+The authenticated Supabase dashboard now provides a working `postgres` SQL
+connection to `nrsuosydvjqovrevmych`. Read-only checks verified CREATEROLE,
+credential-catalog visibility, and absence of the receiver role/schema/migration.
+The saved migration password still fails through both database connection modes;
+the user's Supabase account password is a separate credential.
+
+A separately reviewed local helper prepares one private, atomic SQL transaction
+and durable owner-only recovery. It creates only the restricted metadata receiver
+and aborts on existing or unsafe state. Eight new provisioning tests passed;
+independent verification passed 36 focused tests, root TypeScript and scoped lint.
+The browser requires the user to paste/submit new credential SQL, so that handoff
+is pending. No receiver database changes, deployment or subscriptions are claimed.
+The existing app protection and all operational gates remain unchanged.
+See the [private handoff instructions](shopify-webhook-receiver.md#reviewed-dashboard-fallback).
+
 ## October 19 secure webhook receiver preparation
 
 A separate route-only receiver, restricted NOLOGIN database role/migration, and
@@ -26,8 +43,8 @@ local receiver tests and existing Preview checks, not hosted receiver delivery.
 Hosted receiver setup is still blocked: the saved operator migration password
 returns `28P01`, and both connected Supabase management identities currently deny
 project access. No receiver schema, role login, Vercel project or public endpoint
-has been created. Correct the operator password privately; do not reset the
-working Customer/Control credentials. [Exact setup sequence and verification
+has been created. The reviewed dashboard fallback above can avoid resetting the
+operator password; do not reset the working Customer/Control credentials. [Exact setup sequence and verification
 limits](shopify-webhook-receiver.md).
 
 ## October 19 acceptance runner and isolated order tests

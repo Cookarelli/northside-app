@@ -48,7 +48,21 @@ The receiver gets **no** Admin access token/client ID, Storefront token, custome
 
 The existing app ID/secret were saved through the loopback private-capture form into the ignored, owner-only `operator.env`, preserving other values. Fresh API authorization and identity/scope readback succeeded. No credential was rotated. The local capture process was stopped after saving.
 
-The remaining database blocker is the operator-only `MIGRATION_DATABASE_URL`: PostgreSQL rejects its saved password with `28P01`. Both connected Supabase management identities also currently deny project access. Runtime customer/control credentials are separate and must not be reset or substituted. Update only the operator password privately, URL-encode it, and preserve project/hostname/username/TLS settings.
+The saved operator-only `MIGRATION_DATABASE_URL` still returns `28P01` through both the Session pooler and direct PostgreSQL. Changing the Supabase account sign-in password does not change the project's database password. Both connected management identities deny project access, but the newly authenticated dashboard SQL Editor works as `postgres`. Runtime customer/control credentials must not be reset or substituted.
+
+### Reviewed dashboard fallback
+
+Read-only queries in the exact project's dashboard confirmed that the receiver role, inbox schema and migration ledger entry are absent. The operator has CREATEROLE without SUPERUSER, and can read `pg_authid` for verification. No database changes have been made by these checks.
+
+`node --import tsx scripts/prepare-webhook-handoff.ts` prepares an ignored, owner-only `.runtime/webhooks/receiver-setup-private.sql` and `receiver-recovery.json`. It does not connect to any service. Random independent recovery credentials and their directory entries are fsynced before SQL is emitted; retries preserve the same credentials and refuse conflicting files. Never print, commit, upload or share either file.
+
+The private SQL is one transaction: it checks fresh state, applies the checksum-pinned migration, checks attributes/grants/RLS, sets only the new role's initial 4096-iteration SCRAM verifier, and records only the committed schema migration in the ledger. An existing role/schema/ledger entry aborts rather than rotating a password. The SQL cannot independently identify a Supabase project by reference: the user must verify **nrsuosydvjqovrevmych** in the dashboard URL before replacing the entire query and running it.
+
+PostgreSQL 17 automatically grants a newly created role to its nonsuperuser creator with ADMIN=true, INHERIT=false and SET=false. The guard allows only that inbound `postgres` administration membership; the receiver receives no outbound memberships. This does not give the receiver operator access. See [PostgreSQL role attributes](https://www.postgresql.org/docs/17/role-attributes.html).
+
+Browser credential rules require the user to paste and submit this initial credential SQL. Do not save it as a shared snippet. The reviewed local handoff is prepared; **user execution and actual receiver login remain pending**. After submission, inspect safe catalog results and verify real TLS login with the saved receiver credential before configuring any hosted secret or subscription. An uncertain outcome requires inspection, not blindly replaying the SQL.
+
+Independent checks passed all 36 focused provisioning/receiver/subscription tests, root TypeScript and scoped lint. The eight provisioning cases include a real nonsuperuser PGlite operator, native creator membership, unsafe-default-grant rollback, partial-state refusal and private-file retry preservation. These synthetic checks do not establish hosted provisioning or delivery.
 
 ## Subscription plan and read-only inventory
 
