@@ -1,3 +1,11 @@
+# October 19, 2026 — bounded pilot acceptance
+
+Added isolated webhook/order acceptance tests and a root Preview acceptance runner.
+The initial live run against `2a93d57` passed ten application checks; unauthenticated
+Shopify ingress was blocked by a 401 before the application verifier. No valid
+event reached hosted persistence, no real worker ran and no purchase/collection/
+POS gate changed. See [current acceptance evidence and exact limits](../../../docs/pilot-acceptance.md).
+
 # Shopify pilot preparation — October 3, 2026
 
 ## October 17, 2026 — staff form Origin correction

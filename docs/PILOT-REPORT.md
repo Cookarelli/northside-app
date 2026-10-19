@@ -1,4 +1,28 @@
-# Northside supervised pilot — current update October 17, 2026
+# Northside supervised pilot — current update October 19, 2026
+
+## October 19 acceptance runner and isolated order tests
+
+The new `pnpm acceptance:pilot` runner verifies the two fixed, authenticated
+Preview deployments without changing browser sessions. The initial live run
+against `2a93d57` passed all ten application checks, including the approved Zion
+catalog/detail, anonymous private-data and Control denials, disabled cart/pickup
+and unsigned webhook rejection. External webhook ingress is **blocked**: the
+same unsigned POST without Vercel access returned 401 before reaching the app.
+No deployment protection, subscription, credential or activation setting changed.
+
+Fresh isolated tests exercise signed raw intake, transactional receipt/job and
+order/ledger rollback, replay, four-topic convergence and retry exhaustion using
+in-memory PGlite and synthetic provider state. They do not create hosted orders or
+run any real worker. Full commands, proof limits and exact remaining setup are in
+[pilot acceptance](pilot-acceptance.md). Purchases, collection, POS and all real
+workers remain disabled; production launch and merge remain gated.
+
+Final local verification passed 361 tests, TypeScript, both builds and the
+28-artifact client configuration scan. Lint has one pre-existing warning.
+Independent review verified all 12 new tests and cleared the curl configuration
+isolation fix. No runtime application source, credentials or schema changed.
+
+## October 17 historical verification
 
 This update supersedes the October 3 configuration and preview status below.
 The integration branch reached `dd5d471` before this verification; an older local

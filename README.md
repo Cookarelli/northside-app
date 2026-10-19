@@ -34,6 +34,8 @@ pnpm build
 pnpm qr
 ```
 
+For bounded checks of the protected pilot Previews, run `pnpm acceptance:pilot /absolute/path/to/vercel/dist/index.js` with the existing Vercel CLI login. See [acceptance scope, results and webhook blockers](docs/pilot-acceptance.md). Exit 2 means application checks passed but external webhook ingress is blocked; it is not launch approval.
+
 `pnpm test` runs the new queue, persistence, security and commerce tests plus the preserved customer application's tests. `pnpm qr` writes decoded sample labels to `outputs/qr-samples`. Their loopback URLs are for local inspection; set the verified app origin before printing real labels, and test physical devices first.
 
 The new in-store rehearsal demonstrates confirmation after QR lookup, basket editing, expiring counter handoff, staff retrieval, **explicit simulated payment**, preparation and atomic collection. Pay Now remains blocked until real Shopify pickup/location/tax/plan checks and test orders are verified. See [commerce requirements](docs/commerce-rehearsal.md) for the integration boundaries.
