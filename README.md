@@ -45,6 +45,7 @@ The new in-store rehearsal demonstrates confirmation after QR lookup, basket edi
 | Location | Purpose |
 | --- | --- |
 | `apps/customer` | Preserved existing Next.js customer application plus `/in-store` |
+| `apps/webhooks` | Separate metadata-only Shopify pilot receiver; [setup and deployment gates](docs/shopify-webhook-receiver.md) |
 | `apps/control` | Authenticated Mission Control and outbound-worker API |
 | `apps/worker` | Mac coordinator, bounded execution and runtime adapters |
 | `apps/shopify-extension` | POS handoff prototype; not installed or verified on hardware |

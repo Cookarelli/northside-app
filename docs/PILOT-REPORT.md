@@ -1,5 +1,35 @@
 # Northside supervised pilot — current update October 19, 2026
 
+## October 19 secure webhook receiver preparation
+
+A separate route-only receiver, restricted NOLOGIN database role/migration, and
+read-only subscription inventory/plan tooling are prepared. Intake is limited to
+HMAC-verified metadata in an isolated inbox; it cannot create business orders,
+mark payments, dispatch jobs or perform collection. Customer and Control keep
+their existing Vercel/application protection. No operational gate changed.
+
+The existing Shopify app ID and secret were saved privately without rotation.
+Fresh Shopify authorization verified the exact Northside shop/app/installation,
+`read_orders` only, and a complete API inventory with **zero subscriptions**.
+Dev Dashboard's active `northside-supervised-pilot` release uses webhook version
+`2026-07` and displays no app-configured topics. No subscriptions were created.
+
+Local validation: **389 tests passed** (6 acceptance-runner, 119 core including
+28 new receiver/planning cases, 17 customer scripts and 247 customer services).
+Typechecks and all three app builds passed; lint retains one existing warning.
+Independent implementation review passed after two corrections. Fresh read-only
+Preview checks at 13:51 UTC passed all ten application checks on `a608015`; direct
+Shopify ingress remains blocked by Vercel (expected exit 2). Separate public GETs
+to both app entry pages still redirect to Vercel authentication (302). These are
+local receiver tests and existing Preview checks, not hosted receiver delivery.
+
+Hosted receiver setup is still blocked: the saved operator migration password
+returns `28P01`, and both connected Supabase management identities currently deny
+project access. No receiver schema, role login, Vercel project or public endpoint
+has been created. Correct the operator password privately; do not reset the
+working Customer/Control credentials. [Exact setup sequence and verification
+limits](shopify-webhook-receiver.md).
+
 ## October 19 acceptance runner and isolated order tests
 
 The new `pnpm acceptance:pilot` runner verifies the two fixed, authenticated

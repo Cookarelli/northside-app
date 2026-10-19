@@ -14,11 +14,11 @@
     "test": "node --test scripts/pilot-acceptance.test.mjs && vitest run && pnpm --filter @northside/customer test",
     "acceptance:pilot": "node scripts/pilot-acceptance.mjs",
     "typecheck": "tsc --noEmit && pnpm --filter @northside/customer typecheck",
-    "build": "pnpm --filter @northside/customer build && pnpm --filter @northside/control build",
+    "build": "pnpm --filter @northside/customer build && pnpm --filter @northside/control build && pnpm --filter @northside/webhooks build",
     "setup:local": "node --import tsx scripts/setup-local.ts",
     "qr": "node --import tsx scripts/generate-qr.ts",
     "test:core": "vitest run",
-    "lint": "eslint apps/control apps/worker packages scripts tests && pnpm --filter @northside/customer lint"
+    "lint": "eslint apps/control apps/webhooks apps/worker packages scripts tests && pnpm --filter @northside/customer lint"
   },
   "devDependencies": {
     "@types/node": "22.18.6",
