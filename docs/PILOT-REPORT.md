@@ -1,5 +1,51 @@
 # Northside supervised pilot — current update October 20, 2026
 
+## Current next pilot checks — October 20
+
+The protected, non-purchasing pilot now has real two-customer card/photo isolation
+and a successful staff QR-image lookup. The scanner rejected website links and
+retail barcodes, then recovered through manual label verification. No card
+milestone changed. A fresh independent run passed all ten application acceptance
+checks on `ed61c9a`, with both apps still protected for all deployments. Its exit 2
+is the expected protected Customer-webhook probe, not a failed application check.
+Shopify uses the separate metadata-only receiver.
+
+Complete the remaining work in this order, keeping all operational gates closed:
+
+1. **Real-device walk-through:** use an actual phone and shared iPad on the
+   protected Customer Preview and separately authenticated staff workspace.
+   Test the published product QR against its exact product/variant/price, then
+   the individual card QR inside the staff card scanner. These label types serve
+   different purposes. Test camera denial/file fallback, repeated scan, reload
+   and sign-out/Back on each device. Record actual device/browser and observed
+   result; desktop image decoding is not camera acceptance.
+2. **Back photograph:** upload the actual back of the saved card to that same
+   intake and wait for private Storage confirmation. Recheck owner display and
+   second-customer denial for that new image. Do not make another intake or
+   publish an examination merely to complete photography. The earlier failed
+   oversized front attempt is retained; the successful front is confirmed.
+3. **Login recovery on devices:** begin from the app in the same browser and
+   finish within the current five-minute attempt lifetime. Do not reuse callback
+   URLs. If `oauth_attempt_missing` returns, restart from Account; if native
+   sign-out fails, use Finish signing out and verify private access is denied.
+   Local recovery logout can leave Shopify SSO active, so verify which account
+   actually returns before claiming an account-switch test. The exact earlier
+   cookie-loss cause remains unknown; no authentication check was weakened.
+4. **Natural Shopify delivery:** the existing passive monitor waits for a normal
+   `orders/updated` event and requires Shopify/Vercel/inbox correlation. No order
+   creation, order edit or synthetic event is needed from the owner.
+5. **Later activation review:** paid checkout, collection, POS, commerce
+   processors and real workers remain disabled and unverified as live workflows.
+   A separately approved noncharging commerce test arrangement and the unresolved
+   worker sandbox isolation are prerequisites for their respective next stages.
+   They are not completion requirements to demonstrate the current protected
+   catalog/private-card pilot, and no service installation is part of this run.
+
+Mission Control operator login/logout has prior hosted evidence from October 17;
+today's check verifies protection and anonymous denial, not a fresh operator login.
+No production publication or merge. Historical setup sections below are retained
+for audit and must not be interpreted as requests to re-provision working secrets.
+
 ## October 20 customer login and private Storage verification
 
 Two real customer logins survived reload and remained separate from staff
@@ -13,8 +59,13 @@ application acceptance checks, nine hosted negative-auth checks and 14 live
 private-bucket checks. A disposable image was denied to public/anonymous readers
 and signers; its signed URL worked before expiry and was denied afterward while
 the object still existed. Both test objects were removed and cleanup verified.
-No customer or custody records were fabricated. Full app file ownership remains
-pending the owner's real intake/photo handoff and cross-customer image checks.
+No customer or custody records were fabricated. The owner subsequently confirmed
+one real card at Northside and supplied its photo. Normal intake/private upload
+succeeded; the owner could see it, while the second real customer could see
+neither its card detail nor the exact photo URL. Logout denied the same image
+and session API, and staff reload confirmed the original record/photo intact.
+The back photo is still missing; no exam or collection was approved. The report
+retains the upload-size failure and login recovery limitations.
 See [exact evidence, earlier test-helper failures and remaining checks](customer-privacy-pilot-verification.md).
 Purchases, collection, POS, commerce processors and real workers remain disabled;
 the passive Shopify delivery follow-up continues independently.

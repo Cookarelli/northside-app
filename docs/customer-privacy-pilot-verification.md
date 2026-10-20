@@ -79,8 +79,8 @@ The repaired test checks the actual deadline, denied response and continued
 object existence instead of relying on English error text. No application or
 security configuration was weakened to obtain a pass.
 
-This is bucket and signed-URL evidence, **not yet full customer file ownership
-verification**. In particular, grading photos use an authenticated app route
+The bucket checks alone do not establish customer file ownership. The later
+real-card test below covers that additional boundary. Grading photos use an authenticated app route
 that returns verified bytes directly, not a signed URL. That route authorizes
 the exact tenant/card/photo before accessing Storage.
 
@@ -98,22 +98,67 @@ OIDC signature/state/PKCE/claims, refresh failure revocation, logout, photo
 normalization, upload recovery, private note/draft exclusion and immutable
 published evidence. Local PGlite and mocked provider checks remain labelled local.
 
-## Remaining real-file handoff
+## Completed real-card ownership test
 
-The owner confirmed two controlled accounts and a real card/photo are available,
-and selected the first customer account for this test.
-Staff intake is open in the authenticated Chrome session. The owner must enter
-the actual physical card details and quantity, select the correct verified
-customer, and upload its photo through the normal app until private Storage is
-confirmed. No invented custody or fixture record is being inserted into the
-hosted database. Publication, dispatch and collection are outside this test.
+Later on October 20 the owner supplied a real card photograph, selected the first
+verified customer, and confirmed one physical card was at Northside. Normal staff
+intake saved one permanent card and the existing $5 examination subtotal, without
+a payment or order. The slab grade was recorded as a label observation, not an
+independently verified PSA result or a Northside exam. The original photograph
+was preserved locally. An initial JPEG was rejected because server processing
+exceeded 4 MiB; a smaller 2400px JPEG then reached **Confirmed in private storage**
+on the same card. The failed pending attempt remains visible to staff. The back
+photo is missing; no exam was published and no custody milestone was advanced.
 
-After upload, verify the owning customer's list/detail/image, then the exact
-same card/photo URL under the other real customer's session and anonymously.
-Require denial without private metadata or image bytes, recheck after logout,
-and verify the original saved record/photo remains intact. Real provider token
-refresh, native phone/tablet camera handling and multi-device/cache behavior
-beyond this browser session remain separate acceptance work.
+The owning customer's list and detail displayed this card, intake receipt and
+front image; browser image state confirmed loaded bytes at 1800 × 2400. After
+logout, the exact photo URL returned only `sign_in_required`.
+
+The second controlled customer then signed in. The account page confirmed the
+second identity, and `/api/private/me` returned customer with no staff role.
+Its grading list showed **No grading cards linked yet**. Direct navigation to
+the first customer's card showed **grading card not found**, without the card
+fields, receipt or photograph. The exact same photo URL returned only
+`grading_card_not_found`. After signing out the second customer, that photo URL
+and `/api/private/me` both returned only `sign_in_required`. Separately, staff
+reloaded the original card and its confirmed image still loaded at 1800 × 2400.
+This establishes the tested real card/photo ownership boundary, not all tenants,
+all file types or every device. Browser-visible responses were captured; HTTP
+status codes and response headers were not captured in this additional journey.
+
+Two login interruptions are retained as evidence: an initial automated native
+sign-out returned `invalid_origin`; the recovery control completed local logout
+but left Shopify SSO active. Subsequent normal browser sign-out reached the
+Shopify login form. The first second-account callback returned
+`oauth_attempt_missing`; a fresh app-initiated attempt then completed using the
+second customer's authenticated Shopify session. The attempt cookie lasts five
+minutes, but its exact loss/expiry cause was not established. No cookie, origin,
+PKCE, state or ownership check was weakened. Callback URLs/codes are not evidence
+artifacts.
+
+An individual card QR was generated locally using the app's existing
+`NSCARD:<card UUID>` format after Chrome blocked the hosted SVG download with
+`ERR_BLOCKED_BY_CLIENT`. The pinned writer/reader assets passed hash checks and
+the generated PNG decoded to the exact card ID. It identifies a record only;
+physical camera/hardware scanner acceptance remains unverified. The deployed staff
+image scanner subsequently selected this exact card from an empty selection.
+Website input and a retail barcode were rejected; a subsequent manual Northside
+label lookup recovered successfully. Custody stayed Received at Northside / At
+Northside. No public file sharing or access grant was created.
+
+A fresh independent acceptance run at 20:33:48 UTC passed all ten application
+checks on source `ed61c9a1390594a2bf7f88be7b89fc8f080fcc01`. Customer deployment
+was `dpl_Co5CyJKPmQYH4kdtbxSxzGzogCPy`; Control was
+`dpl_ALYKxv9fuVzJTCSf3ao7qeHmC1ZK`. The expected public Customer-webhook
+protection response still produces runner exit 2; the separate receiver was not
+tested in this run. At 20:34:06 UTC both exact projects retained protection for
+all deployments and anonymous entry requests redirected to Vercel authentication.
+Evidence is `.runtime/pilot-acceptance-Eam1Fv/report.json`; private scanner results
+and screenshots are under `.runtime/card-photo-pilot/`.
+
+Real provider token refresh, native phone/tablet capture and multi-device/cache
+behavior beyond these browser sessions remain separate acceptance work. Back
+photography, exam publication, dispatch and collection were not part of this test.
 
 ## Reproducibility and private evidence
 

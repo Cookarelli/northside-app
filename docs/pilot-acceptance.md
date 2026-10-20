@@ -97,7 +97,13 @@ The runner's own tests reject platform HTML masquerading as success, unexpected
 wrong deployment identity and production targets. They check subprocess error
 redaction and that application secrets are not inherited.
 
-## Exact remaining webhook steps
+## Historical October 19 webhook preparation steps
+
+Superseded for setup by [the current pilot report](PILOT-REPORT.md) and
+[store-event verification](shopify-store-event-verification.md): the separate
+receiver and subscriptions are provisioned, and real two-customer card/photo
+isolation now passed. Accepted natural provider delivery remains pending. The
+steps below preserve the original preparation plan; do not re-provision it.
 
 1. Review a narrow ingress design separately: a dedicated Preview webhook receiver
    accessible to Shopify while keeping customer/staff/Mission Control protection,
@@ -128,7 +134,6 @@ here modifies Shopify products, prices, inventory or payments.
 
 Continue physical QR testing on the current product Preview. Record device/browser,
 the exact label type, destination, displayed product/variant and current price,
-camera permission/denial and repeated-scan behavior. Separate remaining acceptance:
-two actual customer identities, an approved private file for ownership/Storage
-tests, account-switch/logout on devices, and an authorized noncharging checkout
-arrangement. Passing this runner never enables those flows.
+camera permission/denial and repeated-scan behavior. Real two-customer card/photo isolation is now recorded in the current pilot
+report. Remaining acceptance includes account-switch/logout on actual devices
+and a separately authorized noncharging checkout arrangement. Passing this runner never enables those flows.
