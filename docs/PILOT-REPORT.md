@@ -1,5 +1,24 @@
 # Northside supervised pilot — current update October 20, 2026
 
+## October 20 customer login and private Storage verification
+
+Two real customer logins survived reload and remained separate from staff
+authorization, including a customer whose email matches the owner. Logout
+closed other private tabs; subsequent API access required sign-in. Aggregate
+database inspection confirmed both tested sessions revoked and provider tokens
+erased. The owner separately signed into the staff workspace in Chrome.
+
+Fresh verification passed 90 local privacy/auth/photo tests, ten hosted
+application acceptance checks, nine hosted negative-auth checks and 14 live
+private-bucket checks. A disposable image was denied to public/anonymous readers
+and signers; its signed URL worked before expiry and was denied afterward while
+the object still existed. Both test objects were removed and cleanup verified.
+No customer or custody records were fabricated. Full app file ownership remains
+pending the owner's real intake/photo handoff and cross-customer image checks.
+See [exact evidence, earlier test-helper failures and remaining checks](customer-privacy-pilot-verification.md).
+Purchases, collection, POS, commerce processors and real workers remain disabled;
+the passive Shopify delivery follow-up continues independently.
+
 ## October 20 confirmed sample incompatibility and prepared store-event test
 
 A reviewed loopback-only diagnostic captured one official CLI sample in memory.
