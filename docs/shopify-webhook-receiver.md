@@ -1,6 +1,6 @@
 # Isolated Shopify webhook pilot receiver
 
-Status, October 20: **receiver Preview deployed; all four subscriptions created and verified**. The Customer and Mission Control Previews retain their existing protection. Purchases, collection, POS, real commerce processors and real coding workers remain disabled. CLI authorization and sample enqueue succeeded, but the receiver returned 403 and persisted no new receipt. Accepted Northside subscription delivery remains unverified.
+Status, October 20: **receiver Preview deployed; all four subscriptions created and verified**. The Customer and Mission Control Previews retain their existing protection. Purchases, collection, POS, real commerce processors and real coding workers remain disabled. CLI sample rejection is now reproduced: the sample uses `shop.myshopify.com`, and the receiver returns `unrecognized_shop`. Accepted Northside subscription delivery remains unverified. See the [prepared store-event plan](shopify-store-event-verification.md).
 
 ## Hosted pilot verification
 
@@ -43,6 +43,25 @@ replay if available, with provider delivery details and one matching durable
 receipt. No paid order, inventory change, new scope, collection or worker
 activation is authorized by this test. The local canary/replay evidence above
 remains valid; accepted Shopify subscription delivery is still a separate gate.
+
+## Confirmed CLI sample diagnosis and next event
+
+At 19:01:34 UTC, the reviewed temporary loopback listener verified the official
+CLI sample's HMAC and observed `shop.myshopify.com` as its shop header. The exact
+raw body and allowlisted Shopify headers were forwarded unchanged to the pinned
+receiver; the response was **403 JSON `unrecognized_shop`**. The local handler
+returned the same result. Only diagnostic metadata was saved; no raw body or
+credentials were logged. The listener stopped and no public diagnostic route was
+added. This confirms the generic sample's incompatibility while preserving the
+Northside-only restriction. It is not accepted subscription-delivery evidence.
+
+Fresh API inspection verified all four subscription definitions unchanged and
+returned zero test orders in the current app's order-access window. Follow the
+[store-event verification plan](shopify-store-event-verification.md): choose a
+normal event that would happen anyway, or inspect an owner-designated existing
+test order before approving one nonfinancial note append. No order, scope,
+subscription or gate is changed by this preparation. The plan explicitly covers
+reduced-payload debouncing and the absence of a confirmed manual replay method.
 
 ## Receiver boundary
 

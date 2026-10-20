@@ -1,5 +1,31 @@
 # Northside supervised pilot — current update October 20, 2026
 
+## October 20 confirmed sample incompatibility and prepared store-event test
+
+A reviewed loopback-only diagnostic captured one official CLI sample in memory.
+Its HMAC passed, but its shop header was `shop.myshopify.com`. Sending the exact
+body and Shopify routing headers unchanged to the pinned receiver returned
+403 JSON `unrecognized_shop` at 19:01:34 UTC. The local handler returned the same
+error. The listener stopped, no payload was persisted, and no deployed code,
+shop restriction, subscription, order, inventory or gate changed.
+
+Independent read-only verification at 19:03:15 UTC confirmed no receipt for the
+diagnostic delivery, no new receipts since 19:00 UTC, receiver health 200
+(readiness not checked),
+and unchanged Customer/Control redirects to Vercel SSO.
+
+Fresh `read_orders` API inspection verified all four subscriptions unchanged and
+found no `test:true` orders in the app's available access. Older test orders may
+exist outside the normal 60-day scope. No customer details were requested.
+Accepted Northside event delivery remains pending. The [prepared store-event
+verification plan](shopify-store-event-verification.md) prefers a normal event
+that would happen anyway, or one specifically approved note append on a verified
+existing test order after checking downstream automations. No new order or
+payment-provider test mode is prepared for automatic execution. The plan also
+records the reduced-payload debounce limitation and lack of an established manual
+provider replay control. No new credentials are needed for the current plan. The owner selected passive
+verification of the next normal store update; no note edit is authorized.
+
 ## October 20 Shopify CLI authorized; sample POST returned 403
 
 Shopify CLI authorization succeeded. After adding the required local-only `[auth]`
