@@ -1282,3 +1282,106 @@ select {
 .grading-operation-list { list-style: none; padding: 0; display: grid; gap: 1rem; }
 .grading-operation-list > li { padding: 1rem; border: 1px solid var(--line, #d7e2ea); border-radius: .7rem; overflow-wrap: anywhere; }
 .grading-operation-list small, .grading-operation-list p { overflow-wrap: anywhere; }
+
+/* Collector mobile pass: presentation only; private photo routes and gates stay unchanged. */
+.collector-shell main { max-width: 1120px; }
+.collector-heading { margin: 4px 0 24px; }
+.collector-heading h1 { font-size: clamp(30px, 4vw, 42px); margin-bottom: 8px; }
+.collector-heading p:last-child { margin-bottom: 0; }
+.collector-heading .eyebrow { margin-bottom: 8px; }
+.collector-sections { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+.collector-sections a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 18px; color: var(--muted); border-bottom: 3px solid transparent; }
+.collector-sections a[aria-current] { color: var(--forest); border-bottom-color: var(--brand-blue); font-weight: 700; }
+.collector-tools { gap: 12px; font-size: 13px; }
+.collector-tools a, .collector-tools button { display: inline-flex; gap: 7px; align-items: center; min-height: 44px; }
+.collector-tools > a:last-child { margin-left: auto; }
+.collector-card.panel { padding: 0; overflow: hidden; background: var(--white); border: 1px solid var(--line); border-radius: 20px; }
+.collector-photos { padding: 24px; background: #edf2f5; min-width: 0; }
+.collector-photos .portal-photo-grid { margin: 0; grid-template-columns: 1fr; gap: 16px; }
+.collector-photos figure { text-align: center; }
+.collector-photos .exam-image-button { display: block; background: transparent; border: 0; border-radius: 0; margin: 0 auto; max-width: 100%; }
+.collector-photos .exam-image-button img { height: 290px; width: 100%; object-fit: contain; }
+.collector-photos figcaption { font-size: 12px; margin-top: 12px; color: var(--muted); }
+.collector-no-photo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 240px; color: var(--muted); }
+.collector-card-copy { padding: 24px; min-width: 0; }
+.collector-card-copy h2 { font-size: 24px; margin: 14px 0 6px; letter-spacing: -.025em; }
+.collector-card-copy .badge { background: #e3f0f7; color: var(--forest); font-size: 12px; padding: 7px 10px; border-radius: 8px; white-space: normal; }
+.collector-card-meta { margin-bottom: 8px; }
+.collector-open { display: flex; justify-content: space-between; margin-top: 20px; width: 100%; }
+.collector-card .grading-check { display: flex; align-items: center; gap: 10px; padding: 16px 0 0; margin: 16px 0 0; border-top: 1px solid var(--line); font-weight: 400; font-size: 13px; min-height: 44px; }
+.collector-card .grading-check input { width: 20px; height: 20px; flex-shrink: 0; margin: 0; }
+.collector-detail { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
+.collector-detail .collector-photos { height: 100%; }
+.collector-detail .portal-photo-grid .exam-image-button img { height: 380px; }
+.collector-detail .portal-photo-grid figure:not(:first-child) .exam-image-button img { height: 180px; }
+.collector-photo-note { text-align: center; margin: 16px 0 0; }
+.collector-disclosure { border-top: 1px solid var(--line); padding: 18px 0; overflow-wrap: anywhere; }
+.collector-disclosure summary { cursor: pointer; font-weight: 600; min-height: 44px; align-content: center; }
+.collector-disclosure summary span { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin: 5px 0 0 17px; }
+.collector-disclosure summary:focus-visible { outline: 3px solid #94621a; outline-offset: 4px; }
+.collector-disclosure[open] summary { margin-bottom: 18px; }
+.collector-exam-status { padding: 18px 0 6px; border-top: 1px solid var(--line); }
+.collector-exam-status h3 { font-size: 16px; margin: 0 0 8px; }
+.collector-exam-status p { font-size: 14px; }
+.customer-grading > .collector-disclosure.panel { padding: 16px 24px; }
+.collector-timeline h2 { font-size: 24px; }
+.collector-timeline .timeline { margin-block: 28px; }
+.customer-grading > [role="status"]:empty { margin: 0; }
+.mobile-product { max-width: 1000px; margin-inline: auto; }
+.product-back { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; margin-bottom: 20px; }
+.product-layout { gap: 40px; align-items: start; }
+.product-gallery { border-radius: 20px; overflow: hidden; background: #edf2f5; }
+.product-gallery .catalog-image { width: 100%; height: 440px; object-fit: contain; border-radius: 0; background: transparent; }
+.product-gallery > p { margin: 0; text-align: center; padding: 16px; letter-spacing: .15em; font-size: 10px; }
+.product-layout h1 { font-size: clamp(28px, 4vw, 40px); margin: 8px 0 16px; }
+.product-layout .eyebrow { margin: 0; }
+.product-controls .price { font-size: 28px; font-weight: 650; margin: 0 0 24px; color: var(--forest); }
+.product-controls > label { display: grid; gap: 8px; margin-bottom: 20px; }
+.product-controls select { width: 100%; }
+.product-quantity { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.product-controls .product-quantity > label { margin: 0; font-weight: 600; }
+.quantity-stepper { display: flex; align-items: center; background: var(--white); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.quantity-stepper button { display: grid; place-items: center; width: 44px; height: 44px; border: 0; background: transparent; color: var(--forest); }
+.quantity-stepper input { width: 52px; text-align: center; border: 0; background: transparent; padding: 8px 0; margin: 0; appearance: textfield; }
+.quantity-stepper input::-webkit-inner-spin-button, .quantity-stepper input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.product-availability { font-size: 13px; margin: 16px 0; }
+.product-controls > .button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 52px; }
+.product-controls > .back { display: inline-flex; align-items: center; min-height: 44px; margin: 0; }
+.product-controls > [role="status"]:empty { margin: 0; }
+.product-assurance { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 20px; }
+.product-assurance svg { flex-shrink: 0; }
+@media(max-width: 760px) {
+  .collector-shell header { padding: 14px 20px; gap: 16px; }
+  .collector-shell .northside-logo { width: 164px; height: auto; }
+  .collector-shell main { padding: 24px 18px 110px; }
+  .collector-shell footer { display: none; }
+  .collector-shell .preview-bar { font-size: 10px; padding: 6px 12px; letter-spacing: .02em; }
+  .collector-shell .mobile-nav a { min-height: 48px; justify-content: center; font-size: 11px; color: var(--muted); }
+  .collector-shell .mobile-nav a[aria-current] { color: var(--forest); }
+  .collector-shell .mobile-nav a[aria-current] svg { background: transparent; stroke-width: 2.5; }
+  .collector-shell .mobile-nav { padding-top: 7px; box-shadow: 0 -4px 24px #172d3b08; }
+  .collector-heading h1 { font-size: 30px; }
+  .collector-heading > p:last-child { font-size: 14px; }
+  .collector-sections a { flex: 1; padding-inline: 8px; }
+  .collector-tools { gap: 4px 12px; margin-bottom: 16px; }
+  .collector-tools > a:last-child { margin-left: 0; }
+  .portal-card-grid { gap: 16px; }
+  .collector-detail { grid-template-columns: 1fr; }
+  .collector-photos { padding: 20px; }
+  .collector-photos .exam-image-button img { height: 270px; }
+  .collector-detail .portal-photo-grid .exam-image-button img { height: 330px; }
+  .collector-card-copy { padding: 20px; }
+  .collector-card-copy h2 { font-size: 23px; }
+  .collector-card .fine { font-size: 12px; }
+  .collector-card-copy > .fine { margin-bottom: 16px; }
+  .collector-disclosure .portal-quote dd { flex-shrink: 1; }
+  .collector-disclosure .portal-quote dl > div { gap: 16px; }
+  .product-layout { grid-template-columns: 1fr; gap: 24px; }
+  .product-back { margin-bottom: 12px; }
+  .product-gallery .catalog-image { height: 250px; }
+  .product-gallery > p { padding: 12px; }
+  .product-layout h1 { font-size: 30px; }
+  .product-controls .price { font-size: 26px; margin-bottom: 20px; }
+  .collector-shell input:not([type="checkbox"]):not([type="range"]), .collector-shell select { font-size: 16px; }
+}
+@media(prefers-reduced-motion: reduce) { .collector-shell * { scroll-behavior: auto; } }

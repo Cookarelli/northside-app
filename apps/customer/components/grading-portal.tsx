@@ -2,6 +2,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  ImageIcon,
+  RefreshCw,
+  Layers,
+} from "lucide-react";
 import { PhotoView } from "./northside-exam";
 import { photoLabels } from "@/lib/exam";
 import { examMoney } from "@/lib/grading";
@@ -210,18 +217,29 @@ export function CustomerGradingPortal({
   };
   return (
     <div className="customer-grading">
-      <div className="intro">
-        <p className="eyebrow">MY CARDS → GRADING</p>
-        <h1>{cardId ? "Your grading card" : "Track my cards"}</h1>
+      <div className="collector-heading">
+        <p className="eyebrow">YOUR NORTHSIDE</p>
+        <h1>{cardId ? "Card details" : "My Cards"}</h1>
         <p>
-          Dropped off at Northside. Photos, examinations, quotes and recorded
-          progress in one place.
-        </p>
-        <p className="fine">
-          PSA is the confirmed provider. Milestones and final results are
-          recorded by Northside; no provider feed is connected.
+          {cardId
+            ? "Your card. Every recorded step."
+            : "A closer look at the cards you’ve left with us."}
         </p>
       </div>
+      {!cardId && (
+        <nav className="collector-sections" aria-label="My Cards sections">
+          <Link
+            href={`/my-cards/grading${suffix}`}
+            prefetch={false}
+            aria-current="page"
+          >
+            <Layers size={18} aria-hidden="true" /> Grading
+          </Link>
+          <Link href={`/my-cards/consignment${suffix}`} prefetch={false}>
+            Consignment <ArrowUpRight size={16} aria-hidden="true" />
+          </Link>
+        </nav>
+      )}
       {fixture && (
         <aside className="grading-notice">
           <strong>SAMPLE CUSTOMER PORTAL · Saved local records</strong>
@@ -240,10 +258,12 @@ export function CustomerGradingPortal({
           <Link href="/staff/grading">Open staff sample →</Link>
         </aside>
       )}
-      <div className="grading-toolbar">
-        <Link href={cardId ? `/my-cards/grading${suffix}` : "/my-cards"}>
-          ← {cardId ? "All grading cards" : "My Cards"}
-        </Link>
+      <div className="grading-toolbar collector-tools">
+        {cardId && (
+          <Link href={`/my-cards/grading${suffix}`} prefetch={false}>
+            <ArrowLeft size={16} aria-hidden="true" /> My Cards
+          </Link>
+        )}
         <button
           className="plain"
           disabled={busy}
@@ -257,7 +277,7 @@ export function CustomerGradingPortal({
             setReload((n) => n + 1);
           }}
         >
-          Review latest records
+          <RefreshCw size={16} aria-hidden="true" /> Refresh
         </button>
         {data && <a href={`${base}&export=1`}>Export my grading cards</a>}
       </div>
@@ -288,111 +308,163 @@ export function CustomerGradingPortal({
         <>
           <div className={cardId ? "" : "portal-card-grid"}>
             {data.cards.map((c) => (
-              <article className="panel portal-card" key={c.card_id}>
-                <Status card={c} />
-                <h2>{c.description}</h2>
-                <p className="fine">
-                  Card {c.card_id}
-                  <br />
-                  Dropped off {when(c.received_at)}
-                  <br />
-                  Last updated {when(c.updated_at)} · America/Chicago
-                </p>
-                <div className="portal-photo-grid">
-                  {(cardId
-                    ? c.photos
-                    : c.photos.filter(
-                        (p) => p.kind === "front" || p.kind === "back",
-                      )
-                  ).map((p) => (
-                    <figure key={p.id}>
-                      <PhotoView photo={p} endpoint={examEndpoint(c.card_id)} />
-                      <figcaption>{photoLabels[p.kind]}</figcaption>
-                    </figure>
-                  ))}
-                </div>
-                {!c.photos.length && (
-                  <p>
-                    Photos have not been confirmed yet. Your received card is
-                    saved.
-                  </p>
-                )}
-                {c.exam ? (
-                  <p>
-                    Published Northside Exam · revision {c.exam.revision} ·{" "}
-                    {when(c.exam.signed_at)}{" "}
-                    <Link
-                      prefetch={false}
-                      href={`/my-cards/grading/exam/${c.card_id}${suffix}`}
-                    >
-                      Read exam & printable report →
-                    </Link>
-                  </p>
-                ) : (
-                  <p>Northside Exam awaiting publication.</p>
-                )}
-                {cardId ? (
-                  <QuoteSummary
-                    quote={c.quote}
-                    examination={c.examination_cents}
-                  />
-                ) : (
-                  <>
-                    <p>
-                      {quoteComplete(c.quote)
-                        ? `Quote revision ${c.quote!.revision} ready for review`
-                        : "Submission quote incomplete — charges not yet configured"}
+              <article
+                className={`panel portal-card collector-card ${cardId ? "collector-detail" : "collector-tile"}`}
+                key={c.card_id}
+              >
+                <div className="collector-photos">
+                  <div className="portal-photo-grid">
+                    {(cardId
+                      ? c.photos
+                      : c.photos.filter(
+                          (p) =>
+                            p.id ===
+                            (
+                              c.photos.find(
+                                (photo) => photo.kind === "front",
+                              ) ?? c.photos[0]
+                            )?.id,
+                        )
+                    ).map((p) => (
+                      <figure key={p.id}>
+                        <PhotoView
+                          photo={p}
+                          endpoint={examEndpoint(c.card_id)}
+                        />
+                        <figcaption>
+                          {photoLabels[p.kind]} · Tap to zoom
+                        </figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                  {!c.photos.length && (
+                    <div className="collector-no-photo">
+                      <ImageIcon size={32} aria-hidden="true" />
+                      <span>Photo coming soon</span>
+                      <small>Your received card is saved.</small>
+                    </div>
+                  )}
+                  {cardId && !c.photos.some((p) => p.kind === "back") && (
+                    <p className="fine collector-photo-note">
+                      Back photo not yet available.
                     </p>
+                  )}
+                </div>
+                <div className="collector-card-copy">
+                  <Status card={c} />
+                  <h2>{c.description}</h2>
+                  <p className="collector-card-meta">
+                    {[
+                      c.year,
+                      c.card_set || c.manufacturer,
+                      c.card_number
+                        ? `#${c.card_number.replace(/^#/, "")}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                  <p className="fine">
+                    Updated {when(c.updated_at)} · Chicago time
+                  </p>
+                  {cardId ? (
+                    <details className="collector-disclosure">
+                      <summary>Card information</summary>
+                      <p>{c.description}</p>
+                      <p className="fine">
+                        Card {c.card_id}
+                        <br />
+                        Dropped off {when(c.received_at)}
+                      </p>
+                    </details>
+                  ) : (
                     <Link
-                      className="button secondary"
+                      className="button collector-open"
                       prefetch={false}
                       href={`/my-cards/grading/card/${c.card_id}${suffix}`}
                     >
-                      View card, receipt & quote →
+                      View card <ArrowUpRight size={18} aria-hidden="true" />
                     </Link>
-                  </>
-                )}
-                {c.result && (
-                  <div className="grading-notice">
-                    <h3>External grader’s final result</h3>
-                    <p>
-                      {c.result}
-                      {c.certificate ? ` · Certificate ${c.certificate}` : ""}
-                    </p>
-                    <small>
-                      Recorded by Northside; separate from the Northside Exam
-                      estimate.
-                    </small>
-                  </div>
-                )}
-                {c.custody === "grader" && (
-                  <WithdrawalRequest
-                    card={c}
-                    endpoint={base}
-                    refresh={() => setReload((n) => n + 1)}
-                  />
-                )}
-                {returnAvailable(c) && (
-                  <label className="grading-check">
-                    <input
-                      type="checkbox"
-                      disabled={busy || !!pending}
-                      checked={selected.includes(c.card_id)}
-                      onChange={(e) => {
-                        setSelected(
-                          e.target.checked
-                            ? [...selected, c.card_id]
-                            : selected.filter((id) => id !== c.card_id),
-                        );
-                        setChoice(null);
-                        setConfirmed(false);
-                      }}
+                  )}
+                  {cardId && (
+                    <>
+                      <div className="collector-exam-status">
+                        <h3>Northside Exam</h3>
+                        {c.exam ? (
+                          <>
+                            <p>
+                              Published revision {c.exam.revision} ·{" "}
+                              {when(c.exam.signed_at)}
+                            </p>
+                            <Link
+                              prefetch={false}
+                              href={`/my-cards/grading/exam/${c.card_id}${suffix}`}
+                            >
+                              Read exam & printable report →
+                            </Link>
+                          </>
+                        ) : (
+                          <p>Your examination has not been published yet.</p>
+                        )}
+                      </div>
+                      <details className="collector-disclosure">
+                        <summary>
+                          Submission quote{" "}
+                          <span>
+                            {quoteComplete(c.quote)
+                              ? "Ready to review"
+                              : "Not yet complete"}
+                          </span>
+                        </summary>
+                        <QuoteSummary
+                          quote={c.quote}
+                          examination={c.examination_cents}
+                        />
+                      </details>
+                    </>
+                  )}
+                  {c.result && (
+                    <div className="grading-notice">
+                      <h3>External grader’s final result</h3>
+                      <p>
+                        {c.result}
+                        {c.certificate ? ` · Certificate ${c.certificate}` : ""}
+                      </p>
+                      <small>
+                        Recorded by Northside; separate from the Northside Exam
+                        estimate.
+                      </small>
+                    </div>
+                  )}
+                  {c.custody === "grader" && (
+                    <WithdrawalRequest
+                      card={c}
+                      endpoint={base}
+                      refresh={() => setReload((n) => n + 1)}
                     />
-                    <span>
-                      Select {c.description} · {c.card_id.slice(-8)}
-                    </span>
-                  </label>
-                )}
+                  )}
+                  {returnAvailable(c) && (
+                    <label className="grading-check">
+                      <input
+                        type="checkbox"
+                        disabled={busy || !!pending}
+                        checked={selected.includes(c.card_id)}
+                        onChange={(e) => {
+                          setSelected(
+                            e.target.checked
+                              ? [...selected, c.card_id]
+                              : selected.filter((id) => id !== c.card_id),
+                          );
+                          setChoice(null);
+                          setConfirmed(false);
+                        }}
+                      />
+                      <span>
+                        Select for approval or return · {c.card_id.slice(-8)}
+                      </span>
+                    </label>
+                  )}
+                </div>
               </article>
             ))}
           </div>
@@ -500,8 +572,10 @@ export function CustomerGradingPortal({
           )}
           {detail && (
             <>
-              <section className="panel">
-                <h2>Intake receipt</h2>
+              <details className="panel collector-disclosure collector-receipt">
+                <summary>
+                  Intake receipt <span>View & print</span>
+                </summary>
                 <p>
                   Receipt {detail.receipt.id}
                   <br />
@@ -536,9 +610,13 @@ export function CustomerGradingPortal({
                 >
                   Print intake receipt
                 </a>
-              </section>
-              <section className="panel">
-                <h2>Dated timeline</h2>
+              </details>
+              <section className="panel collector-timeline">
+                <h2>Card journey</h2>
+                <p className="fine">
+                  Milestones recorded by Northside · Chicago time. No live
+                  grader feed.
+                </p>
                 <ol className="timeline">
                   {detail.events.map((e) => (
                     <li key={e.id}>
@@ -554,40 +632,42 @@ export function CustomerGradingPortal({
                     </li>
                   ))}
                 </ol>
-                <h3>Exam and quote history</h3>
-                {detail.exams.map((e) => (
-                  <p key={e.id}>
-                    Exam revision {e.revision} published {when(e.signed_at)}
-                  </p>
-                ))}
-                {detail.quotes.map((q) => (
-                  <details key={q.id}>
-                    <summary>
-                      Quote revision {q.revision} · {when(q.created_at)}
-                    </summary>
-                    <QuoteSummary
-                      quote={q}
-                      examination={detail.card.examination_cents}
-                    />
-                  </details>
-                ))}
-                {detail.decisions.map((d) => (
-                  <p className="fine" key={d.request_id}>
-                    {d.choice === "submit"
-                      ? "Submission approved"
-                      : "Return requested"}{" "}
-                    {when(d.created_at)} · decision {d.request_id}
-                    <br />
-                    Exam {d.exam_revision_id ?? "not yet published"} · quote{" "}
-                    {d.quote_id ?? "not yet quoted"}
-                  </p>
-                ))}
+                <details className="collector-disclosure">
+                  <summary>Exam, quote & decision history</summary>
+                  {detail.exams.map((e) => (
+                    <p key={e.id}>
+                      Exam revision {e.revision} published {when(e.signed_at)}
+                    </p>
+                  ))}
+                  {detail.quotes.map((q) => (
+                    <details key={q.id}>
+                      <summary>
+                        Quote revision {q.revision} · {when(q.created_at)}
+                      </summary>
+                      <QuoteSummary
+                        quote={q}
+                        examination={detail.card.examination_cents}
+                      />
+                    </details>
+                  ))}
+                  {detail.decisions.map((d) => (
+                    <p className="fine" key={d.request_id}>
+                      {d.choice === "submit"
+                        ? "Submission approved"
+                        : "Return requested"}{" "}
+                      {when(d.created_at)} · decision {d.request_id}
+                      <br />
+                      Exam {d.exam_revision_id ?? "not yet published"} · quote{" "}
+                      {d.quote_id ?? "not yet quoted"}
+                    </p>
+                  ))}
+                </details>
               </section>
             </>
           )}
           {!cardId && (
-            <section className="panel">
-              <h2>Link an intake receipt</h2>
+            <details className="panel collector-disclosure">
+              <summary>Missing a card? Link your receipt</summary>
               <p>
                 Use the private claim code on your receipt. Northside must
                 independently verify the receipt and your identity before access
@@ -639,7 +719,7 @@ export function CustomerGradingPortal({
                   Request receipt review
                 </button>
               </form>
-            </section>
+            </details>
           )}
         </>
       )}

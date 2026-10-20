@@ -1,3 +1,29 @@
+# October 20, 2026 — collector mobile design pass
+
+My Cards now opens the existing owned grading gallery with a direct Consignment
+link. The grading list/detail prioritize authenticated photographs, recorded
+status and card identity; receipt, quote and revision history use keyboard-accessible
+disclosures. Full descriptions and exact decision evidence remain available.
+The product detail uses compact quantity controls and omits the single default
+variant selector. Shopify price/availability, variant pagination, safe back links,
+private image routes, logout protections and every operational gate are unchanged.
+Northside artwork and color tokens are preserved. No real card/photo is embedded
+in source or public assets; no schema, credentials or provider settings changed.
+
+Independent review accepted the changes. All 397 existing tests, root/customer
+typechecks, and lint passed (one pre-existing root warning). Customer, Control and
+Webhooks production builds passed; the customer scan checked 28 browser artifacts
+for server configuration names. No real credentials were supplied to local builds.
+The customer build requires its own installed Next CLI, not the root peer instance.
+Local browser inspection measured 390, 820 and 1280px without horizontal overflow
+on the inspected gallery/detail states; Enter expanded the quote while preserving
+unknown charges and the pending total. These are desktop browser measurements,
+not physical-device acceptance. Protected hosted review and actual owner photo
+inspection are recorded separately in the current root pilot report.
+
+Purchases, collection, POS, commerce processors and real workers remain disabled.
+Production publication and merging remain unauthorized.
+
 # October 19, 2026 — bounded pilot acceptance
 
 Added isolated webhook/order acceptance tests and a root Preview acceptance runner.

@@ -63,99 +63,113 @@ export function Shell({
   const [cart, setCart] = useState<Record<string, number>>({});
   const path = usePathname();
   const staff = path.startsWith("/staff");
+  const mobilePass =
+    path === "/my-cards" ||
+    path.startsWith("/my-cards/grading") ||
+    /^\/shop\/[^/]+$/.test(path);
   // Guest in-store sessions use their own isolated navigation and basket.
   if (path.startsWith("/in-store")) return <div id="main">{children}</div>;
   return (
     <Context.Provider value={{ data, signed, setSigned, cart, setCart }}>
-      <a className="skip" href="#main">
-        Skip to content
-      </a>
-      <div className="preview-bar">
-        {data.fixture
-          ? "LOCAL PREVIEW · All products, customer records, prices and dates are fixtures."
-          : "PRE-LAUNCH · Purchases and rewards are not open yet."}
-      </div>
-      <header>
-        <Link href="/" className="brand">
-          <Image
-            src="/northside-logo.svg"
-            alt="Northside Collectibles"
-            width={2070}
-            height={572}
-            priority
-            className="northside-logo"
-          />
-        </Link>
-        <nav aria-label="Main navigation" className="desktop-nav">
-          {nav.map(([url, label]) => (
+      <div className={mobilePass ? "collector-shell" : undefined}>
+        <a className="skip" href="#main">
+          Skip to content
+        </a>
+        <div className="preview-bar">
+          {data.fixture
+            ? "LOCAL PREVIEW · All products, customer records, prices and dates are fixtures."
+            : "PRE-LAUNCH · Purchases and rewards are not open yet."}
+        </div>
+        <header>
+          <Link href="/" className="brand">
+            <Image
+              src="/northside-logo.svg"
+              alt="Northside Collectibles"
+              width={2070}
+              height={572}
+              priority
+              className="northside-logo"
+            />
+          </Link>
+          <nav aria-label="Main navigation" className="desktop-nav">
+            {nav.map(([url, label]) => (
+              <Link
+                key={url}
+                href={url}
+                prefetch={false}
+                aria-current={
+                  path === url || (url !== "/" && path.startsWith(`${url}/`))
+                    ? "page"
+                    : undefined
+                }
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <Link
+            className="cart-link"
+            href="/cart"
+            aria-label={
+              data.fixture
+                ? `Cart, ${Object.values(cart).reduce((a, b) => a + b, 0)} sample items`
+                : "Cart"
+            }
+          >
+            <ShoppingCart size={21} />
+            {data.fixture && (
+              <span>{Object.values(cart).reduce((a, b) => a + b, 0)}</span>
+            )}
+          </Link>
+        </header>
+        {staff && (
+          <div className="staff-strip">
+            {data.fixture
+              ? "ISOLATED STAFF PREVIEW · Sample grading, consignment, rewards, breaks and store records save locally"
+              : "INVITED STAFF WORKSPACE"}
+          </div>
+        )}
+        <main id="main">{children}</main>
+        <footer>
+          <span>For the love of the collection.</span>
+          {data.fixture && (
+            // A document navigation clears the original preview's in-memory identity before guest rehearsal.
+            // eslint-disable-next-line @next/next/no-html-link-for-pages
+            <a href="/in-store">In-store rehearsal</a>
+          )}
+          {!data.fixture && (
+            <Link prefetch={false} href="/in-store">
+              In-store pilot
+            </Link>
+          )}
+          <Link prefetch={false} href="/grading">
+            Grading / Track My Cards
+          </Link>
+          <span>
+            Northside app ·{" "}
+            <Link href="/staff">
+              {data.fixture ? "Staff preview" : "Staff workspace"}
+            </Link>
+          </span>
+        </footer>
+        <nav aria-label="Mobile navigation" className="mobile-nav">
+          {nav.map(([url, label, Icon]) => (
             <Link
               key={url}
               href={url}
               prefetch={false}
-              aria-current={path === url ? "page" : undefined}
+              aria-current={
+                path === url || (url !== "/" && path.startsWith(`${url}/`))
+                  ? "page"
+                  : undefined
+              }
             >
+              <Icon size={21} />
               {label}
             </Link>
           ))}
         </nav>
-        <Link
-          className="cart-link"
-          href="/cart"
-          aria-label={
-            data.fixture
-              ? `Cart, ${Object.values(cart).reduce((a, b) => a + b, 0)} sample items`
-              : "Cart"
-          }
-        >
-          <ShoppingCart size={21} />
-          {data.fixture && (
-            <span>{Object.values(cart).reduce((a, b) => a + b, 0)}</span>
-          )}
-        </Link>
-      </header>
-      {staff && (
-        <div className="staff-strip">
-          {data.fixture
-            ? "ISOLATED STAFF PREVIEW · Sample grading, consignment, rewards, breaks and store records save locally"
-            : "INVITED STAFF WORKSPACE"}
-        </div>
-      )}
-      <main id="main">{children}</main>
-      <footer>
-        <span>For the love of the collection.</span>
-        {data.fixture && (
-          // A document navigation clears the original preview's in-memory identity before guest rehearsal.
-          // eslint-disable-next-line @next/next/no-html-link-for-pages
-          <a href="/in-store">In-store rehearsal</a>
-        )}
-        {!data.fixture && (
-          <Link prefetch={false} href="/in-store">
-            In-store pilot
-          </Link>
-        )}
-        <Link prefetch={false} href="/grading">
-          Grading / Track My Cards
-        </Link>
-        <span>
-          Northside app ·{" "}
-          <Link href="/staff">
-            {data.fixture ? "Staff preview" : "Staff workspace"}
-          </Link>
-        </span>
-      </footer>
-      <nav aria-label="Mobile navigation" className="mobile-nav">
-        {nav.map(([url, label, Icon]) => (
-          <Link
-            key={url}
-            href={url}
-            prefetch={false}
-            aria-current={path === url ? "page" : undefined}
-          >
-            <Icon size={21} />
-            {label}
-          </Link>
-        ))}
-      </nav>
+      </div>
     </Context.Provider>
   );
 }

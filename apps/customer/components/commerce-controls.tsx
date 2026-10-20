@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { Minus, Plus, LockKeyhole } from "lucide-react";
 import type { CartView, Merchandise } from "@/lib/commerce";
 import { formatMoney } from "@/lib/commerce";
 import { publicFlags } from "@/lib/policy.mjs";
@@ -43,40 +44,64 @@ export function ProductControls({ product }: { product: Merchandise }) {
     !variant.currentlyNotInStock &&
     (variant.quantityAvailable || 0) >= n;
   return (
-    <>
+    <div className="product-controls">
       <p className="price">
         {variant ? formatMoney(variant.price) : "Variant unavailable"}
       </p>
-      <label>
-        Variant
-        <select
-          value={selected}
-          onChange={(e) => {
-            setSelected(e.target.value);
-            setNotice("");
-          }}
-        >
-          {product.variants.nodes.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.title}
-              {!v.availableForSale || !v.quantityAvailable
-                ? " · Unavailable"
-                : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Quantity
-        <input
-          type="number"
-          min={1}
-          max={99}
-          value={n}
-          onChange={(e) => setN(Number(e.target.value))}
-        />
-      </label>
-      <p>
+      {(product.variants.nodes.length !== 1 ||
+        variant?.title !== "Default Title" ||
+        product.variants.pageInfo.hasNextPage) && (
+        <label>
+          Variant
+          <select
+            value={selected}
+            onChange={(e) => {
+              setSelected(e.target.value);
+              setNotice("");
+            }}
+          >
+            {product.variants.nodes.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.title}
+                {!v.availableForSale || !v.quantityAvailable
+                  ? " · Unavailable"
+                  : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div className="product-quantity">
+        <label htmlFor="product-quantity">Quantity</label>
+        <div className="quantity-stepper">
+          <button
+            type="button"
+            aria-label="Decrease quantity"
+            disabled={n <= 1}
+            onClick={() => setN(Math.max(1, n - 1))}
+          >
+            <Minus size={18} aria-hidden="true" />
+          </button>
+          <input
+            id="product-quantity"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={99}
+            value={n}
+            onChange={(e) => setN(Number(e.target.value))}
+          />
+          <button
+            type="button"
+            aria-label="Increase quantity"
+            disabled={n >= 99}
+            onClick={() => setN(Math.min(99, n + 1))}
+          >
+            <Plus size={18} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <p className="product-availability">
         {available
           ? "Available online · checked again before checkout"
           : "This selection is unavailable in the requested quantity."}
@@ -100,6 +125,7 @@ export function ProductControls({ product }: { product: Merchandise }) {
           }
         }}
       >
+        {!publicFlags.purchases && <LockKeyhole size={17} aria-hidden="true" />}
         {publicFlags.purchases
           ? busy
             ? "Adding…"
@@ -113,7 +139,7 @@ export function ProductControls({ product }: { product: Merchandise }) {
       <p className="fine">
         Adding an item does not reserve it. Pickup is unavailable.
       </p>
-    </>
+    </div>
   );
 }
 export function LiveCart() {
