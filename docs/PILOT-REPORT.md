@@ -1,0 +1,365 @@
+# Northside supervised pilot — current update October 20, 2026
+
+## Current next pilot checks — October 20
+
+The protected, non-purchasing pilot now has real two-customer card/photo isolation
+and a successful staff QR-image lookup. The scanner rejected website links and
+retail barcodes, then recovered through manual label verification. No card
+milestone changed. A fresh independent run passed all ten application acceptance
+checks on `ed61c9a`, with both apps still protected for all deployments. Its exit 2
+is the expected protected Customer-webhook probe, not a failed application check.
+Shopify uses the separate metadata-only receiver.
+
+Complete the remaining work in this order, keeping all operational gates closed:
+
+1. **Real-device walk-through:** use an actual phone and shared iPad on the
+   protected Customer Preview and separately authenticated staff workspace.
+   Test the published product QR against its exact product/variant/price, then
+   the individual card QR inside the staff card scanner. These label types serve
+   different purposes. Test camera denial/file fallback, repeated scan, reload
+   and sign-out/Back on each device. Record actual device/browser and observed
+   result; desktop image decoding is not camera acceptance.
+2. **Back photograph:** upload the actual back of the saved card to that same
+   intake and wait for private Storage confirmation. Recheck owner display and
+   second-customer denial for that new image. Do not make another intake or
+   publish an examination merely to complete photography. The earlier failed
+   oversized front attempt is retained; the successful front is confirmed.
+3. **Login recovery on devices:** begin from the app in the same browser and
+   finish within the current five-minute attempt lifetime. Do not reuse callback
+   URLs. If `oauth_attempt_missing` returns, restart from Account; if native
+   sign-out fails, use Finish signing out and verify private access is denied.
+   Local recovery logout can leave Shopify SSO active, so verify which account
+   actually returns before claiming an account-switch test. The exact earlier
+   cookie-loss cause remains unknown; no authentication check was weakened.
+4. **Natural Shopify delivery:** the existing passive monitor waits for a normal
+   `orders/updated` event and requires Shopify/Vercel/inbox correlation. No order
+   creation, order edit or synthetic event is needed from the owner.
+5. **Later activation review:** paid checkout, collection, POS, commerce
+   processors and real workers remain disabled and unverified as live workflows.
+   A separately approved noncharging commerce test arrangement and the unresolved
+   worker sandbox isolation are prerequisites for their respective next stages.
+   They are not completion requirements to demonstrate the current protected
+   catalog/private-card pilot, and no service installation is part of this run.
+
+Mission Control operator login/logout has prior hosted evidence from October 17;
+today's check verifies protection and anonymous denial, not a fresh operator login.
+No production publication or merge. Historical setup sections below are retained
+for audit and must not be interpreted as requests to re-provision working secrets.
+
+## October 20 customer login and private Storage verification
+
+Two real customer logins survived reload and remained separate from staff
+authorization, including a customer whose email matches the owner. Logout
+closed other private tabs; subsequent API access required sign-in. Aggregate
+database inspection confirmed both tested sessions revoked and provider tokens
+erased. The owner separately signed into the staff workspace in Chrome.
+
+Fresh verification passed 90 local privacy/auth/photo tests, ten hosted
+application acceptance checks, nine hosted negative-auth checks and 14 live
+private-bucket checks. A disposable image was denied to public/anonymous readers
+and signers; its signed URL worked before expiry and was denied afterward while
+the object still existed. Both test objects were removed and cleanup verified.
+No customer or custody records were fabricated. The owner subsequently confirmed
+one real card at Northside and supplied its photo. Normal intake/private upload
+succeeded; the owner could see it, while the second real customer could see
+neither its card detail nor the exact photo URL. Logout denied the same image
+and session API, and staff reload confirmed the original record/photo intact.
+The back photo is still missing; no exam or collection was approved. The report
+retains the upload-size failure and login recovery limitations.
+See [exact evidence, earlier test-helper failures and remaining checks](customer-privacy-pilot-verification.md).
+Purchases, collection, POS, commerce processors and real workers remain disabled;
+the passive Shopify delivery follow-up continues independently.
+
+## October 20 confirmed sample incompatibility and prepared store-event test
+
+A reviewed loopback-only diagnostic captured one official CLI sample in memory.
+Its HMAC passed, but its shop header was `shop.myshopify.com`. Sending the exact
+body and Shopify routing headers unchanged to the pinned receiver returned
+403 JSON `unrecognized_shop` at 19:01:34 UTC. The local handler returned the same
+error. The listener stopped, no payload was persisted, and no deployed code,
+shop restriction, subscription, order, inventory or gate changed.
+
+Independent read-only verification at 19:03:15 UTC confirmed no receipt for the
+diagnostic delivery, no new receipts since 19:00 UTC, receiver health 200
+(readiness not checked),
+and unchanged Customer/Control redirects to Vercel SSO.
+
+Fresh `read_orders` API inspection verified all four subscriptions unchanged and
+found no `test:true` orders in the app's available access. Older test orders may
+exist outside the normal 60-day scope. No customer details were requested.
+Accepted Northside event delivery remains pending. The [prepared store-event
+verification plan](shopify-store-event-verification.md) prefers a normal event
+that would happen anyway, or one specifically approved note append on a verified
+existing test order after checking downstream automations. No new order or
+payment-provider test mode is prepared for automatic execution. The plan also
+records the reduced-payload debounce limitation and lack of an established manual
+provider replay control. No new credentials are needed for the current plan. The owner selected passive
+verification of the next normal store update; no note edit is authorized.
+
+## October 20 Shopify CLI authorized; sample POST returned 403
+
+Shopify CLI authorization succeeded. After adding the required local-only `[auth]`
+section with an empty redirect list, pinned CLI `4.9.4` reported that one
+`orders/updated` sample for API `2026-07` was enqueued. No `app dev`, app deployment,
+subscription mutation, order change or inventory change was run.
+
+Vercel recorded one serverless POST to the immutable receiver Preview at
+`2026-10-20T17:41:51.462Z`, request `95gwx-1792518111462-49e6a48f5e77`, returning
+**403**. The deployed source's only 403 path is `unrecognized_shop`, after HMAC
+verification. This is evidence consistent with the CLI sample having a missing
+or different shop header; the actual header and response body were not captured,
+so the precise rejection cause is not independently confirmed from the response.
+A platform-generated 403 cannot be ruled out by status alone. A restricted,
+read-only TLS database query at
+17:42:40 UTC found zero inbox receipts in the preceding 30 minutes. The Dev
+Dashboard showed no webhook deliveries for the app at inspection time.
+
+This proves the sample tool queued a request and the receiver logged a POST;
+it does **not** prove accepted Northside subscription delivery or durable
+provider-event ingestion. Keep the exact-shop restriction. Shopify's CLI samples
+cannot validate API subscriptions and are not retried. The next store-specific
+check needs an approved nonfinancial event on a designated Northside test order
+(or a provider-supported replay of such an event, if available), followed by
+provider delivery details and a matching durable receipt. Do not create or pay an
+order, change inventory, or enable a business processor just to obtain evidence.
+Purchases, collection, POS and real workers remain disabled; no production
+application launch or merge occurred.
+
+## October 19 receiver deployed and subscriptions verified
+
+The private provisioning handoff succeeded. The isolated receiver is deployed at
+[Preview health](https://northside-webhook-pilot-15eqolamo-steves-projects-e37a4ef4.vercel.app/health),
+READY, actual Preview target, source `1304c28`. All four minimal-field Shopify
+subscriptions (`orders/paid`, `orders/cancelled`, `orders/updated`, `refunds/create`)
+were created and re-read against that endpoint with version `2026-07` and only
+`read_orders` scope. No live order or inventory mutation was made.
+
+Independent actual TLS/isolation verification passed for the restricted receiver
+role. Public unsigned/tampered requests returned 401; signed synthetic delivery
+and replay returned 200; conflicting reuse returned 409. A separate database
+read verified exactly one persisted canary receipt. Staff/control paths are
+absent from this receiver, and both existing apps still redirect to Vercel SSO.
+
+The dedicated project remains unlinked from Git. Its four sensitive values are
+Preview-only across that project; branch filtering requires a Git connection and
+was rejected before saving values. The reviewed manual-deployment alternative
+does not enable automatic builds. Production contains only the credential-free
+404 initialization placeholder, not application code. No application production
+launch, merge, purchases, collection, POS or real workers were enabled.
+
+Delivery evidence at that checkpoint was limited to local signed canaries and
+API subscription readback. The October 20 result above supersedes the pending
+CLI authorization; accepted Northside subscription delivery and
+order/payment/collection behavior remain unverified. The saved migration-operator database
+password
+still fails, but the dashboard fallback resolved this receiver's provisioning.
+See [receiver verification, IDs and stop procedure](shopify-webhook-receiver.md).
+
+## October 19 private receiver provisioning handoff (completed above)
+
+The authenticated Supabase dashboard now provides a working `postgres` SQL
+connection to `nrsuosydvjqovrevmych`. Read-only checks verified CREATEROLE,
+credential-catalog visibility, and absence of the receiver role/schema/migration.
+The saved migration password still fails through both database connection modes;
+the user's Supabase account password is a separate credential.
+
+A separately reviewed local helper prepares one private, atomic SQL transaction
+and durable owner-only recovery. It creates only the restricted metadata receiver
+and aborts on existing or unsafe state. Eight new provisioning tests passed;
+independent verification passed 36 focused tests, root TypeScript and scoped lint.
+The browser requires the user to paste/submit new credential SQL, so that handoff
+is pending. No receiver database changes, deployment or subscriptions are claimed.
+The existing app protection and all operational gates remain unchanged.
+See the [private handoff instructions](shopify-webhook-receiver.md#reviewed-dashboard-fallback).
+
+## October 19 secure webhook receiver preparation
+
+A separate route-only receiver, restricted NOLOGIN database role/migration, and
+read-only subscription inventory/plan tooling are prepared. Intake is limited to
+HMAC-verified metadata in an isolated inbox; it cannot create business orders,
+mark payments, dispatch jobs or perform collection. Customer and Control keep
+their existing Vercel/application protection. No operational gate changed.
+
+The existing Shopify app ID and secret were saved privately without rotation.
+Fresh Shopify authorization verified the exact Northside shop/app/installation,
+`read_orders` only, and a complete API inventory with **zero subscriptions**.
+Dev Dashboard's active `northside-supervised-pilot` release uses webhook version
+`2026-07` and displays no app-configured topics. No subscriptions were created.
+
+Local validation: **389 tests passed** (6 acceptance-runner, 119 core including
+28 new receiver/planning cases, 17 customer scripts and 247 customer services).
+Typechecks and all three app builds passed; lint retains one existing warning.
+Independent implementation review passed after two corrections. Fresh read-only
+Preview checks at 13:51 UTC passed all ten application checks on `a608015`; direct
+Shopify ingress remains blocked by Vercel (expected exit 2). Separate public GETs
+to both app entry pages still redirect to Vercel authentication (302). These are
+local receiver tests and existing Preview checks, not hosted receiver delivery.
+
+Hosted receiver setup is still blocked: the saved operator migration password
+returns `28P01`, and both connected Supabase management identities currently deny
+project access. No receiver schema, role login, Vercel project or public endpoint
+has been created. The reviewed dashboard fallback above can avoid resetting the
+operator password; do not reset the working Customer/Control credentials. [Exact setup sequence and verification
+limits](shopify-webhook-receiver.md).
+
+## October 19 acceptance runner and isolated order tests
+
+The new `pnpm acceptance:pilot` runner verifies the two fixed, authenticated
+Preview deployments without changing browser sessions. The initial live run
+against `2a93d57` passed all ten application checks, including the approved Zion
+catalog/detail, anonymous private-data and Control denials, disabled cart/pickup
+and unsigned webhook rejection. External webhook ingress is **blocked**: the
+same unsigned POST without Vercel access returned 401 before reaching the app.
+No deployment protection, subscription, credential or activation setting changed.
+
+Fresh isolated tests exercise signed raw intake, transactional receipt/job and
+order/ledger rollback, replay, four-topic convergence and retry exhaustion using
+in-memory PGlite and synthetic provider state. They do not create hosted orders or
+run any real worker. Full commands, proof limits and exact remaining setup are in
+[pilot acceptance](pilot-acceptance.md). Purchases, collection, POS and all real
+workers remain disabled; production launch and merge remain gated.
+
+Final local verification passed 361 tests, TypeScript, both builds and the
+28-artifact client configuration scan. Lint has one pre-existing warning.
+Independent review verified all 12 new tests and cleared the curl configuration
+isolation fix. No runtime application source, credentials or schema changed.
+
+## October 17 historical verification
+
+This update supersedes the October 3 configuration and preview status below.
+The integration branch reached `dd5d471` before this verification; an older local
+checkout and its uncommitted worker work have been preserved.
+
+- Existing protected branch previews: [Customer](https://northside-customer-pilot-git-in-a7ee5f-steves-projects-e37a4ef4.vercel.app/account) and [Mission Control](https://northside-control-pilot-git-int-d1af17-steves-projects-e37a4ef4.vercel.app/mission-control). Both branch previews were READY at `25e63a2` during the completed staff checks, with Preview target `null`. The application changes are Customer `0f9bc9e` and Control `71742a1`; subsequent commits record verification evidence. Runtime secrets are sensitive, branch-scoped Preview variables with different Customer and Control database roles. The separately approved Control operator password replacement below is the only credential rotation in this verification.
+- The later [provisioning report](commerce-provisioning.md#october-16-pooler-repair) records seven successful restricted pooler logins and hosted operator authentication on October 16. This checkout's separate operator-only migration URL still fails authentication with `28P01`; that failure must not be confused with the deployed runtime connections or used to justify resetting their working passwords. No database credential was rotated or provisioned on October 17.
+- The existing Shopify Headless storefront `392058` has a confidential Customer Account client. Its existing credentials were preserved privately. Saved Storefront grants are only product-listing and inventory reads; Customer Account grants are only customer and order reads. All other displayed grants are off. The exact callback and logout URLs still match the Customer branch preview. The existing installed Northside Admin app was preserved.
+- A fresh read-only Storefront query, including variant inventory and price fields, returned HTTP 200 with no GraphQL errors and zero products. No catalog publication, inventory change, cart or order was created.
+- Real customer sign-in completed on the protected Customer preview and survived reload. The private cards page opened; the owner/admin inspector still denied the customer session. Logout returned to sign-in, closed the other private tab, remained signed out after reload, and private orders again returned `sign_in_required`. This does not establish two-customer or existing-object Storage isolation.
+- Fresh invited staff sign-in exposed `invalid_origin` from native POSTs under `no-referrer`. The accompanying narrow fix uses CORS-mode fetch to fixed same-origin endpoints, same-origin credentials, `no-referrer`, and `redirect:error`; success navigates only to fixed destinations. Both staff handlers retain all existing Origin, provider, membership and session checks. The one-time confirmation page retains its no-referrer policy. No new credential or role is introduced.
+- The actual browser regression reproduced native `Origin: null`, then verified correct Origin and absent Referer on both corrected POSTs. A synthetic 307 was rejected without reaching its destination. Independent security review found no actionable issues. TypeScript, lint (one existing warning), and 349 tests passed; both builds and the client configuration scan passed. The subsequent live staff confirmation and logout checks below now pass. Email delivery is never inferred from a request acknowledgment alone.
+
+### October 17 private authentication follow-up
+
+- The approved Mission Control Preview password replacement is complete. The new random password was saved durably in the original checkout's ignored, owner-only `.runtime/pilot/mission-control-password.txt` before updating the exact sensitive branch-scoped Preview variable. It is not in this repository, report or browser bundle. The local Vercel CLI login was refreshed by the user; no other runtime credential or production environment was changed.
+- Live checks against the final Control deployment at `71742a1` passed: anonymous snapshot **401**, foreign-Origin login and logout **403**, correct login **200**, authenticated persisted snapshot **200**, logout **200**, and replay of the revoked cookie **401**. The session cookie is Secure, HttpOnly and SameSite=Strict. The snapshot showed **zero workers and zero tasks**. Real browser operator login, sign-out and signed-out reload also passed.
+- Sign out was hidden inside the sidebar footer below 900px. It now stays in the wrapping header actions. Snapshot responses from a previous authentication generation are discarded, preventing a delayed poll from restoring private data after logout. Independent review passed. Browser verification confirmed the button at an actual 822px viewport without horizontal overflow. The browser's requested 390px/820px overrides did not change the measured viewport, so exact phone/iPad dimensions remain a verification limitation.
+- All **349 tests**, TypeScript and lint passed (one existing warning); both apps built successfully, and Control was rebuilt after the stale-response fix. The first test attempt failed because the sandbox denied a temporary loopback listener; the full simulated suite passed with loopback access. No real worker was started. The Customer client scan checked 28 artifacts for server configuration names; no supplied live credential was used in the secret-free build.
+- In the correct Supabase project, Site URL now points to the protected Customer branch Preview and the exact `/api/auth/staff/callback` URL is allowlisted. Magic-link and invitation templates now send users to `/staff/confirm` using `TokenHash` with the respective `email`/`invite` type. Fresh dashboard readback confirmed both templates and the URL settings. An earlier email attempt expired. The later fresh email confirmation completed successfully and produced the verified owner session described below.
+- The designated, email-confirmed Auth account now has the Northside **owner** role. After the user approved the owner grant, the original insert transaction stopped before writing because Supabase rejected `SET ROLE northside_auth` (`42501`). Readback then found an existing active **admin** membership; no new membership was inserted. A separately reviewed transaction used existing operator authority to promote only that exact confirmed identity's existing membership from admin to owner, preserving every other field and adding one append-only operator audit record. It changed no database grants, credentials, RLS, runtime authorization or activation gates. Independent post-commit readback confirmed `owner`, active, email confirmed, **one active owner**, and **one owner-setup audit record**. The separate live staff browser checks below also passed.
+- Hosted read-only data checks found **zero ready private-file records**, **zero objects** in `northside-private`, and **one Shopify customer identity**. Existing-object Storage and two-customer isolation cannot be established from this empty/single-customer data; no artificial customer or live file was created to imply those tests passed.
+- After the owner grant, live anonymous requests to private identity, cards, orders and export returned **401**. An empty staff-invitation request without a session returned **401**, and a foreign-Origin request returned **403**. No invitation address was submitted and no invitation was created by these checks. The subsequent fresh email confirmation produced a real owner session; no synthetic session or cookie was injected.
+- **Live staff sign-in and logout are verified.** The user completed the fresh email confirmation; reload displayed “Signed in as owner,” and `/api/private/me` returned `{"kind":"staff","role":"owner"}`. The database-backed integration workspace and owner/admin Shopify inspector loaded. Customer-only orders returned `customer_account_required` for this staff session, and Mission Control still required its independent operator login. Logout reached `/signed-out?complete=1`, closed the other private inspector tab, restored `sign_in_required` from the private identity API, and both staff and owner-only pages remained inaccessible after navigation/reload. The browser was intentionally left signed out. Responsive staff controls were visible at an actual 628px width with no horizontal overflow; this is not an exact physical-phone/iPad test.
+- The authenticated owner inspector freshly observed the existing Northside Shopify Admin installation, **`read_orders` only**, and the Advanced plan (not a development shop). Storefront still returned zero published products. Required subscriptions were not observed at the expected destination/API version for **ORDERS_PAID, ORDERS_CANCELLED, ORDERS_UPDATED and REFUNDS_CREATE**. This is not proof that no app-configured subscription exists. No recorded order jobs or received/processed Shopify receipts appeared. Both purchase and pickup gates remained disabled; no cart, order, inventory or subscription was changed by these read-only checks.
+- Password replacement invalidates old operator sessions on the new deployment. Older immutable Vercel deployments retain their previous environment and remain Vercel-protected; this is **not global revocation** of their old credentials/sessions. Retiring those deployments is a separate operator action.
+
+### October 17 Shopify catalog connection
+
+- The empty catalog was a publication-state issue. Shopify Admin's **Active** product view returned no products; the inspected imported products were **Draft**, including stocked items. The deployed `/shop` successfully read Storefront collections but returned no products. A fresh private, read-only Storefront `2026-07` query returned HTTP 200, zero products, no further page, and `null` for the selected Draft product. There was no need to replace credentials or broaden API scopes.
+- The user explicitly approved **one** pilot product: **Zion Slab Case XL**, product `gid://shopify/Product/15993305465201`, variant `gid://shopify/ProductVariant/64522145857905`, handle `zion-slab-case-xl-regular`. Its selected Shop, Point of Sale and Fanatics Collect Storefront channels were removed while it was still Draft; Online Store remained off and **Northside Collectibles Loves Park Headless** remained selected. That channel selection was saved and independently read back before changing this product to Active. No other product was activated.
+- After activation, a fresh Storefront query at `2026-10-17T19:47:06.418Z` returned exactly **one product**, the exact matching variant, **USD 144.95**, `quantityAvailable: 4`, `availableForSale: true`, and `currentlyNotInStock: false`. Shopify Admin independently showed the same unchanged price and quantity; the variant's stock is at **Northside Retail Floor**. No price, inventory, fulfillment setting, order or cart was changed. The product has no image, SKU or barcode; missing data remains missing.
+- The deployed `/shop` now shows the real product, search for `Zion` returns it, and its product-detail link renders the exact price and variant with **“Purchases not open yet”** disabled and **“Pickup is unavailable.”** The live `/api/commerce/cart` still returns `purchases_disabled`. Final publication readback showed Headless only; Online Store, Shop, Point of Sale and Fanatics were off, and the Agentic category showed **Shopify Catalog: Unpublished**.
+- Saved Storefront permissions remain only product-listing and inventory reads; checkout permissions remain off. These settings and app gates prove the application's restricted pilot behavior, not a Shopify-wide checkout prohibition. No application code, credential, runtime role or feature gate changed. Product/variant provider identity is now verified; no in-app QR/store-registry mapping was created and physical barcode/QR scans remain unverified.
+- Independent code review found no ungated app purchase path. All **21 focused commerce, commerce-pilot and policy tests passed**. Seven direct local requests across cart GET, add/update/reset/checkout, breaks and loyalty were rejected before any provider call. These local route probes used mocked provider transport; they are not live Shopify cart or checkout acceptance. Documentation whitespace validation passed.
+
+Immediate remaining steps: select and separately approve any additional products for Headless-only publication; provide the real image/SKU/barcode for the pilot item if required; complete its reviewed retail mapping and physical scans. Use authorized test data and a second real customer to verify private Storage and cross-customer access, and complete the remaining operations/content-editor/read-only role matrix. Staff owner login/logout, owner-versus-customer separation and separate Mission Control login have passed. The separate operator migration URL last returned `28P01`; runtime passwords must not be reset to work around it. Live webhook delivery remains unverified, and exact phone/iPad checks require a working viewport override or physical devices. Default Supabase email delivery remains rate-limited and is unsuitable as evidence of production mail readiness.
+
+Purchases, collection, POS, loyalty earning/redemption and real workers remain
+disabled. Existing private-object Storage authorization, the remaining staff role matrix,
+second-customer isolation, catalog mapping and live webhook delivery remain
+acceptance requirements. No merge or production publication is authorized.
+
+## Historical October 3 report
+
+The integration continues `f713f47` on `integration/supervised-store` in **Cookarelli/northside-app**. The starting checkout was clean, the existing implementation was retained, and previous child-worktree scratch files were preserved. This report supersedes the earlier local-only status in `STATUS.md`, `VERIFICATION.md` and historical customer deployment notes.
+
+**Protected readiness previews are deployed. An operational store pilot is not yet verified.** No real customer launch, paid order, live inventory change, staff invitation, POS installation or real worker activation occurred.
+
+## Reviewable previews
+
+[Draft pull request #1](https://github.com/Cookarelli/northside-app/pull/1) is open on the pushed `integration/supervised-store` branch.
+
+- [Customer app](https://northside-customer-pilot-pt6gd2w7j-steves-projects-e37a4ef4.vercel.app/in-store)
+- [Mission Control](https://northside-control-pilot-fzmhopjnl-steves-projects-e37a4ef4.vercel.app/mission-control)
+
+Both run on the established Vercel provider, in the authenticated `steves-projects-e37a4ef4` team, in separate newly created pilot projects. No accessible existing project matched this repository; unrelated projects were not changed. Both successful app deployments have `target=null` (Preview), source commit `cb7ce164b2ee9d1f786c0ac711af923809c6fe25`, Node 24, frozen dependency installation with scripts disabled, the correct app root, and shared monorepo files enabled. Later operator/worker tooling and documentation commits do not change those deployed application bundles.
+
+Vercel initially promoted first deployments despite preview intent. Those app deployments were removed. Each new project was then initialized with an authenticated **404-only static placeholder**, containing no application or credentials; its subsequent app deployment is a true preview. Authentication protection is `all`, including placeholder aliases. No custom Northside domain was assigned, no Git auto-deploy integration was enabled, and no existing production project was modified. Do not share the placeholder aliases as app URLs.
+
+A Vercel team-authorized identity is required to view the previews. That outer protection is separate from application authorization. Mission Control still needs its own single-operator session; invited customer-app staff do not receive control privileges. The Mac mini makes outbound HTTPS requests only. No router forwarding, inbound remote shell, or public Mac listener was configured.
+
+## Fresh verification
+
+- Reviewed all 15 previously applied migrations against source and the remote catalog. Applied one additive correction: `20261003170654_restrict_private_function_execution.sql`. Supabase now has **16 management migrations** and **15 customer SHA-256 ledger entries**; all 15 source checksums match exactly. None of the original migrations were rewritten.
+- New Supabase project confirmed: `nrsuosydvjqovrevmych`, name `northside-app`, us-east-2, PostgreSQL 17.11. All **112 private tables** have RLS. `northside-private` Storage remains private. All seven application roles lack superuser and BYPASSRLS privileges.
+- Fixed inherited PUBLIC execution on private functions. Hosted readback: **zero PUBLIC EXECUTE grants; all 15 explicit runtime grants retained**. A new full-chain local test also verifies unchanged function bodies/owners/search paths, anonymous and service-role denial, absent-session RLS, and an authorized staff write with its audit trigger.
+- Actual anonymous Supabase HTTP checks: both private schemas reject Data API selection with 406/PGRST106; private bucket listing returns no objects; signing a nonexistent object and bucket metadata lookup fail. The empty bucket/nonexistent-object probes do **not** establish authorization for existing private objects. Real customer/staff Storage checks remain pending.
+- **Final local validation: 296 passing tests** (72 core, 16 customer script and 208 customer TypeScript tests). The full suite passed after provisioning hardening; the core suite was repeated after the last worker reconnect-delay change. TypeScript and lint passed (one pre-existing unused-variable lint warning). Both production builds passed; the customer build was repeated after TLS hardening. Client bundles contained none of the checked server credential configuration names (26 customer and 10 control artifacts). No application database or Shopify secrets were injected into the deployed apps. Focused provisioning security tests and the final patch received independent review; this is not a hosted role-login result.
+- Browser-verified the deployed customer screen at 390×844 and Mission Control at 1440×1000: meaningful content, no horizontal overflow, no framework overlay, no browser page errors. Screenshots and actual HTTP outcomes are in [preview evidence](evidence/pilot-preview.json).
+- Unauthenticated public requests to both previews redirect to Vercel authentication. After passing only that outer boundary with short-lived identity tokens, Mission Control snapshot rejects an unauthenticated app session with 401, credential-free worker polling returns 401, and a foreign-origin command returns 403. Customer staff setup shows no private integration data; private orders and hosted fixture APIs fail closed with 503 while configuration is absent. This is denial/readiness evidence, **not** successful staff/customer login or a working database connection.
+
+## Application permission boundaries
+
+| Principal | Intended authority; local tests and source review |
+| --- | --- |
+| Anonymous | Public shells only; no private records or Mission Control |
+| Shopify customer | Own tenant/customer cards, orders and authorized files only |
+| Invited operations staff | Tenant operations and audited permitted edits; no invitations or Mission Control |
+| Content editor | Content scope; no private operational data/files |
+| Read-only staff | Permitted operational reads/exports; no edits or invitations |
+| Admin / owner | Bounded administration and invitations; no Mission Control authority |
+| Mission Control operator | Bounded queue commands, worker registration/revocation and exact-evidence approval; no customer authority, merge or deployment |
+
+`anon` and `authenticated` SQL roles have no USAGE on either private schema. Supabase sign-in alone does not grant database access: server sessions and `ns.context()` enforce the customer app's RLS. The operator account is still the existing single-operator `steve` identity, not a multi-user staff directory. Do not share its password among staff.
+
+## Missing private configuration, precisely
+
+Management-connector authentication lets this task inspect/migrate Supabase. It does not supply runtime PostgreSQL passwords. Fresh catalog checks show **all seven role passwords absent**, the original five roles still NOLOGIN, and **zero Supabase Auth users**.
+
+| Private value | Why it is needed / where it belongs |
+| --- | --- |
+| `MIGRATION_DATABASE_URL` | Operator-only Session pooler login for provisioning the seven existing restricted roles; never deployed to an app or worker |
+| `DATABASE_URL`, `AUTH_DATABASE_URL`, `COMMERCE_DATABASE_URL`, `ENGAGEMENT_DATABASE_URL` | Independent `northside_runtime`, `northside_auth`, `northside_commerce`, `northside_engagement` passwords and TLS URLs for the original customer server |
+| `LOYALTY_DATABASE_URL` | Separate `northside_loyalty` URL for its dedicated commerce background process, not the coding worker |
+| `NORTHSIDE_DATA_DATABASE_URL` | Different values per project: `northside_control_server` for Control, `northside_customer_server` for the additive customer aggregate. Never interchange them |
+| `SUPABASE_SECRET_KEY` | Private server Storage/admin operations after application authorization; not the public/publishable key and not a database password |
+| `SESSION_ENCRYPTION_KEY` / `OPERATOR_PASSWORD` | Independently generated encryption/operator secrets; provisioner saves them privately |
+| Owner Auth user ID | A real Supabase Auth user and owner membership; no invented or automatic production owner |
+| Shopify credentials | Actual installed app/channel credentials and expiry; see [exact Shopify setup](commerce-pilot.md) |
+| Worker credential | Revocable one-time registration from an operational Mission Control, plus a separately scoped preview-protection credential; no database/Shopify/deployment secrets |
+
+The operator file is ignored, mode 0600, under private mode-0700 `.runtime/pilot/`. Current values remain absent. A dry-run-first [provisioning helper](commerce-provisioning.md) prepares separate app configs with durable recovery and never rotates an existing password. It has not been run against the hosted database. If the actual Supabase postgres role cannot read/lock the required catalog, it stops before changes; do not grant it broader catalog access or weaken that check to proceed.
+
+## Shopify and collection remain gated
+
+Public discovery for `9i3hnb-jw.myshopify.com` responds with the expected issuer. The deployed owner/admin inspector reuses the canonical Storefront, mapping and Admin services; credentialed calls have not yet passed. The original `/shop` → product → `/cart` path remains the prepared online checkout path. Hosted `/in-store`, sample QR routes and fixture staff pages show preparation status and cannot simulate a live sale.
+
+Current product/variant mappings, fresh prices/inventory, live cart creation, checkout host/fulfillment behavior, test payments, physical scans, real webhook deliveries, staff collection and POS device behavior remain unverified. HMAC, duplicate-event handling, ownership, price/stock changes and collection separation have local contract tests. No online checkout is claimed to become a POS transaction. Staff must use verified Shopify order/payment/fulfillment records; a browser return, scan or staff click is not payment proof. The POS extension and collection workflow remain rehearsal-only until separately verified. Detailed order/staff behavior and required scopes are in [commerce pilot setup](commerce-pilot.md).
+
+## Worker service and exact blocker
+
+The installed Codex `0.158.0-alpha.2.1` operational probe still cannot remove its own empty temporary directory with the required recursive credential-denial policy. A secret-free dedicated directory does not fix it. The rejected policy restriction change and package-manager verification override were not retried.
+
+A committed-source export now produces explicitly scoped files and hashes, excluding private configuration, tool state and dependencies. It is marked **prepared-only, executable=false** and is not connected to an approval path. Real workers remain disabled. No compatible VM/container runtime was installed on this Mac. Concrete alternatives are a supported sandbox correction or a separately reviewed disposable verifier VM/container with no host secret mounts, pinned offline dependencies and only the minimal provider credential for the relevant role; see [worker pilot](worker-pilot.md).
+
+A Mac LaunchAgent plist was generated and passed `plutil -lint` at `.runtime/pilot/prepared-worker.plist`. The separate environment selects **simulated** mode and lacks a worker credential. No LaunchAgent was installed or started. The implementation includes restart throttling, private rotated logs, health reporting, cancellation/stop, OS-held duplicate-process locks, bounded job retries, exponential connection backoff capped at 60 seconds, and database job leases/fencing. Actual simulated subprocess tests cover duplicate rejection, crash, restart and clean shutdown. [Worker evidence](worker-pilot-evidence.json) explicitly separates these from real Codex execution.
+
+A user LaunchAgent starts at login and restarts after failure. After a reboot, FileVault must be unlocked and that account must log in. It does not run before login or during system sleep. Power/sleep/login settings were not changed. Once connectivity is verified, install/start with the documented launchd commands; stop with `node --import tsx scripts/launchd.ts stop`. Remote pause stops new claims; cancel active work separately; revoke the credential to remove access.
+
+## Exact remaining operator steps
+
+1. In the [new Supabase project](https://supabase.com/dashboard/project/nrsuosydvjqovrevmych), open **Connect → Session pooler**. Privately save its password-bearing URL as `MIGRATION_DATABASE_URL` in `.runtime/pilot/operator.env`, with port 5432, username `postgres.nrsuosydvjqovrevmych`, database `postgres` and `sslmode=verify-full`. Under **Settings → API keys**, save the secret key as `SUPABASE_SECRET_KEY` in the same private file. Never paste either into chat. No old Supabase project credential should be used.
+2. Supply the intended owner's email or an existing Auth user ID. No invitation has been sent. After a real Auth account exists, bootstrap its verified membership using the preserved owner procedure. Privately provision restricted passwords, inject only the owning app's runtime secrets into Vercel Preview settings, then redeploy. Verify each actual login over TLS and run rollback-only cross-role/RLS probes before accepting app connectivity.
+3. Supply the existing Shopify app credentials using the named fields in the operator file. Follow the exact callback, scope and webhook setup in `commerce-pilot.md`. Choose stable HTTPS app/QR origins before provider registration or printing. Do not point Shopify webhooks at an authenticated preview and assume delivery works; use a reviewed narrowly scoped delivery arrangement and prove HMAC/deduplication without paid orders or inventory changes.
+4. Verify real staff/customer sign-in, refresh/logout, two-customer isolation, admin-only actions and existing private-object access. Inspect published catalog/mappings read-only. Agree the non-charging test checkout/fulfillment procedure before any activation change. Keep purchase, pickup and POS gates off until evidence passes.
+5. Once Mission Control's actual database and operator login pass, register a single simulated worker for remote communication/lifecycle rehearsal. Save only its worker credential and scoped protection credential in private files. Install the prepared service only after that check. Keep Codex mode off until the independent sandbox acceptance and real build/review/verify chain succeeds.
+
+## Short in-store pilot checklist
+
+- Confirm the intended preview/project/store, named supervisor, and visible rehearsal/setup state.
+- Sign in as the authorized role; prove a signed-out customer and a second customer cannot see staff/private records.
+- Scan a reviewed label on an actual phone and shared iPad; compare exact variant, current price and stock; test an invalid/expired label.
+- In the authorized non-charging environment, check cart edits and checkout handoff; verify independent Shopify payment/fulfillment evidence before any collection step.
+- Re-scan/retry the same handoff, webhook and collection; prove no duplicate charge, stock movement, job or release. Verify POS separately.
+- Sign out/reset the shared device, pause/cancel the worker, inspect health/logs, and rehearse restart/stop. End the session with gates closed unless the supervisor explicitly approves the verified next stage.
+
+Official references: [Vercel first-deployment behavior](https://vercel.com/docs/domains/working-with-domains/deploying-and-redirecting), [monorepo source configuration](https://vercel.com/docs/monorepos/monorepo-faq), [deployment authentication](https://vercel.com/docs/deployment-protection/methods-to-protect-deployments/vercel-authentication), [Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres). Provider documentation is configuration guidance, not evidence of completed Northside acceptance.

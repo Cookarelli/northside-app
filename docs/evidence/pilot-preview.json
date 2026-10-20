@@ -1,0 +1,112 @@
+{
+  "recordedAt": "2026-10-03T17:41:19.208Z",
+  "verification": "Protected preview readiness and unauthenticated denial only; no provider login or transaction",
+  "projects": [
+    {
+      "scope": "customer",
+      "url": "https://northside-customer-pilot-pt6gd2w7j-steves-projects-e37a4ef4.vercel.app",
+      "sourceCommit": "cb7ce164b2ee9d1f786c0ac711af923809c6fe25",
+      "vercelAnonymousStatus": 302,
+      "checks": [
+        {
+          "path": "/in-store",
+          "status": 200,
+          "location": null,
+          "setupGated": true,
+          "bytes": 14786
+        },
+        {
+          "path": "/in-store/q/N001",
+          "status": 200,
+          "location": null,
+          "setupGated": true,
+          "bytes": 14807
+        },
+        {
+          "path": "/in-store/staff",
+          "status": 200,
+          "location": null,
+          "setupGated": true,
+          "bytes": 14801
+        },
+        {
+          "path": "/shop",
+          "status": 200,
+          "location": null,
+          "setupGated": false,
+          "bytes": 15548
+        },
+        {
+          "path": "/cart",
+          "status": 200,
+          "location": null,
+          "setupGated": false,
+          "bytes": 13863
+        },
+        {
+          "path": "/staff/integrations/commerce-pilot",
+          "status": 200,
+          "location": null,
+          "setupGated": false,
+          "bytes": 14686
+        },
+        {
+          "path": "/api/private/orders",
+          "status": 503,
+          "location": null,
+          "setupGated": false,
+          "bytes": 39
+        },
+        {
+          "path": "/api/in-store/catalog",
+          "status": 503,
+          "location": null,
+          "setupGated": false,
+          "bytes": 110
+        }
+      ],
+      "browser": {
+        "errors": "",
+        "layout": "\"{\\\"title\\\":\\\"In-store · Northside | Northside\\\",\\\"content\\\":714,\\\"overflow\\\":false,\\\"overlay\\\":false}\"",
+        "screenshot": "docs/evidence/pilot-customer.png"
+      }
+    },
+    {
+      "scope": "control",
+      "url": "https://northside-control-pilot-fzmhopjnl-steves-projects-e37a4ef4.vercel.app",
+      "sourceCommit": "cb7ce164b2ee9d1f786c0ac711af923809c6fe25",
+      "vercelAnonymousStatus": 302,
+      "checks": [
+        {
+          "path": "/mission-control",
+          "status": 200,
+          "location": null,
+          "setupGated": true,
+          "bytes": 6562
+        },
+        {
+          "path": "/api/control/snapshot",
+          "status": 401,
+          "location": null,
+          "setupGated": false,
+          "bytes": 28
+        },
+        {
+          "path": "/api/worker/poll",
+          "method": "POST",
+          "status": 401
+        },
+        {
+          "path": "/api/control/commands",
+          "method": "POST",
+          "status": 403
+        }
+      ],
+      "browser": {
+        "errors": "",
+        "layout": "\"{\\\"title\\\":\\\"Northside / Mission Control\\\",\\\"content\\\":337,\\\"overflow\\\":false,\\\"overlay\\\":false}\"",
+        "screenshot": "docs/evidence/pilot-control.png"
+      }
+    }
+  ]
+}

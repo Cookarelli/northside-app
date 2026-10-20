@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "corepack pnpm install --frozen-lockfile --ignore-scripts",
+  "buildCommand": "corepack pnpm build",
+  "build": { "env": { "ENABLE_EXPERIMENTAL_COREPACK": "1" } },
+  "env": { "WEBHOOK_RECEIVER_MODE": "pilot-inbox" }
+}

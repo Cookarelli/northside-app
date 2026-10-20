@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-03T15:49:11.188Z",
+  "mode": "LOCAL FIXTURE — no real payments",
+  "checks": [
+    "Phone: exact product QR confirms without adding; quantity edit; checkout setup gate visible.",
+    "Counter journey: authenticated staff lookup, single claim, explicitly simulated payment, preparation, separate collection code, successful one-time collection.",
+    "iPad: shared flag survives reload, Start over clears basket, accelerated browser clock verifies 3-minute inactivity reset.",
+    "Preserved existing customer root renders; phone/iPad rehearsal pages have no horizontal overflow."
+  ],
+  "pageErrors": []
+}
