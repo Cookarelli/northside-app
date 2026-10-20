@@ -1,4 +1,33 @@
-# Northside supervised pilot — current update October 19, 2026
+# Northside supervised pilot — current update October 20, 2026
+
+## October 20 Shopify CLI authorized; sample POST returned 403
+
+Shopify CLI authorization succeeded. After adding the required local-only `[auth]`
+section with an empty redirect list, pinned CLI `4.9.4` reported that one
+`orders/updated` sample for API `2026-07` was enqueued. No `app dev`, app deployment,
+subscription mutation, order change or inventory change was run.
+
+Vercel recorded one serverless POST to the immutable receiver Preview at
+`2026-10-20T17:41:51.462Z`, request `95gwx-1792518111462-49e6a48f5e77`, returning
+**403**. The deployed source's only 403 path is `unrecognized_shop`, after HMAC
+verification. This is evidence consistent with the CLI sample having a missing
+or different shop header; the actual header and response body were not captured,
+so the precise rejection cause is not independently confirmed from the response.
+A platform-generated 403 cannot be ruled out by status alone. A restricted,
+read-only TLS database query at
+17:42:40 UTC found zero inbox receipts in the preceding 30 minutes. The Dev
+Dashboard showed no webhook deliveries for the app at inspection time.
+
+This proves the sample tool queued a request and the receiver logged a POST;
+it does **not** prove accepted Northside subscription delivery or durable
+provider-event ingestion. Keep the exact-shop restriction. Shopify's CLI samples
+cannot validate API subscriptions and are not retried. The next store-specific
+check needs an approved nonfinancial event on a designated Northside test order
+(or a provider-supported replay of such an event, if available), followed by
+provider delivery details and a matching durable receipt. Do not create or pay an
+order, change inventory, or enable a business processor just to obtain evidence.
+Purchases, collection, POS and real workers remain disabled; no production
+application launch or merge occurred.
 
 ## October 19 receiver deployed and subscriptions verified
 
@@ -22,10 +51,11 @@ does not enable automatic builds. Production contains only the credential-free
 404 initialization placeholder, not application code. No application production
 launch, merge, purchases, collection, POS or real workers were enabled.
 
-Remaining delivery evidence: Shopify CLI authorization is pending for its own
-synthetic delivery tool; no provider sample has been enqueued. Local signed
-canaries and API subscription readback do not prove Shopify-origin delivery or
-order/payment/collection behavior. The saved migration-operator database password
+Delivery evidence at that checkpoint was limited to local signed canaries and
+API subscription readback. The October 20 result above supersedes the pending
+CLI authorization; accepted Northside subscription delivery and
+order/payment/collection behavior remain unverified. The saved migration-operator database
+password
 still fails, but the dashboard fallback resolved this receiver's provisioning.
 See [receiver verification, IDs and stop procedure](shopify-webhook-receiver.md).
 

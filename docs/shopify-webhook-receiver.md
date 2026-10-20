@@ -1,6 +1,6 @@
 # Isolated Shopify webhook pilot receiver
 
-Status, October 19: **receiver Preview deployed; all four subscriptions created and verified**. The Customer and Mission Control Previews retain their existing protection. Purchases, collection, POS, real commerce processors and real coding workers remain disabled. Actual Shopify-origin delivery is still unverified; the official synthetic delivery tool is awaiting CLI sign-in.
+Status, October 20: **receiver Preview deployed; all four subscriptions created and verified**. The Customer and Mission Control Previews retain their existing protection. Purchases, collection, POS, real commerce processors and real coding workers remain disabled. CLI authorization and sample enqueue succeeded, but the receiver returned 403 and persisted no new receipt. Accepted Northside subscription delivery remains unverified.
 
 ## Hosted pilot verification
 
@@ -23,7 +23,26 @@ Four Admin API subscriptions were created and re-read with exact JSON format, en
 
 All point to the immutable receiver Preview above plus `/api/shopify/webhooks`. Fresh API inventory verified the exact app/installation and `read_orders` only before each create; the active Dev Dashboard version was rechecked. Attempt markers and returned IDs were saved privately before subsequent mutations. Re-running the read-only plan reports `keep` for all four; never blindly repeat a create after an uncertain response.
 
-The official pinned Shopify CLI `4.9.4` requires browser authorization for its synthetic delivery tool. The selected existing account alone did not authorize that command. No synthetic provider request has been enqueued yet. Shopify documents that [CLI sample delivery cannot validate API subscriptions](https://shopify.dev/docs/api/shopify-cli/app/app-webhook-trigger); even a successful sample does not prove real order-event or payment/collection behavior. No order or inventory change was made to obtain evidence.
+On October 20, the user completed authorization for pinned Shopify CLI `4.9.4`.
+The local CLI-only config required `[auth]` / `redirect_urls = []`; adding it does
+not change the deployed Shopify app. One `orders/updated` sample was enqueued.
+Vercel then recorded a serverless POST at `2026-10-20T17:41:51.462Z`, request
+`95gwx-1792518111462-49e6a48f5e77`, on the pinned receiver deployment, returning
+403. The deployed handler's only 403 branch is `unrecognized_shop`, after the
+signature check. This supports a missing/different sample shop header, but no raw
+header or response body was captured, so the precise cause is not confirmed.
+Status alone cannot exclude a platform-generated 403.
+A restricted read-only TLS query at 17:42:40 UTC found no receipts in the preceding
+30 minutes. Dev Dashboard showed no webhook deliveries at inspection time.
+
+Do not weaken the Northside shop check to accept a generic sample. Shopify
+[documents that CLI samples cannot validate API subscriptions](https://shopify.dev/docs/api/shopify-cli/app/app-webhook-trigger)
+and are not retried. A successful store-specific test still needs an approved
+nonfinancial event on a designated Northside test order, or a provider-supported
+replay if available, with provider delivery details and one matching durable
+receipt. No paid order, inventory change, new scope, collection or worker
+activation is authorized by this test. The local canary/replay evidence above
+remains valid; accepted Shopify subscription delivery is still a separate gate.
 
 ## Receiver boundary
 
