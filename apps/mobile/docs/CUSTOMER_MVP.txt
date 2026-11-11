@@ -1,0 +1,43 @@
+NORTHSIDE NATIVE CUSTOMER MVP
+
+Start from apps/mobile with Node24 and pnpm11.25.0:
+  pnpm install --frozen-lockfile --ignore-scripts
+  pnpm start:go
+For a company development build, follow AUTHENTICATION.txt and the staging guide.
+  pnpm build:check development
+  pnpm dlx eas-cli@27.4.1 build --profile development --platform android
+  pnpm dlx eas-cli@27.4.1 build --profile development --platform ios
+The last two commands create cloud builds and require approved company access,
+public IDs/origin, signing/devices and budget. No build/submission was started here.
+
+HOME shows approved published merchandise/releases, verified Northside events and
+operator-supplied store information. Unknown/unavailable content stays explicit.
+SHOP supports literal approved-collection search, Shopify productType categories,
+provider pagination, product detail, images and variant selection. Prices/current
+online availability expire after60seconds; no offline price/stock fallback exists.
+SCAN requests camera access only on Start camera. CameraView mounts only while the
+tab is focused, the app active, the user started it and permission granted. It stops
+on result, tab change, background or error. Manual lookup remains available after
+permission denial/hardware failure. No photos/audio are captured. QR links are
+submitted as lookup text to the pinned backend and never opened/fetched arbitrarily.
+The backend requires verified mappings, current Shopify identity/approval and
+unambiguous UPC/EAN matching. Scans never reserve inventory or enable purchasing.
+WALLET is authenticated/read-only, showing only a verified current ledger/tier and
+reward labels when launched. Disconnected/unlaunched/unenrolled states show no
+fabricated balances. There are no enrollment/redemption/earning/transfer controls.
+ACCOUNT shows existing profile/orders, owned service/break summaries, support and
+privacy/account deletion access. Deletion requires an explicit account-bound phrase
+and recent authentication, records a pending request, then signs out. The app never
+says data is deleted before the backend request is fulfilled. Native and provider
+SSO/logout/device acceptance limitations in AUTHENTICATION.txt still apply.
+
+Public configuration stays in .env.example / matching EAS environment. Server-only
+requirements are in ../customer/mobile-mvp.env.example and
+../customer/docs/NATIVE_CUSTOMER_MVP.txt. A configured HTTPS backend is required;
+unconfigured preview does not substitute synthetic products or private records.
+
+Privacy policy, direct deletion webpage, approved support/store information, deletion
+fulfillment/retention process, Shopify publication/mapping proof, staging auth and
+actual iPhone/Android development-build acceptance remain release prerequisites.
+The code is locally testable; do not claim store-review readiness until those pass.
+Do not activate checkout, rewards redemption, notifications or physical pickup.

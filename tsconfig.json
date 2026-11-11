@@ -43,6 +43,7 @@
     "node_modules",
     "**/.next",
     "apps/shopify-extension",
-    "apps/customer"
+    "apps/customer",
+    "apps/mobile"
   ]
 }

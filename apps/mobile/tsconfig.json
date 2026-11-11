@@ -1,0 +1,29 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "incremental": false,
+    "paths": {
+      "@northside/customer-contracts/service-requests": [
+        "../../packages/customer-contracts/src/service-requests.ts"
+      ],
+      "@northside/customer-contracts/shopping": [
+        "../../packages/customer-contracts/src/shopping.ts"
+      ],
+      "@northside/customer-contracts/tracking": [
+        "../../packages/customer-contracts/src/tracking.ts"
+      ]
+    },
+    "types": ["react", "node"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "config/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.tsx",
+    "app.config.ts"
+  ],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

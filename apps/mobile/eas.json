@@ -1,0 +1,49 @@
+{
+  "cli": { "version": "27.4.1", "appVersionSource": "local" },
+  "build": {
+    "base": {
+      "node": "24.22.1",
+      "pnpm": "11.25.0",
+      "ios": { "image": "macos-tahoe-26.6-xcode-27.0" },
+      "android": { "image": "ubuntu-26.04-jdk-17-ndk-r27b-sdk-58" }
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "env": { "MOBILE_APP_VARIANT": "development" }
+    },
+    "development-simulator": {
+      "extends": "development",
+      "ios": { "simulator": true }
+    },
+    "preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "environment": "preview",
+      "env": { "MOBILE_APP_VARIANT": "preview" },
+      "ios": {
+        "simulator": false,
+        "developmentClient": false,
+        "env": {
+          "MOBILE_IOS_INTERFACE_PREVIEW": "true",
+          "MOBILE_IOS_PREVIEW_IDENTIFIERS_APPROVED": "true",
+          "MOBILE_PREVIEW_IOS_BUNDLE_ID": "com.northsidecollectibles.customer.preview",
+          "MOBILE_PREVIEW_APPLE_TEAM_ID": "NF42JBZCBW",
+          "MOBILE_PREVIEW_SCHEME": "northside-collectibles-preview",
+          "MOBILE_EXPO_OWNER": "northside-collectibles",
+          "MOBILE_EAS_PROJECT_ID": "ecfde92e-a01e-4158-b0ce-13908afa39ab"
+        }
+      },
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "extends": "base",
+      "distribution": "store",
+      "environment": "production",
+      "env": { "MOBILE_APP_VARIANT": "production" },
+      "android": { "buildType": "app-bundle" }
+    }
+  }
+}

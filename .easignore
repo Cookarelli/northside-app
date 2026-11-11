@@ -1,0 +1,69 @@
+# iOS preview source upload allowlist, applied for the authorized build scope.
+# EAS CLI uses this instead of every .gitignore. Allow only the native app
+# and its file:../../packages/customer-contracts dependency.
+/*
+!/apps
+/apps/*
+!/apps/mobile
+!/packages
+/packages/*
+!/packages/customer-contracts
+
+# Never include Git data or nested dependency installations.
+**/.git
+**/.git/**
+**/node_modules
+**/node_modules/**
+
+# Private environment files remain backend/local only. The exact public template
+# filename is the sole environment-file exception; review its values before use.
+**/.env
+**/.env.*
+!/apps/mobile/**/.env.example
+!/packages/customer-contracts/**/.env.example
+
+# Local CLI/account state, caches, generated native projects and build outputs.
+**/.expo/
+**/.eas/
+**/.vercel/
+**/.supabase/
+**/.codex/
+**/.agents/
+**/.cache/
+**/.npm/
+**/.pnpm-store/
+**/.yarn/
+**/.next/
+**/.runtime/
+**/work/
+**/dist/
+**/build/
+**/coverage/
+**/playwright-report/
+**/test-results/
+**/ios/
+**/android/
+**/*.log
+**/*.tsbuildinfo
+**/.DS_Store
+
+# Signing keys, credentials and service-account files must never enter this
+# source upload. Later signing must use separately approved company/EAS handling.
+**/credentials.json
+**/credentials/
+**/*service-account*.json
+**/serviceAccount*.json
+**/google-services.json
+**/GoogleService-Info.plist
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.p8
+**/*.pem
+**/*.key
+**/*.mobileprovision
+**/*.provisionprofile
+**/*.cer
+**/*.crt
+**/*.cert

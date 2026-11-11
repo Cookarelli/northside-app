@@ -1,6 +1,9 @@
 packages:
   - apps/*
   - packages/*
+  # Native owns an isolated React Native dependency graph and local contract package.
+  - '!apps/mobile'
+  - '!packages/customer-contracts'
 allowBuilds:
   esbuild: true
   unrs-resolver: false

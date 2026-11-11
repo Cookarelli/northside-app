@@ -1,0 +1,55 @@
+{
+  "purpose": "Northside category packaging and user-supplied original bar photography; imagery is not product, price or inventory evidence.",
+  "assets": [
+    {
+      "file": "sports.webp",
+      "source": "/Users/northside/Documents/Codex/2026-10-29/northside-horizon-theme/theme/assets/northside-baseball-cutout.png",
+      "width": 278,
+      "height": 400,
+      "bytes": 26126
+    },
+    {
+      "file": "pokemon.webp",
+      "source": "/Users/northside/Documents/Codex/2026-10-29/northside-horizon-theme/theme/assets/northside-pokemon-cutout.png",
+      "width": 298,
+      "height": 400,
+      "bytes": 32472
+    },
+    {
+      "file": "entertainment.webp",
+      "source": "/Users/northside/Documents/Codex/2026-10-29/northside-horizon-theme/theme/assets/northside-entertainment-cutout.png",
+      "width": 268,
+      "height": 400,
+      "bytes": 25808
+    },
+    {
+      "file": "northside-led-wall.webp",
+      "source": "IMG_2941.JPG",
+      "provenance": "User-supplied original Northside photograph, October 30 2026",
+      "usage": "Hero \u2014 actual Northside blue LED wall",
+      "sourceSha256": "eee84d5e678dbbe44e62ae2f634378c07e572da2483e5c2b84539b85c93595b1",
+      "width": 1920,
+      "height": 1440,
+      "bytes": 68526,
+      "processing": "EXIF orientation applied, resized and encoded as WebP; metadata stripped; no content or color edits"
+    },
+    {
+      "file": "northside-lounge-bar.webp",
+      "source": "IMG_2942.JPG",
+      "provenance": "User-supplied original Northside photograph, October 30 2026",
+      "usage": "Lounge \u2014 actual Northside bar counter",
+      "sourceSha256": "fd71f35843f728f48c2ade7b4a563193362724e9284556312b23af205dd84fea",
+      "width": 1920,
+      "height": 1440,
+      "bytes": 141104,
+      "processing": "EXIF orientation applied, resized and encoded as WebP; metadata stripped; no content or color edits"
+    }
+  ],
+  "barPhotography": "User-supplied actual Northside photographs integrated. No stock or generated imagery.",
+  "designReference": {
+    "file": "Northside Collectibles Blue Neon Homepage.png",
+    "provenance": "User-supplied visual homepage reference",
+    "sha256": "9a353ccc991a5e894d9cd7431aed8517c490393c2c37f497333883813467b617",
+    "use": "Visual styling only; sample prices, commerce readiness, location and amenities are not treated as live data or authorization."
+  }
+}

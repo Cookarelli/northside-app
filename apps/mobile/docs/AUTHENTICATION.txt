@@ -1,0 +1,82 @@
+NORTHSIDE NATIVE AUTHENTICATION — LOCAL IMPLEMENTATION, LIVE ACCEPTANCE PENDING
+
+Run from apps/mobile with Node 24 and pnpm 11.25.0:
+  pnpm install --frozen-lockfile --ignore-scripts
+  pnpm typecheck
+  pnpm test
+  pnpm start:go
+The browser preview honestly shows staging setup required. Native authentication
+is disabled on web; Expo Go does not provide the registered company return scheme.
+For real authentication use a company development client after the setup below.
+
+Configure only public values in ignored .env.local (copy .env.example):
+  MOBILE_APP_VARIANT=development
+  MOBILE_DEVELOPMENT_API_ORIGIN=https://<approved-staging-host>
+  MOBILE_DEVELOPMENT_IOS_BUNDLE_ID=<approved company development ID>
+  MOBILE_DEVELOPMENT_ANDROID_PACKAGE=<approved company development package>
+  MOBILE_DEVELOPMENT_SCHEME=<approved unique development scheme>
+  MOBILE_EXPO_OWNER=<company Expo organization>
+  MOBILE_EAS_PROJECT_ID=<real project UUID>
+  MOBILE_IDENTIFIERS_APPROVED=true
+The return URI is derived exactly as <scheme>://auth/return. The backend allowlist
+must match it byte for byte. Distinct identifiers, schemes, API origins and secure
+storage namespaces separate development, preview and production. This implementation
+uses custom schemes to support iOS16.4+; HTTPS auth callbacks on iOS require newer
+OS versions and Associated Domains. They are not silently enabled here.
+
+Copy the same public values into the matching EAS environment using the company
+project dashboard. Local .env.local is ignored and is not uploaded to EAS.
+Then, after company membership/signing/device access and budget are confirmed:
+  pnpm build:check development
+  pnpm dlx eas-cli@27.4.1 whoami
+  pnpm dlx eas-cli@27.4.1 build --profile development --platform android
+  pnpm dlx eas-cli@27.4.1 build --profile development --platform ios
+These last commands create cloud builds; they have NOT been run by this work.
+Install the approved development build, then run pnpm start and open it on device.
+No store submission, remote update publication or purchasing is part of this task.
+
+SESSION BEHAVIOR
+- Existing confidential Shopify Customer Account OAuth runs on the backend. The
+  system browser opens an exact pinned backend auth/start URL. Provider PKCE,
+  state, nonce, issuer, audience and signed ID token checks use existing integration.
+- A separate native verifier/state binds a five-minute login intent and a one-use
+  ticket lasting at most60seconds. The approved app link contains ticket/intent/state,
+  never Shopify tokens or native session credentials. Ticket theft alone cannot exchange.
+- Native access credentials last at most10minutes. Rotating renewal credentials and
+  encrypted dedicated backend parents last at most the existing eight-hour absolute
+  parent lifetime. Rotation never extends that parent. Spent renewal replay revokes
+  its whole native family. Writes are never automatically retried after ambiguous loss.
+- Provider refresh occurs server-side only when the actual confidential grant includes
+  refresh_token. Otherwise expiration requires browser reauthentication; discovery
+  metadata alone is not evidence of client refresh support.
+- Only renewal credentials, pending native verifier/state/intent and a nonsecret
+  signed-out marker enter platform SecureStore. Access tokens and private records
+  remain in memory. No AsyncStorage/localStorage/cookie fallback exists. iOS uses
+  WHEN_UNLOCKED_THIS_DEVICE_ONLY; Android SecureStore backup exclusions are enabled.
+- Logout immediately wipes in-memory private state and aborts current reads, writes
+  the signed-out marker, attempts both secure-store deletions and asks the backend to
+  revoke the dedicated native parent. Offline failure is reported as unconfirmed;
+  a simultaneous OS storage write-and-delete failure cannot guarantee deletion and
+  is visibly reported. Reopen checks the signed-out marker before renewal.
+- Shopify system-browser SSO logout is NOT implemented. iOS requests an ephemeral
+  session, which the chosen browser may ignore; Android can remember Shopify SSO.
+  To switch users, sign out locally, sign out in the system browser if it remembers
+  the prior account, then choose the intended Shopify account. Do not claim a new
+  account was selected without seeing the verified account data on the device.
+- Backgrounding hides account details and aborts private reads; returning reloads
+  current data. No private on-disk cache, analytics payload or debug token logging.
+
+LIVE ACCEPTANCE IS STILL REQUIRED
+Use two operator-sanctioned staging identities and existing non-destructive order
+fixtures owned by those identities. Never use production customers for destructive
+checks. Record device/OS, build fingerprint, deployment revision, test-account label
+and PASS/FAIL without email, tokens, callback URLs, order addresses or private data.
+Test first/existing login, browser cancellation, denied consent, wrong/replayed
+callback, stale/expired access, renewal/no-refresh behavior, offline/reconnect,
+logout/reopen/back/app switch, A-to-B switching and late A responses, unauthorized
+and foreign-customer endpoints, real Customer Account order history/pagination,
+and customer-owned grading/consignment reads. Real account selection and browser
+SSO behavior remain release blockers until measured on both platforms.
+
+No backend deployment, hosted migration, provider registration, paid resource,
+production flag/product/inventory/price change or live customer test was performed.

@@ -1,0 +1,56 @@
+NORTHSIDE CUSTOMER NATIVE RELEASE QA — 2026-11-04
+
+Release decision: HOLD. Do not submit or activate production.
+The source audit fixes foreground absolute-session expiration, stack-route bottom
+safe areas and missing explicitly requested variants. Regression tests cover the
+deadline, account switching, suspended timers, exact-expiry acceptance, a removed
+scanned variant and a nonzero bottom device inset.
+
+Android scanning includes Google ML Kit through Expo Camera 58.0.14. Installed
+Gradle source declares barcode-scanning 17.3.0 and code-scanner 16.1.0. Google
+documents SDK diagnostic and installation data; camera images are processed on
+device, while this app sends scan text to the Northside backend for matching.
+The privacy screen now distinguishes Northside first-party analytics from SDK
+metrics. Do not declare “no data collected” based on absence of an analytics SDK.
+Reference: https://developers.google.com/ml-kit/android-data-disclosure
+Reference: https://developers.google.com/ml-kit/terms
+
+Local npm privacy manifests are evidence inputs only. Inspect the actual signed
+iOS archive/Xcode aggregate privacy report, required reasons and applicable Hermes
+and SDWebImage binary signatures. Inspect Android release dependency resolution,
+merged permissions/manifest and runtime network behavior on a company test device.
+Developer-client/Metro behavior is not production SDK behavior. No final App Privacy
+or Play Data Safety answer is approved by this source audit.
+
+Native customer records are memory-only and cleared on background/logout/expiry.
+SecureStore holds environment-scoped pending/renewal credentials and a nonsecret
+logout tombstone. Public product images may use Expo Image's disk cache. Browser
+SSO cookies, iOS Keychain uninstall behavior and server/provider records have their
+own lifecycle; native logout does not claim Shopify SSO logout or account erasure.
+Application expiry fields are not a company retention/purge policy. The company
+must approve actual retention, redacted logging and deletion fulfillment processes.
+
+Still required: approved public HTTPS API and restricted dedicated database,
+Shopify callback/client setup, current catalog approval/mappings, two sanctioned
+customer identities with real owned test data, a functioning reviewer account,
+company app IDs/EAS/signing access, iPhone and Android builds/devices, public policy/
+support/deletion resources, reviewed deletion fulfillment, actual store screenshots,
+final privacy declarations and company metadata/approval. The discovered older
+customer pilot redirects unauthenticated public requests to Vercel sign-in and is
+not proof of a usable mobile API. Do not configure the old inactive Supabase project.
+
+User confirmed these setup prerequisites are not yet available. No credentials,
+contacts, legal policy, retention period, positive barcode mapping or device result
+may be invented. Prepare reviewer credentials privately in the store consoles only
+after a real sanctioned test account has passed the complete login/order flow.
+
+Use existing CUSTOMER_MVP.txt and AUTHENTICATION.txt to start locally. Run native
+tests/typecheck plus the repository checks before building. Company development
+build preparation starts with pnpm build:check development after approved public
+configuration is supplied. Cloud builds require signing/company access and budget;
+no build, deployment, hosted migration or store submission is performed by QA.
+Checkout, redemption, notifications and physical pickup remain disabled.
+
+Final metadata correction: production builds no longer display the development/
+preview badge. Non-production variants retain it. A focused regression was added;
+final native count is 87, with 698 unique tests including unchanged backend/root suites.

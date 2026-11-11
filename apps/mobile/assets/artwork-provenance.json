@@ -1,0 +1,43 @@
+{
+  "source": "apps/customer/public/northside-logo.svg",
+  "sourceSha256": "75ee28f028957312a144dfc5a5848c72fa2ffb9fd1e54c0f387dff15e8bcba18",
+  "artwork": "Approved company SVG preserved byte-for-byte. PNGs rasterize the complete artwork without changing proportions or inventing a mark.",
+  "rasterizer": "sharp 0.35.5",
+  "files": {
+    "brand/northside-logo.svg": {
+      "sha256": "75ee28f028957312a144dfc5a5848c72fa2ffb9fd1e54c0f387dff15e8bcba18",
+      "bytes": 24467,
+      "width": 2070,
+      "height": 572,
+      "hasAlpha": true
+    },
+    "brand/northside-logo.png": {
+      "sha256": "14359d739ddad289f33262fdce671c2db06d41f3c56515c6af31b6b38920feee",
+      "bytes": 50453,
+      "width": 1024,
+      "height": 283,
+      "hasAlpha": true
+    },
+    "icon.png": {
+      "sha256": "266c352b91afc3395878de7981b035d12f7195c5ca6a5e7d84dd6cd9d03ca373",
+      "bytes": 43012,
+      "width": 1024,
+      "height": 1024,
+      "hasAlpha": false
+    },
+    "adaptive-icon.png": {
+      "sha256": "f1620ed5d926a5bd75faf889085f7d8a34305d34e10e09a41c245e02aa565f8c",
+      "bytes": 54150,
+      "width": 1024,
+      "height": 1024,
+      "hasAlpha": true
+    },
+    "splash.png": {
+      "sha256": "14359d739ddad289f33262fdce671c2db06d41f3c56515c6af31b6b38920feee",
+      "bytes": 50453,
+      "width": 1024,
+      "height": 283,
+      "hasAlpha": true
+    }
+  }
+}

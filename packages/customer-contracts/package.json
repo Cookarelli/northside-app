@@ -1,0 +1,18 @@
+{
+  "name": "@northside/customer-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mobile": "./src/mobile.ts",
+    "./catalog-query": "./src/catalog-query.ts",
+    "./mvp": "./src/mvp.ts",
+    "./shopping": "./src/shopping.ts",
+    "./tracking": "./src/tracking.ts",
+    "./service-requests": "./src/service-requests.ts"
+  },
+  "dependencies": {
+    "zod": "4.6.6"
+  }
+}

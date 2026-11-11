@@ -1,0 +1,65 @@
+PHYSICAL IPHONE PREVIEW — NOVEMBER 11, 2026
+
+This is the actual Northside customer app with Home, Shop, Scan, Wallet and Account,
+including the five corrected Phase 5 defects. It is not the scratch EAS-link project.
+The preview profile is internal distribution, simulator=false, developmentClient=
+false, with bundled JavaScript. No Metro connection is needed for the installed app.
+
+Approved preview identifiers, verified November 11, 2026:
+  Bundle: com.northsidecollectibles.customer.preview
+  Scheme: northside-collectibles-preview
+  Organization: northside-collectibles
+  Project UUID: ecfde92e-a01e-4158-b0ce-13908afa39ab
+  Apple team: NF42JBZCBW — Northside Collectibles Inc.
+The explicit bundle ID is registered with Apple under this team. EAS has the same
+project/team/bundle association. No certificate or provisioning profile was issued.
+iOS minimum 16.4, Expo 58.0.23, React Native 0.88.1; existing company artwork retained.
+
+The iOS preview profile explicitly enables interface-only mode. It must have no API
+origin, uses a scoped iOS identifier approval, and cannot be used for production or
+another build platform. Public configuration contains no server secrets. A clear
+interface-preview label appears on native screens. Customer services are not live.
+Home/Shop show honest unavailable merchandise/event states; no invented products,
+prices, wallet points, orders, successful login or transactions are provided. Camera
+permission/scanning may be exercised locally, but verified product matching needs
+the real backend. Account login and customer data/wallet remain unavailable until
+an approved integration is connected in a separately configured build.
+
+Local preflight with Node 24 from apps/mobile:
+  pnpm build:check preview ios
+This loads the profile's public iOS values and starts no job. EAS commands also need
+the existing ignored public .env.local explicitly loaded into their process and
+EAS_BUILD_PLATFORM=ios set explicitly for local configuration evaluation. EAS sets
+that platform on cloud workers, but does not set it for every local config read.
+The eventual build command must preserve the effective preview environment,
+including MOBILE_PREVIEW_APPLE_TEAM_ID, and use pinned EAS CLI 27.4.1. Do not start
+a build until the signing/device prerequisites below are complete.
+
+SIGNED BUILD PREREQUISITES
+Apple Developer Program organization membership is active; the authenticated
+Account Holder session verified team NF42JBZCBW, renewing November 9, 2027.
+The November 11 registration and EAS linkage did not create signing material.
+The owner explicitly requires confirmation before creating certificates/profiles.
+Register and verify the intended test iPhone(s), then obtain owner authorization
+for the Apple Distribution certificate and ad hoc provisioning profile. Verify
+the profile's team, exact bundle ID, certificate and processed device coverage.
+Dependency patch compatibility failures from the November 11 audit also remain.
+
+For the authorized device/signing stage: authenticate through the signing workflow,
+verify the team, run EAS device:create and open its real registration URL in Safari
+on the iPhone; confirm the device in EAS, finish ad-hoc signing and then authorize the
+existing preview iOS build. Inspect the exact source archive before any upload.
+No build, device registration, signing credential, installation URL, test on a real
+iPhone or store submission is claimed here. The root .easignore limits source upload
+to the native app and its shared contracts, excluding server code/keys/envs/caches.
+
+SHORT ACCEPTANCE ONCE AN IPA IS ACTUALLY INSTALLED
+1. Launch from the Home Screen without Metro; confirm branding and preview label.
+2. Navigate all five tabs; rotate/scale text and return from background.
+3. Shop: verify unavailable states without backend; never show sample merchandise.
+4. Scan: grant/deny camera permission, use manual fallback, background/return. Matching
+   is unavailable without backend; no scan reserves inventory or opens an arbitrary URL.
+5. Account/Wallet: verify disconnected/sign-in-unavailable states without fabricated
+   profile/orders/balances. Login return testing waits for approved provider setup.
+6. Disable networking/reopen: no stale private records, fabricated success or crash.
+Purchasing, rewards redemption, notifications and physical pickup remain disabled.
