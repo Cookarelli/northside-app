@@ -27,6 +27,7 @@
 **/.eas/
 **/.vercel/
 **/.supabase/
+**/.temp/
 **/.codex/
 **/.agents/
 **/.cache/

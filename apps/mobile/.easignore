@@ -1,6 +1,8 @@
 node_modules/
 .pnpm-store/
 .expo/
+.temp/
+**/.temp/
 dist/
 coverage/
 ios/

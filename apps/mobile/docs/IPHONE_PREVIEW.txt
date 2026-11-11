@@ -13,7 +13,7 @@ Approved preview identifiers, verified November 11, 2026:
   Apple team: NF42JBZCBW — Northside Collectibles Inc.
 The explicit bundle ID is registered with Apple under this team. EAS has the same
 project/team/bundle association. No certificate or provisioning profile was issued.
-iOS minimum 16.4, Expo 58.0.23, React Native 0.88.1; existing company artwork retained.
+iOS minimum 16.4, Expo 58.0.24, React Native 0.88.1; existing company artwork retained.
 
 The iOS preview profile explicitly enables interface-only mode. It must have no API
 origin, uses a scoped iOS identifier approval, and cannot be used for production or
@@ -39,11 +39,12 @@ SIGNED BUILD PREREQUISITES
 Apple Developer Program organization membership is active; the authenticated
 Account Holder session verified team NF42JBZCBW, renewing November 9, 2027.
 The November 11 registration and EAS linkage did not create signing material.
-The owner explicitly requires confirmation before creating certificates/profiles.
-Register and verify the intended test iPhone(s), then obtain owner authorization
-for the Apple Distribution certificate and ad hoc provisioning profile. Verify
+The owner authorized the EAS-managed Apple Distribution certificate and ad hoc
+provisioning profile on November 11 after confirmation. Register and verify the
+intended test iPhone(s) before creating the ad hoc provisioning profile. Verify
 the profile's team, exact bundle ID, certificate and processed device coverage.
-Dependency patch compatibility failures from the November 11 audit also remain.
+The ten Expo patch compatibility mismatches from the audit are resolved;
+online dependency validation and all 20 Expo Doctor checks pass.
 
 For the authorized device/signing stage: authenticate through the signing workflow,
 verify the team, run EAS device:create and open its real registration URL in Safari
