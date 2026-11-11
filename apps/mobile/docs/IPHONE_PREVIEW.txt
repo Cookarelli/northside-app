@@ -12,7 +12,9 @@ Approved preview identifiers, verified November 11, 2026:
   Project UUID: ecfde92e-a01e-4158-b0ce-13908afa39ab
   Apple team: NF42JBZCBW — Northside Collectibles Inc.
 The explicit bundle ID is registered with Apple under this team. EAS has the same
-project/team/bundle association. No certificate or provisioning profile was issued.
+project/team/bundle association. The registered iPhone 14 is included in the active
+ad hoc provisioning profile. EAS stores the verified Apple Distribution certificate
+and profile for this exact app/team; both expire November 11, 2027.
 iOS minimum 16.4, Expo 58.0.24, React Native 0.88.1; existing company artwork retained.
 
 The iOS preview profile explicitly enables interface-only mode. It must have no API
@@ -38,21 +40,23 @@ a build until the signing/device prerequisites below are complete.
 SIGNED BUILD PREREQUISITES
 Apple Developer Program organization membership is active; the authenticated
 Account Holder session verified team NF42JBZCBW, renewing November 9, 2027.
-The November 11 registration and EAS linkage did not create signing material.
-The owner authorized the EAS-managed Apple Distribution certificate and ad hoc
-provisioning profile on November 11 after confirmation. Register and verify the
-intended test iPhone(s) before creating the ad hoc provisioning profile. Verify
-the profile's team, exact bundle ID, certificate and processed device coverage.
+The owner authorized and confirmed creation of the EAS-managed Apple Distribution
+certificate and ad hoc profile on November 11. The profile's CMS signature, team,
+exact bundle entitlement, signing certificate and processed iPhone coverage were
+verified before EAS import. EAS readback confirms AD_HOC, active profile and one
+included iPhone. New devices require a refreshed profile and a new signed build.
 The ten Expo patch compatibility mismatches from the audit are resolved;
 online dependency validation and all 20 Expo Doctor checks pass.
 
-For the authorized device/signing stage: authenticate through the signing workflow,
-verify the team, run EAS device:create and open its real registration URL in Safari
-on the iPhone; confirm the device in EAS, finish ad-hoc signing and then authorize the
-existing preview iOS build. Inspect the exact source archive before any upload.
-No build, device registration, signing credential, installation URL, test on a real
-iPhone or store submission is claimed here. The root .easignore limits source upload
-to the native app and its shared contracts, excluding server code/keys/envs/caches.
+The first authorized build (73dfbd43-813b-481b-8755-7df42bfbd443) stopped at dependency
+installation with ERR_PNPM_IGNORED_BUILDS. The native workspace now explicitly allows
+only the locked @parcel/watcher@2.6.0 and esbuild@0.28.2 install scripts. Strict
+dependency build review and release-age checks remain enabled. Retry uses the
+verified existing remote credentials without refreshing or replacing them.
+Inspect the exact source archive before any upload. The root .easignore limits
+source to native/shared contracts, excluding server code/keys/envs/caches. No real
+iPhone launch or store submission is claimed by this document; consult the final
+build report for the actual build result and installation links.
 
 SHORT ACCEPTANCE ONCE AN IPA IS ACTUALLY INSTALLED
 1. Launch from the Home Screen without Metro; confirm branding and preview label.
