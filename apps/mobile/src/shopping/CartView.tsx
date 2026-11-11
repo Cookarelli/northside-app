@@ -68,7 +68,7 @@ export function CartView({ onScan }: { onScan: () => void }) {
           appearance="storefront"
           label="Start a new list"
           disabled={state.busy}
-          onPress={() => controller.reset()}
+          onPress={() => run(controller.newCart())}
         />
       )}
       {cart?.lines.map((line) => (
@@ -86,9 +86,18 @@ export function CartView({ onScan }: { onScan: () => void }) {
             {line.title}
           </Text>
           <Text style={ui.copy}>{line.variantTitle}</Text>
+          {line.sku && <Text style={ui.copy}>SKU: {line.sku}</Text>}
+          {line.availability === "unavailable" && (
+            <Text accessibilityRole="alert" style={ui.copy}>
+              Current quantity unavailable. Reduce or remove this item.
+            </Text>
+          )}
           <Text style={ui.label}>
             {money(line.priceCents)} each · reviewed price
           </Text>
+          {line.lineTotalCents !== undefined && (
+            <Text style={ui.copy}>Line total {money(line.lineTotalCents)}</Text>
+          )}
           <View style={styles.quantity}>
             <Pressable
               accessibilityRole="button"
@@ -114,8 +123,17 @@ export function CartView({ onScan }: { onScan: () => void }) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Increase quantity of ${line.title}, ${line.variantTitle}`}
-              accessibilityState={{ disabled: disabled || line.quantity >= 99 }}
-              disabled={disabled || line.quantity >= 99}
+              accessibilityState={{
+                disabled:
+                  disabled ||
+                  line.quantity >= 99 ||
+                  line.availability === "unavailable",
+              }}
+              disabled={
+                disabled ||
+                line.quantity >= 99 ||
+                line.availability === "unavailable"
+              }
               onPress={() =>
                 run(controller.set(line.variantId, line.quantity + 1))
               }
@@ -143,6 +161,12 @@ export function CartView({ onScan }: { onScan: () => void }) {
         <Card appearance="storefront">
           <Text style={ui.label}>Reviewed subtotal</Text>
           <Text style={styles.subtotal}>{money(cart.subtotalCents)}</Text>
+          {cart.cost && (
+            <Text style={ui.label}>
+              Shopify {cart.cost.estimated ? "estimated " : ""}total{" "}
+              {money(cart.cost.totalCents)}
+            </Text>
+          )}
           <Text style={ui.copy}>
             Final price and tax are confirmed at the counter. Your items are
             unpaid and stock is not reserved.
@@ -199,10 +223,25 @@ export function CartView({ onScan }: { onScan: () => void }) {
       ) : (
         <Button
           appearance="storefront"
-          label="Ready to Purchase"
-          disabled={!cart?.lines.length || state.busy || !!state.needsRefresh}
+          label={
+            cart?.source === "shopify_cart"
+              ? "Checkout unavailable"
+              : "Ready to Purchase"
+          }
+          disabled={
+            cart?.source === "shopify_cart" ||
+            !cart?.lines.length ||
+            state.busy ||
+            !!state.needsRefresh
+          }
           onPress={() => run(controller.ready())}
         />
+      )}
+      {cart?.source === "shopify_cart" && (
+        <Text style={ui.copy}>
+          Checkout and POS handoff are not enabled. This cart is unpaid and does
+          not reserve stock.
+        </Text>
       )}
       {cart && (
         <Button

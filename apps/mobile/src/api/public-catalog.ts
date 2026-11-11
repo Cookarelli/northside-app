@@ -11,56 +11,14 @@ import {
   mobileProductSchema,
   type CatalogInput,
 } from "@northside/customer-contracts/mvp";
-import { boundedText, MobileFailure } from "./client";
+import { boundedText, MobileFailure, type MobileApi } from "./client";
 import type { BrowseApi } from "../private-preview/catalog";
 
-// Public read scope only. This is NOT a selling policy or inventory snapshot.
-// Prices, images, titles, publication and availability always come from Shopify.
-export const PREVIEW_CATALOG_SELECTION = [
-  [
-    "15993233277297",
-    "64521944891761",
-    "746134150968",
-    "2023-24-panini-nba-prizm-hanger-box-regular",
-  ],
-  [
-    "15993233375601",
-    "64521945022833",
-    "746134172663",
-    "2023-24-panini-phoenix-basketball-mega-box-regular",
-  ],
-  [
-    "15993233473905",
-    "64521945121137",
-    "746134170294",
-    "2023-24-panini-select-nba-basketball-hanger-box-regular",
-  ],
-  [
-    "15993234522481",
-    "64521956622705",
-    "746134158551",
-    "2023-24-phoenix-nba-blaster-box-regular",
-  ],
-  [
-    "15993234555249",
-    "64521956655473",
-    "195166245478",
-    "2023-24-prizm-monopoly-nba-blaster-box-regular",
-  ],
-  [
-    "16135959413105",
-    "68224325419377",
-    "746134151026",
-    "2023-24-panini-nba-prizm-mega-box-square-nsk7kic6",
-  ],
-].map(([product, variant, barcode, handle]) =>
-  Object.freeze({
-    id: `gid://shopify/Product/${product}`,
-    variantId: `gid://shopify/ProductVariant/${variant}`,
-    barcode,
-    handle,
-  }),
-);
+export { NORTHSIDE_NATIVE_SELECTION as PREVIEW_CATALOG_SELECTION } from "../../../../packages/customer-contracts/src/native-scan";
+import {
+  NORTHSIDE_NATIVE_SELECTION as PREVIEW_CATALOG_SELECTION,
+  matchCatalogScan,
+} from "../../../../packages/customer-contracts/src/native-scan";
 
 export const PUBLIC_CATALOG_ENDPOINT = `https://${CATALOG_SHOP}/api/${CATALOG_SHOPIFY_API_VERSION}/graphql.json`;
 export const PUBLIC_CATALOG_QUERY = `query NorthsidePreviewCatalog($ids: [ID!]!) {
@@ -170,6 +128,7 @@ export class PublicCatalogApi implements BrowseApi {
   constructor(
     private readonly request: typeof fetch = fetch,
     private readonly timeoutMs = 12000,
+    private readonly scanFallback?: Pick<MobileApi, "scan">,
   ) {}
 
   private async read(
@@ -287,8 +246,35 @@ export class PublicCatalogApi implements BrowseApi {
       ...this.observation(),
     });
   }
-  scan: BrowseApi["scan"] = async () => {
-    throw new MobileFailure("not_configured");
+  scan: BrowseApi["scan"] = async (code, signal, format) => {
+    const page = await this.catalog({}, signal);
+    try {
+      return mobileProductSchema.parse({
+        contractVersion: MOBILE_CONTRACT_VERSION,
+        kind: "product-detail",
+        product: matchCatalogScan(page.products, code, format),
+        observedAt: page.observedAt,
+        expiresAt: page.expiresAt,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "unsupported_qr" &&
+        this.scanFallback
+      )
+        return this.scanFallback.scan(code, signal, format);
+      throw new MobileFailure(
+        error instanceof Error &&
+          [
+            "invalid_request",
+            "unsupported_qr",
+            "ambiguous_scan",
+            "not_found",
+          ].includes(error.message)
+          ? error.message
+          : "invalid_response",
+      );
+    }
   };
   info: BrowseApi["info"] = async () => {
     throw new MobileFailure("not_configured");

@@ -48,6 +48,9 @@ export const shoppingLineSchema = z.strictObject({
   image: catalogImageV1Schema.nullable(),
   quantity: z.number().int().min(1).max(99),
   priceCents: cents,
+  sku: label.nullable().optional(),
+  lineTotalCents: cents.optional(),
+  availability: z.enum(["available", "unavailable", "unknown"]).optional(),
 });
 export const shoppingCartSchema = z
   .strictObject({
@@ -64,6 +67,17 @@ export const shoppingCartSchema = z
         expiresAt: z.number().int().positive().safe(),
       })
       .nullable(),
+    source: z.literal("shopify_cart").optional(),
+    cost: z
+      .strictObject({
+        subtotalCents: cents,
+        totalCents: cents,
+        estimated: z.boolean(),
+        checkoutEnabled: z.literal(false),
+      })
+      .optional(),
+    observedAt: z.iso.datetime({ precision: 3 }).optional(),
+    expiresAt: z.iso.datetime({ precision: 3 }).optional(),
   })
   .superRefine((cart, ctx) => {
     const ids = cart.lines.map((line) => line.variantId);
@@ -77,11 +91,48 @@ export const shoppingCartSchema = z
       (sum, line) => sum + line.quantity * line.priceCents,
       0,
     );
-    if (!Number.isSafeInteger(subtotal) || subtotal !== cart.subtotalCents)
+    if (
+      !Number.isSafeInteger(subtotal) ||
+      (cart.source !== "shopify_cart" && subtotal !== cart.subtotalCents)
+    )
       ctx.addIssue({
         code: "custom",
         path: ["subtotalCents"],
         message: "subtotal_mismatch",
+      });
+    if (
+      cart.source === "shopify_cart" &&
+      (!cart.cost ||
+        cart.cost.subtotalCents !== cart.subtotalCents ||
+        cart.lines.some((l) => l.lineTotalCents === undefined) ||
+        cart.sample ||
+        cart.handoff ||
+        cart.phase !== "shopping" ||
+        !cart.observedAt ||
+        !cart.expiresAt ||
+        Date.parse(cart.expiresAt) - Date.parse(cart.observedAt) !== 60000)
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "invalid_shopify_cart_projection",
+      });
+    if (!cart.source && (cart.cost || cart.observedAt || cart.expiresAt))
+      ctx.addIssue({
+        code: "custom",
+        message: "unexpected_cart_provider_fields",
+      });
+    if (
+      !cart.source &&
+      cart.lines.some(
+        (line) =>
+          line.sku !== undefined ||
+          line.lineTotalCents !== undefined ||
+          line.availability !== undefined,
+      )
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "unexpected_legacy_line_metadata",
       });
     if (
       (cart.phase === "ready_for_staff") !== (cart.handoff !== null) ||
@@ -130,6 +181,9 @@ export const shoppingErrorCodeSchema = z.enum([
   "cart_line_not_found",
   "cart_empty",
   "handoff_expired_cancel_and_retry",
+  "storage_unavailable",
+  "cart_reconciliation_pending",
+  "checkout_disabled",
 ]);
 export const shoppingErrorSchema = z.strictObject({
   contractVersion: z.literal(MOBILE_CONTRACT_VERSION),

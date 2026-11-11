@@ -1,4 +1,14 @@
 const messages: Record<string, string> = {
+  unsupported_qr:
+    "This QR is not a verified Northside product label. Use the box barcode or ask an associate.",
+  ambiguous_scan:
+    "This code matches more than one variant. Ask an associate to verify the label.",
+  storage_unavailable:
+    "Secure cart storage is unavailable. No new change was sent. Try again when your device is unlocked.",
+  cart_reconciliation_pending:
+    "A previous cart change is still being checked. Wait 90 seconds, then refresh. Do not add it again yet.",
+  checkout_disabled:
+    "Checkout and POS handoff are not enabled. Your cart is unpaid and stock is not reserved.",
   not_configured: "In-store shopping is not connected yet. Ask an associate.",
   not_found:
     "We couldn’t find an approved item for this code. Try again or ask an associate.",

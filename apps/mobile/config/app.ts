@@ -47,6 +47,22 @@ export function createAppConfig(env: Environment): ExpoConfig {
   const origin = apiOrigin(env[`${prefix}_API_ORIGIN`], selected);
   const interfacePreview = env.MOBILE_IOS_INTERFACE_PREVIEW === "true";
   const publicCatalogPreview = env.MOBILE_PUBLIC_CATALOG_PREVIEW === "true";
+  const scanCart = env.MOBILE_NATIVE_SCAN_CART === "true";
+  const commerceOrigin = apiOrigin(
+    env[`${prefix}_COMMERCE_API_ORIGIN`],
+    selected,
+  );
+  if (
+    (scanCart || commerceOrigin) &&
+    (!scanCart ||
+      !commerceOrigin ||
+      selected !== "preview" ||
+      !publicCatalogPreview ||
+      origin)
+  )
+    throw new Error(
+      "Native scan/cart requires a separate approved preview commerce origin and public catalog mode.",
+    );
   const privateCatalogPreview = env.MOBILE_PRIVATE_CATALOG_PREVIEW === "true";
   if (
     publicCatalogPreview &&
@@ -187,7 +203,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
       supportsTablet: false,
       ...(iosId ? { bundleIdentifier: iosId } : {}),
       ...(appleTeamId ? { appleTeamId } : {}),
-      buildNumber: publicCatalogPreview ? "2" : "1",
+      buildNumber: scanCart ? "3" : publicCatalogPreview ? "2" : "1",
     },
     android: {
       ...(androidId ? { package: androidId } : {}),
@@ -259,6 +275,9 @@ export function createAppConfig(env: Environment): ExpoConfig {
         catalogContractVersion: "northside.catalog.v1",
         servicesConnected: false,
         ...(publicCatalogPreview ? { publicCatalogPreview: true } : {}),
+        ...(scanCart
+          ? { scanCart: true, commerceApiOrigin: commerceOrigin }
+          : {}),
         ...(interfacePreview ? { interfacePreview: true } : {}),
         ...(privateCatalogPreview ? { privateCatalogPreview: true } : {}),
         ...(scanRehearsal ? { scanRehearsal: true } : {}),

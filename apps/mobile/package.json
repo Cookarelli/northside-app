@@ -19,6 +19,7 @@
     "doctor": "expo-doctor",
     "build:check": "node --env-file-if-exists=.env.local --import tsx scripts/check-build.ts",
     "check:catalog:live": "node --import tsx scripts/check-public-catalog.ts",
+    "check:scan:live": "node --import tsx scripts/check-native-scan.ts",
     "bundle:ios": "expo export --platform ios --output-dir dist/ios",
     "bundle:android": "expo export --platform android --output-dir dist/android"
   },

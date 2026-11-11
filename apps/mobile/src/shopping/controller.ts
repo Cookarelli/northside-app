@@ -6,6 +6,13 @@ import {
 } from "@northside/customer-contracts/shopping";
 import { MobileFailure } from "../api/client";
 import { MOBILE_CONTRACT_VERSION } from "@northside/customer-contracts/mobile";
+import { currentObservation } from "@northside/customer-contracts/mvp";
+
+export type CartHandleStore = {
+  get(): Promise<string | null>;
+  set(handle: string): Promise<void>;
+  remove(): Promise<void>;
+};
 
 export type ShoppingPort = (
   action: ShoppingAction,
@@ -31,10 +38,12 @@ export class ShoppingController {
   private abort = new AbortController();
   private active: boolean;
   private expiry?: ReturnType<typeof setTimeout>;
+  private restored = false;
   constructor(
     private port: ShoppingPort | null,
     private now = Date.now,
     active = true,
+    private storage?: CartHandleStore,
   ) {
     this.active = active;
     this.state = {
@@ -60,6 +69,17 @@ export class ShoppingController {
   private publish(response: ShoppingResponse) {
     clearTimeout(this.expiry);
     const handoff = response.cart.handoff;
+    if (
+      response.cart.source === "shopify_cart" &&
+      !currentObservation(
+        {
+          observedAt: response.cart.observedAt!,
+          expiresAt: response.cart.expiresAt!,
+        },
+        this.now(),
+      )
+    )
+      throw new MobileFailure("refresh_required");
     const expired = !!handoff && handoff.expiresAt <= this.now();
     this.update({
       status: "ready",
@@ -80,6 +100,20 @@ export class ShoppingController {
       );
       (this.expiry as unknown as { unref?: () => void }).unref?.();
     }
+    if (response.cart.source === "shopify_cart") {
+      this.expiry = setTimeout(
+        () =>
+          this.update({
+            ...this.state,
+            status: "error",
+            cart: undefined,
+            error: "refresh_required",
+            needsRefresh: true,
+          }),
+        Math.max(0, Date.parse(response.cart.expiresAt!) - this.now()),
+      );
+      (this.expiry as unknown as { unref?: () => void }).unref?.();
+    }
   }
   private async request(
     action: ShoppingAction,
@@ -96,8 +130,36 @@ export class ShoppingController {
         : !!parsed.data.sessionToken)
     )
       throw new MobileFailure("invalid_response");
-    if (action.action === "start") this.token = parsed.data.sessionToken;
+    if (action.action === "start") {
+      this.token = parsed.data.sessionToken;
+      if (this.storage) await this.remember();
+      this.current(g);
+    }
     return parsed.data;
+  }
+  private async remember() {
+    if (!this.storage || !this.token) return;
+    try {
+      await this.storage.set(this.token);
+    } catch {
+      throw new MobileFailure("storage_unavailable");
+    }
+  }
+  private async restoreHandle() {
+    if (!this.storage || this.restored) return;
+    try {
+      const value = await this.storage.get();
+      if (value && !/^[A-Za-z0-9_-]{43}$/.test(value)) {
+        await this.storage.remove();
+        throw new MobileFailure("shopping_session_expired");
+      }
+      this.token = value ?? undefined;
+      this.restored = true;
+    } catch (error) {
+      throw error instanceof MobileFailure
+        ? error
+        : new MobileFailure("storage_unavailable");
+    }
   }
   private async perform(
     make: (cart: ShoppingCart) => ShoppingAction | undefined,
@@ -107,13 +169,19 @@ export class ShoppingController {
     if (!this.port || !this.active || this.state.busy) return;
     if (!refresh && this.state.needsRefresh)
       throw new MobileFailure("cart_changed_reload");
-    if (!this.token && !start) return;
     const g = ++this.generation;
     this.abort.abort();
     this.abort = new AbortController();
     const previous = this.state.cart;
     this.update({ ...this.state, busy: true, error: undefined });
     try {
+      if (this.storage) await this.restoreHandle();
+      this.current(g);
+      if (!this.token && !start) {
+        this.update({ status: "idle", busy: false });
+        return;
+      }
+      if (this.storage) await this.remember();
       let response: ShoppingResponse | undefined;
       let cart = previous;
       if (!this.token) {
@@ -147,8 +215,10 @@ export class ShoppingController {
           "session_expired",
           "unauthorized",
         ].includes(code)
-      )
+      ) {
         this.token = undefined;
+        if (this.storage) await this.storage.remove().catch(() => {});
+      }
       clearTimeout(this.expiry);
       // An uncertain write is never retried. Hide stale prices and reload the
       // canonical list before another mutation, even if the server committed it.
@@ -162,6 +232,23 @@ export class ShoppingController {
     }
   }
   read = () => this.perform(() => undefined, false, true);
+  restore = () => this.perform(() => undefined, false, true);
+  newCart = async () => {
+    if (this.state.busy) return;
+    if (this.storage) {
+      try {
+        await this.storage.remove();
+      } catch {
+        this.update({
+          status: "error",
+          busy: false,
+          error: "storage_unavailable",
+        });
+        return;
+      }
+    }
+    this.reset();
+  };
   start = () => this.perform(() => undefined, true, true);
   add = (
     code: string,

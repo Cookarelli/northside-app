@@ -159,7 +159,6 @@ describe("public Shopify preview catalog", () => {
     await expect(api.catalog({ feed: "singles-new-arrivals" })).rejects.toThrow(
       "not_configured",
     );
-    await expect(api.scan("746134150968")).rejects.toThrow("not_configured");
     await expect(api.info()).rejects.toThrow("not_configured");
     await expect(api.releases()).rejects.toThrow("not_configured");
     expect(api).not.toBeInstanceOf(MobileApi);
@@ -256,6 +255,8 @@ describe("public Shopify preview catalog", () => {
 describe("live catalog preview configuration", () => {
   const env = {
     ...profile.build.preview.ios.env,
+    MOBILE_NATIVE_SCAN_CART: undefined,
+    MOBILE_PREVIEW_COMMERCE_API_ORIGIN: undefined,
     MOBILE_APP_VARIANT: "preview",
     EAS_BUILD: "true",
     EAS_BUILD_PLATFORM: "ios",

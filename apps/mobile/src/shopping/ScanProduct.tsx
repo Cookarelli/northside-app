@@ -92,6 +92,12 @@ export function ScanProduct({
       )}
       {variant && (
         <>
+          {variant.identifiers.sku && (
+            <Text style={ui.copy}>SKU: {variant.identifiers.sku}</Text>
+          )}
+          {variant.identifiers.barcode && (
+            <Text style={ui.copy}>Barcode: {variant.identifiers.barcode}</Text>
+          )}
           <Text style={styles.price}>{money(variant.price.amountCents)}</Text>
           <Text style={ui.copy}>
             {available

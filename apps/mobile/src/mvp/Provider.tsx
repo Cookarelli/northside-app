@@ -13,6 +13,7 @@ import { AppState } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { MobileApi, MobileFailure } from "../api/client";
 import { PublicCatalogApi } from "../api/public-catalog";
+import { configuredCommerceApi } from "../shopping/native";
 import type { BrowseApi } from "../private-preview/catalog";
 import { usePrivatePreview } from "../private-preview/context";
 
@@ -37,7 +38,11 @@ export function MvpProvider({
         Constants.expoConfig?.extra?.mobile?.variant === "preview" &&
         !origin
       )
-        return new PublicCatalogApi();
+        return new PublicCatalogApi(
+          fetch,
+          undefined,
+          configuredCommerceApi() ?? undefined,
+        );
       return origin
         ? new MobileApi(origin, fetch, undefined, undefined, {
             variant: Constants.expoConfig?.extra?.mobile?.variant,

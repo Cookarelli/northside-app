@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+} from "react";
 import { useFocusEffect, useNavigation } from "expo-router";
 import {
   CameraView,
@@ -8,6 +15,7 @@ import {
 import {
   AppState,
   Platform,
+  Pressable,
   Text,
   TextInput,
   View,
@@ -68,7 +76,9 @@ export default function ScanScreen() {
   const [selected, setSelected] = useState<string>();
   const [added, setAdded] = useState(false);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
-  useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }); }, [result, view]);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [result, view]);
   const generation = useRef(0),
     busy = useRef(false),
     permissionBusy = useRef(false),
@@ -93,7 +103,16 @@ export default function ScanScreen() {
     requestRef.current = requestPermission;
     getRef.current = getPermission;
     resultRef.current = result;
-  }, [api, identity, active, view, permission, requestPermission, getPermission, result]);
+  }, [
+    api,
+    identity,
+    active,
+    view,
+    permission,
+    requestPermission,
+    getPermission,
+    result,
+  ]);
   const valid = (g: number) =>
     generation.current === g &&
     focusRef.current &&
@@ -172,7 +191,9 @@ export default function ScanScreen() {
     }
   }
   const startRef = useRef(startCamera);
-  useLayoutEffect(() => { startRef.current = startCamera; });
+  useLayoutEffect(() => {
+    startRef.current = startCamera;
+  });
   useFocusEffect(
     useCallback(() => {
       focusRef.current = true;
@@ -323,6 +344,7 @@ export default function ScanScreen() {
     pause();
     viewRef.current = "cart";
     setView("cart");
+    void shopping.read().catch(() => {});
   }
   async function add() {
     if (
@@ -406,6 +428,32 @@ export default function ScanScreen() {
       eyebrow="In-store shopping"
       title="Start Shopping"
     >
+      <View accessibilityRole="tablist" style={ui.row}>
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: view === "scan" }}
+          style={[ui.chip, view === "scan" && ui.selected]}
+          onPress={() => {
+            viewRef.current = "scan";
+            setView("scan");
+            nextItem();
+          }}
+        >
+          <Text style={[ui.label, view === "scan" && ui.selectedLabel]}>
+            Scan
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: view === "cart" }}
+          style={[ui.chip, view === "cart" && ui.selected]}
+          onPress={openCart}
+        >
+          <Text style={[ui.label, view === "cart" && ui.selectedLabel]}>
+            Cart{count ? ` (${count})` : ""}
+          </Text>
+        </Pressable>
+      </View>
       {Constants.expoConfig?.extra?.mobile?.scanRehearsal === true && (
         <Text style={styles.rehearsal}>
           LOCAL REHEARSAL · SYNTHETIC TEST ITEMS
