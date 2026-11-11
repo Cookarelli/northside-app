@@ -52,7 +52,7 @@ type Schema<T> = {
 };
 // Covers the maximum bounded catalog/300-service DTOs, including UTF-8 labels.
 export const MOBILE_RESPONSE_LIMIT = 4 * 1024 * 1024;
-async function boundedText(response: Response) {
+export async function boundedText(response: Response) {
   const length = Number(response.headers.get("content-length"));
   if (Number.isFinite(length) && length > MOBILE_RESPONSE_LIMIT)
     throw new MobileFailure("invalid_response");

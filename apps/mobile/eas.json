@@ -27,7 +27,7 @@
         "simulator": false,
         "developmentClient": false,
         "env": {
-          "MOBILE_IOS_INTERFACE_PREVIEW": "true",
+          "MOBILE_PUBLIC_CATALOG_PREVIEW": "true",
           "MOBILE_IOS_PREVIEW_IDENTIFIERS_APPROVED": "true",
           "MOBILE_PREVIEW_IOS_BUNDLE_ID": "com.northsidecollectibles.customer.preview",
           "MOBILE_PREVIEW_APPLE_TEAM_ID": "NF42JBZCBW",

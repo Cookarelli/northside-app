@@ -84,8 +84,13 @@ these commands and `eas.json`, rather than installed in app dependencies as
 Expo Doctor recommends. Raw EAS commands must follow the local preflight.
 `development-simulator` is available for an unsigned iOS simulator build.
 `preview` uses internal distribution; `production` is a future store profile.
+The approved iOS preview connects the six-product public Shopify catalog without
+a customer backend or token; see [live catalog setup and acceptance](docs/LIVE_CATALOG.md).
+Its public identifiers and catalog mode are in `eas.json`; run
+`pnpm build:check preview ios` before an iOS preview build. Other cloud profiles
+still require their own approved API origins and identities.
 No submit configuration, automatic submission, remote version allocation or OTA
-publication is enabled. No cloud build was started by this scaffold.
+publication is enabled. Build and physical-device results are recorded separately.
 
 ## Native authentication
 

@@ -46,11 +46,37 @@ export function createAppConfig(env: Environment): ExpoConfig {
   const prefix = `MOBILE_${selected.toUpperCase()}`;
   const origin = apiOrigin(env[`${prefix}_API_ORIGIN`], selected);
   const interfacePreview = env.MOBILE_IOS_INTERFACE_PREVIEW === "true";
+  const publicCatalogPreview = env.MOBILE_PUBLIC_CATALOG_PREVIEW === "true";
   const privateCatalogPreview = env.MOBILE_PRIVATE_CATALOG_PREVIEW === "true";
+  if (
+    publicCatalogPreview &&
+    (selected !== "preview" ||
+      origin ||
+      interfacePreview ||
+      privateCatalogPreview ||
+      (env.EAS_BUILD === "true" && env.EAS_BUILD_PLATFORM !== "ios"))
+  )
+    throw new Error(
+      "Public catalog is an isolated preview with no customer API; EAS requires iOS.",
+    );
   const scanRehearsal = env.MOBILE_SCAN_REHEARSAL === "true";
-  if (scanRehearsal && (selected !== "development" || !origin || !["localhost", "127.0.0.1", "[::1]"].includes(new URL(origin).hostname) || env.EAS_BUILD === "true"))
-    throw new Error("Scan rehearsal requires a loopback development API and cannot be built with EAS.");
-  if (privateCatalogPreview && (selected !== "preview" || origin || interfacePreview || env.EAS_BUILD === "true"))
+  if (
+    scanRehearsal &&
+    (selected !== "development" ||
+      !origin ||
+      !["localhost", "127.0.0.1", "[::1]"].includes(new URL(origin).hostname) ||
+      env.EAS_BUILD === "true")
+  )
+    throw new Error(
+      "Scan rehearsal requires a loopback development API and cannot be built with EAS.",
+    );
+  if (
+    privateCatalogPreview &&
+    (selected !== "preview" ||
+      origin ||
+      interfacePreview ||
+      env.EAS_BUILD === "true")
+  )
     throw new Error("Private catalog is a disconnected browser preview only.");
   if (
     interfacePreview &&
@@ -108,7 +134,19 @@ export function createAppConfig(env: Environment): ExpoConfig {
     throw new Error("Invalid EAS project identifier.");
   if (owner && !/^[a-z0-9][a-z0-9-]{1,38}$/.test(owner))
     throw new Error("Invalid Expo organization name.");
-  if (env.EAS_BUILD === "true" && interfacePreview) {
+  if (env.EAS_BUILD === "true" && publicCatalogPreview) {
+    if (
+      iosId !== "com.northsidecollectibles.customer.preview" ||
+      appleTeamId !== "NF42JBZCBW" ||
+      scheme !== "northside-collectibles-preview" ||
+      owner !== "northside-collectibles" ||
+      projectId !== "ecfde92e-a01e-4158-b0ce-13908afa39ab" ||
+      env.MOBILE_IOS_PREVIEW_IDENTIFIERS_APPROVED !== "true"
+    )
+      throw new Error(
+        "Public catalog preview requires the verified Northside iOS team, identifiers and Expo project.",
+      );
+  } else if (env.EAS_BUILD === "true" && interfacePreview) {
     if (
       !iosId ||
       !scheme ||
@@ -149,7 +187,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
       supportsTablet: false,
       ...(iosId ? { bundleIdentifier: iosId } : {}),
       ...(appleTeamId ? { appleTeamId } : {}),
-      buildNumber: "1",
+      buildNumber: publicCatalogPreview ? "2" : "1",
     },
     android: {
       ...(androidId ? { package: androidId } : {}),
@@ -220,6 +258,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
         apiBasePath: "/api/mobile/v1",
         catalogContractVersion: "northside.catalog.v1",
         servicesConnected: false,
+        ...(publicCatalogPreview ? { publicCatalogPreview: true } : {}),
         ...(interfacePreview ? { interfacePreview: true } : {}),
         ...(privateCatalogPreview ? { privateCatalogPreview: true } : {}),
         ...(scanRehearsal ? { scanRehearsal: true } : {}),
