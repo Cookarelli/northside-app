@@ -11,8 +11,8 @@ import {
   unseal,
   validToken,
 } from "./security";
-import { customerContext } from "./customer-commerce";
-import { createCart, type Query } from "./storefront";
+import { customerContext, verifyBuyerMapping } from "./customer-commerce";
+import { createCart, type Query, type CartPolicy } from "./storefront";
 export const CART_COOKIE = "__Host-ns_cart";
 export type SavedCart = {
   token_hash: string;
@@ -41,35 +41,79 @@ export async function cartOn(
 }
 export async function withCart<T>(
   query: Query,
-  options: { create: boolean; bind: boolean },
+  options: { create: boolean; bind: boolean; salePolicy?: CartPolicy },
   fn: (id: string, token: string | undefined, db: Sql) => Promise<T>,
 ) {
   const context = await customerContext(true),
     jar = await cookies();
-  let handle = jar.get(CART_COOKIE)?.value;
+  const handle = jar.get(CART_COOKIE)?.value;
   const customerId = context?.actor.customer_id || null;
-  let created = false;
-  const result = await transaction("commerce", async (db) => {
-    if (!handle && options.create) {
-      handle = opaqueToken();
-      const hash = hashToken(handle),
-        cart = await createCart(query, context?.accessToken);
-      await db.query(
-        "insert into ns.commerce_carts(token_hash,tenant_id,customer_id,encrypted_cart) values($1,$2,$3,$4)",
-        [hash, TENANT, customerId, seal({ id: cart.id }, hash)],
-      );
-      created = true;
-    }
-    const saved = await cartOn(db, handle, customerId);
-    const value = await fn(saved.cartId, context?.accessToken, db);
-    if (options.bind && customerId && !saved.row.customer_id)
-      await db.query(
-        "update ns.commerce_carts set customer_id=$3 where tenant_id=$1 and token_hash=$2",
-        [TENANT, saved.row.token_hash, customerId],
-      );
-    return value;
+  if (context && options.bind) await verifyBuyerMapping(context);
+  return runSavedCart(
+    (fn) => transaction("commerce", fn),
+    query,
+    handle,
+    customerId,
+    options,
+    (createdHandle) => {
+      jar.set(CART_COOKIE, createdHandle, {
+        ...cookieOptions,
+        maxAge: 10 * 86400,
+      });
+    },
+    (id, db) => fn(id, context?.accessToken, db),
+  );
+}
+
+type CartTransaction = <T>(fn: (db: Sql) => Promise<T>) => Promise<T>;
+// Shared orchestration for the real request wrapper and isolated SQL acceptance.
+export async function runSavedCart<T>(
+  transact: CartTransaction,
+  query: Query,
+  handle: string | undefined,
+  customerId: string | null,
+  options: { create: boolean; bind: boolean; salePolicy?: CartPolicy },
+  remember: (handle: string) => void,
+  fn: (id: string, db: Sql) => Promise<T>,
+) {
+  // Commit ownership BEFORE sending a buyer token to Shopify. Provider mutations
+  // cannot be rolled back with SQL, including when their response is lost.
+  const prepared = await transact((db) =>
+    prepareCartOn(db, query, handle, customerId, options),
+  );
+  if (prepared.created) remember(prepared.handle);
+  return transact(async (db) => {
+    const saved = await cartOn(db, prepared.handle, customerId);
+    return fn(saved.cartId, db);
   });
-  if (created)
-    jar.set(CART_COOKIE, handle!, { ...cookieOptions, maxAge: 10 * 86400 });
-  return result;
+}
+
+// Trusted server context only; callers must commit this transaction before any
+// buyer-bearing provider operation. Never accept customerId from a request body.
+export async function prepareCartOn(
+  db: Sql,
+  query: Query,
+  handle: string | undefined,
+  customerId: string | null,
+  options: { create: boolean; bind: boolean; salePolicy?: CartPolicy },
+) {
+  let created = false;
+  if (!handle && options.create) {
+    handle = opaqueToken();
+    const hash = hashToken(handle);
+    // A failed local commit can orphan only an anonymous cart, not buyer data.
+    const cart = await createCart(query, undefined, options.salePolicy);
+    await db.query(
+      "insert into ns.commerce_carts(token_hash,tenant_id,customer_id,encrypted_cart) values($1,$2,$3,$4)",
+      [hash, TENANT, customerId, seal({ id: cart.id }, hash)],
+    );
+    created = true;
+  }
+  const saved = await cartOn(db, handle, customerId);
+  if (options.bind && customerId && !saved.row.customer_id)
+    await db.query(
+      "update ns.commerce_carts set customer_id=$3 where tenant_id=$1 and token_hash=$2",
+      [TENANT, saved.row.token_hash, customerId],
+    );
+  return { handle: handle!, created };
 }

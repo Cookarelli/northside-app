@@ -92,7 +92,7 @@ export async function consignmentAudit(
   );
 }
 const fields =
-  "i.id,i.card_id,i.case_id,i.customer_id,c.description,i.provider_reference,i.submission_reference,i.listing_reference,i.received_date,i.channel,i.asking_cents,i.sale_cents,i.sale_verified_at,i.fees_cents,i.currency,i.state_key,i.payout_status,i.customer_notes,i.version,i.updated_at,i.source_updated_at";
+  "i.id,i.card_id,i.case_id,i.customer_id,c.description,i.provider_reference,i.provider_card_reference,i.submission_reference,i.listing_reference,i.received_date,i.channel,i.asking_cents,i.sale_cents,i.sale_verified_at,i.fees_cents,i.currency,i.state_key,i.payout_status,i.customer_notes,i.version,i.updated_at,i.source_updated_at";
 const join =
   "from ns.consignment_items i join ns.card_items c on c.tenant_id=i.tenant_id and c.id=i.card_id";
 function condition(a: Actor) {
@@ -116,12 +116,45 @@ async function financial(
   i: ConsignmentItem,
 ): Promise<ConsignmentItem> {
   const s = await settlementSummary(db, a, i.id),
-    net =
+    legacyNet =
       i.sale_verified_at && i.sale_cents !== null && i.fees_cents !== null
         ? i.sale_cents - i.fees_cents
         : null;
+  const agreement = (
+    await db.query<{ payout_due_cents: string; offer_version: string }>(
+      "select payout_due_cents::text,offer_version from ns.consignment_offer_acceptances where tenant_id=$1 and item_id=$2",
+      [a.tenant_id, i.id],
+    )
+  ).rows[0];
+  const requestOrigin = (
+    await db.query<{ service_request_id: string | null }>(
+      "select service_request_id from ns.consignment_items where tenant_id=$1 and id=$2",
+      [a.tenant_id, i.id],
+    )
+  ).rows[0]?.service_request_id;
+  const net = agreement
+    ? Number(agreement.payout_due_cents)
+    : requestOrigin
+      ? null
+      : legacyNet;
   return {
     ...i,
+    financial_basis: agreement
+      ? "accepted_agreement"
+      : requestOrigin
+        ? "pending_agreement"
+        : "legacy_net",
+    agreement_version: agreement?.offer_version ?? null,
+    // Legacy partner/order/listing references have no per-card privacy invariant.
+    // Keep them staff-only; a separate explicitly entered card reference is safe
+    // to show on that customer's card and never grants provider-order access.
+    ...(a.customer_id
+      ? {
+          provider_reference: null,
+          submission_reference: "",
+          listing_reference: "",
+        }
+      : {}),
     ...s,
     net_cents: net,
     payout_status:
@@ -233,6 +266,7 @@ export async function consignmentDetail(
 }
 const editableText = [
   "provider_reference",
+  "provider_card_reference",
   "submission_reference",
   "listing_reference",
   "channel",
@@ -336,7 +370,7 @@ export async function createConsignment(
     [a.tenant_id, card, customer, caseId, description],
   );
   await db.query(
-    "insert into ns.consignment_items(tenant_id,id,card_id,case_id,customer_id,request_id,state_key,received_date,channel,asking_cents,sale_cents,sale_verified_at,fees_cents,currency,provider_reference,submission_reference,listing_reference,customer_notes,source_updated_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'USD',$14,$15,$16,$17,$18)",
+    "insert into ns.consignment_items(tenant_id,id,card_id,case_id,customer_id,request_id,state_key,received_date,channel,asking_cents,sale_cents,sale_verified_at,fees_cents,currency,provider_reference,submission_reference,listing_reference,customer_notes,source_updated_at,provider_card_reference) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'USD',$14,$15,$16,$17,$18,$19)",
     [
       a.tenant_id,
       id,
@@ -356,6 +390,7 @@ export async function createConsignment(
       v.listing_reference,
       v.customer_notes,
       v.source_updated_at,
+      v.provider_card_reference,
     ],
   );
   if (b.sale_evidence)
@@ -382,6 +417,42 @@ export async function updateConsignment(
   if (b.customer_id !== undefined && b.customer_id !== old.customer_id)
     throw new AccessError(409, "ownership_cannot_be_reassigned");
   const v = itemValues(b, old);
+  if (old.financial_basis !== "legacy_net") {
+    if (
+      v.sale_cents !== null &&
+      !["sold", "awaiting_settlement", "paid", "exception"].includes(
+        v.state_key,
+      )
+    )
+      throw new AccessError(409, "record_sale_at_sold_stage");
+    const next: Record<string, string[]> = {
+      received: ["received", "accepted", "declined", "exception"],
+      accepted: ["accepted", "declined", "preparing", "returned", "exception"],
+      declined: ["declined", "accepted", "returned", "exception"],
+      preparing: ["preparing", "submitted", "listed", "returned", "exception"],
+      submitted: ["submitted", "processing", "listed", "returned", "exception"],
+      processing: ["processing", "listed", "returned", "exception"],
+      listed: ["listed", "sold", "preparing", "returned", "exception"],
+      sold: ["sold", "awaiting_settlement", "exception"],
+      awaiting_settlement: ["awaiting_settlement", "exception"],
+      paid: ["paid"],
+      returned: ["returned"],
+      exception: [
+        "exception",
+        "accepted",
+        "declined",
+        "preparing",
+        "listed",
+        "sold",
+        "awaiting_settlement",
+        "returned",
+      ],
+    };
+    if (!next[old.state_key]?.includes(v.state_key))
+      throw new AccessError(409, "consignment_item_review_transition_required");
+    if (v.state_key === "listed" && !v.listing_reference)
+      throw new AccessError(400, "listing_reference_required");
+  }
   if (
     old.settlement_count &&
     (v.sale_cents !== old.sale_cents || v.fees_cents !== old.fees_cents)
@@ -419,7 +490,7 @@ export async function updateConsignment(
   }
   await consignmentReason(db, b.reason, source);
   await db.query(
-    "update ns.consignment_items set state_key=$3,received_date=$4,channel=$5,asking_cents=$6,sale_cents=$7,sale_verified_at=$8,fees_cents=$9,provider_reference=$10,submission_reference=$11,listing_reference=$12,customer_notes=$13,source_updated_at=$14,version=version+1,updated_at=clock_timestamp() where tenant_id=$1 and id=$2",
+    "update ns.consignment_items set state_key=$3,received_date=$4,channel=$5,asking_cents=$6,sale_cents=$7,sale_verified_at=$8,fees_cents=$9,provider_reference=$10,submission_reference=$11,listing_reference=$12,customer_notes=$13,source_updated_at=$14,provider_card_reference=$15,version=version+1,updated_at=clock_timestamp() where tenant_id=$1 and id=$2",
     [
       a.tenant_id,
       id,
@@ -435,6 +506,7 @@ export async function updateConsignment(
       v.listing_reference,
       v.customer_notes,
       v.source_updated_at,
+      v.provider_card_reference,
     ],
   );
   if (b.sale_evidence)
@@ -499,6 +571,11 @@ export async function recordSettlement(
     amount = -original.amount_cents;
   } else {
     amount = integer(b.amount_cents, 0, 100000000);
+    if (
+      old.financial_basis !== "legacy_net" &&
+      !["sold", "awaiting_settlement"].includes(old.state_key)
+    )
+      throw new AccessError(409, "sold_stage_required_for_recorded_payout");
     if (old.net_cents === null || old.net_cents < 0)
       throw new AccessError(409, "verified_sale_and_known_fees_required");
     if (

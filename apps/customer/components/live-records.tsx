@@ -1,6 +1,7 @@
 import { LogoutControl } from "./logout";
 import Link from "next/link";
 import { StaffInvite } from "./staff-invite";
+import { StaffHome, StaffSignedOut } from "./staff-home";
 import { privateRequest } from "@/lib/server/http";
 import { authReadiness } from "@/lib/server/providers";
 import { consignmentItems } from "@/lib/server/consignment";
@@ -126,69 +127,17 @@ export async function StaffWorkspace() {
           }));
     return { role: actor.staff_role, cards };
   }).catch(() => null);
-  if (!state)
-    return (
-      <div className="empty">
-        <h1>Staff workspace</h1>
-        <p>An active invited staff membership is required.</p>
-        <Link className="button" href="/staff/login">
-          Staff sign-in
-        </Link>
-      </div>
-    );
+  if (!state) return <StaffSignedOut />;
   return (
-    <>
-      <div className="intro">
-        <p className="eyebrow">INVITED STAFF WORKSPACE</p>
-        <h1>Northside operations</h1>
-        <p>
-          Signed in as {state.role?.replaceAll("_", " ")}. Permissions are
-          checked by the server and database.
-        </p>
-        <SignOut />
-        <Link className="button" href="/staff/grading">
-          Open grading desk →
-        </Link>
-        <Link className="button secondary" href="/staff/consignment">
-          Open consignment desk →
-        </Link>
-        <Link className="button secondary" href="/staff/store">
-          Open store workspace →
-        </Link>
-        <Link className="button secondary" href="/staff/breaks">
-          Open break desk →
-        </Link>
-        <Link className="button secondary" href="/staff/rewards">
-          Open rewards desk →
-        </Link>
-      </div>
-      {["owner", "admin"].includes(state.role || "") && (
-        <StaffInvite owner={state.role === "owner"} />
-      )}
-      {state.cards.map((card) => (
-        <article className="case" key={card.id}>
-          <h2>{card.description}</h2>
-          <p>
-            {card.kind} · {card.status}
-          </p>
-        </article>
-      ))}
-      {!state.cards.length && (
-        <div className="empty">
-          <h2>No operational records to display</h2>
-          <p>
-            Grading and consignment intake are available in their saved
-            workspaces.
-          </p>
-        </div>
-      )}
-      <p className="fine">
-        Public purchases, loyalty earning/redemption, scanning, aisle navigation
-        and pickup remain disabled.
-      </p>
-      <Link className="back" href="/staff/integrations" prefetch={false}>
-        Integration health →
-      </Link>
-    </>
+    <StaffHome
+      role={state.role ?? ""}
+      cards={state.cards}
+      signOut={<SignOut />}
+      adminTools={
+        ["owner", "admin"].includes(state.role || "")
+          ? <StaffInvite owner={state.role === "owner"} />
+          : undefined
+      }
+    />
   );
 }

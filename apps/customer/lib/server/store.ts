@@ -9,6 +9,7 @@ import { type Query, storefront } from "./storefront";
 import {
   inventoryPools,
   parseScan,
+  scanCandidates,
   pickupNext,
   type Aisle,
   type StoreNode,
@@ -320,6 +321,7 @@ export type CatalogProof = {
   id: string;
   title: string;
   handle: string;
+  featuredImage?: { url: string; altText: string | null } | null;
   variants: {
     nodes: {
       id: string;
@@ -337,7 +339,7 @@ export type CatalogProof = {
 export async function productProof(query: Query, id: string) {
   const p = (
     await query<{ node: CatalogProof | null }>(
-      "query ScannedProduct($id:ID!){node(id:$id){... on Product{id title handle variants(first:100){nodes{id title sku barcode availableForSale currentlyNotInStock quantityAvailable price{amount currencyCode}} pageInfo{hasNextPage}}}}}",
+      "query ScannedProduct($id:ID!){node(id:$id){... on Product{id title handle featuredImage{url altText} variants(first:100){nodes{id title sku barcode availableForSale currentlyNotInStock quantityAvailable price{amount currencyCode}} pageInfo{hasNextPage}}}}}",
       { id: gid(id, "Product") },
     )
   ).node;
@@ -616,8 +618,40 @@ export async function resolveScan(
   input: unknown,
   mode: StoreMode = "live",
   query?: Query,
+  format?: "ean13",
 ): Promise<ScanResult> {
   const sample = storeMode(mode);
+  const candidates =
+    typeof input === "string" ? scanCandidates(input, format) : [];
+  if (candidates.length > 1) {
+    const found: ScanResult[] = [];
+    for (const code of candidates) {
+      const parsed = parseScan(code, qrOrigin(mode), sample);
+      const targets = (
+        await db.query("select * from ns.store_public_target($1,$2,$3)", [
+          parsed.kind,
+          parsed.value,
+          sample,
+        ])
+      ).rows;
+      if (!targets.length) continue;
+      // A present mapping must pass the existing registry/Storefront proof.
+      // Never hide a changed or invalid exact mapping behind a UPC alias.
+      found.push({
+        ...(await resolveScan(db, code, mode, query)),
+        resolved_code: code,
+      });
+    }
+    const identities = new Set(
+      found.map(
+        (match) =>
+          match.product.product_id + "/" + (match.selected_variant ?? ""),
+      ),
+    );
+    if (identities.size !== 1)
+      throw new AccessError(404, "code_not_registered_or_disabled");
+    return found[0];
+  }
   let parsed;
   try {
     parsed = parseScan(input, qrOrigin(mode), sample);
@@ -666,6 +700,7 @@ export async function resolveScan(
   if (proof) {
     p.title = proof.title;
     p.handle = proof.handle;
+    p.image = proof.featuredImage || null;
     for (const v of p.variants) {
       const current = proof.variants.nodes.find((x) => x.id === v.variant_id);
       if (
@@ -681,6 +716,11 @@ export async function resolveScan(
         );
     }
   }
+  if (sample)
+    p.image = {
+      url: "/shopping-sample.svg",
+      altText: "Fictional SAMPLE card box",
+    };
   const variants = p.variants.map((v) => {
     const live = proof?.variants.nodes.find((x) => x.id === v.variant_id);
     return {

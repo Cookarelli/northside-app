@@ -4,6 +4,8 @@ import { NextBreak } from "./break-workspace";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { shopLink } from "@/lib/commerce";
+import { publicFlags } from "@/lib/policy.mjs";
+import { basketballCartEnabled } from "@/lib/approved-basketball-sales";
 import { createContext, useContext, useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import {
@@ -19,6 +21,8 @@ import {
   ShieldCheck,
   Package,
   Star,
+  Search,
+  Bell,
 } from "lucide-react";
 import type { PreviewData, Product, CardCase } from "@/lib/contracts";
 const money = (cents: number) =>
@@ -62,7 +66,22 @@ export function Shell({
   const [signed, setSigned] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
   const path = usePathname();
+  const home = path === "/";
+  const shopping =
+    path === "/shop" ||
+    path.startsWith("/shop/") ||
+    path === "/scan" ||
+    path === "/cart" ||
+    path === "/staff/store/handoff";
   const staff = path.startsWith("/staff");
+  // Unavailable and unknown customer routes need the same chrome as working
+  // screens. Staff and the separate Hobby Key brand keep their own treatment.
+  const secondary =
+    !home && !shopping && !staff && !path.startsWith("/hobby-key");
+  const branded = home || shopping || secondary;
+  const query = useSearchParams();
+  const inStoreCart =
+    path === "/scan" || (path === "/cart" && query.get("inStore") === "1");
   const mobilePass =
     path === "/my-cards" ||
     path.startsWith("/my-cards/grading") ||
@@ -71,14 +90,28 @@ export function Shell({
   if (path.startsWith("/in-store")) return <div id="main">{children}</div>;
   return (
     <Context.Provider value={{ data, signed, setSigned, cart, setCart }}>
-      <div className={mobilePass ? "collector-shell" : undefined}>
+      <div
+        className={
+          secondary
+            ? "northside-home-shell northside-secondary-shell"
+            : shopping
+              ? "northside-home-shell northside-shopping-shell"
+              : home
+                ? "northside-home-shell"
+                : mobilePass
+                  ? "collector-shell"
+                  : undefined
+        }
+      >
         <a className="skip" href="#main">
           Skip to content
         </a>
         <div className="preview-bar">
           {data.fixture
             ? "LOCAL PREVIEW · All products, customer records, prices and dates are fixtures."
-            : "PRE-LAUNCH · Purchases and rewards are not open yet."}
+            : basketballCartEnabled
+              ? "Selected basketball products are available. Rewards are not open yet."
+              : "PRE-LAUNCH · Purchases and rewards are not open yet."}
         </div>
         <header>
           <Link href="/" className="brand">
@@ -107,17 +140,47 @@ export function Shell({
               </Link>
             ))}
           </nav>
+          {branded && (
+            <>
+              <form className="ns-header-search" action="/shop" role="search">
+                <label className="ns-visually-hidden" htmlFor="home-search">
+                  Search products
+                </label>
+                <input
+                  id="home-search"
+                  name="q"
+                  type="search"
+                  maxLength={100}
+                  placeholder="Find your next favorite…"
+                  required
+                />
+                <button type="submit" aria-label="Search products">
+                  <Search size={20} aria-hidden="true" />
+                </button>
+              </form>
+              <Link
+                className="ns-header-notifications"
+                href="/account/notifications"
+                prefetch={false}
+                aria-label="Notifications"
+              >
+                <Bell size={21} aria-hidden="true" />
+              </Link>
+            </>
+          )}
           <Link
             className="cart-link"
-            href="/cart"
+            href={inStoreCart ? "/cart?inStore=1" : "/cart"}
             aria-label={
-              data.fixture
-                ? `Cart, ${Object.values(cart).reduce((a, b) => a + b, 0)} sample items`
-                : "Cart"
+              inStoreCart
+                ? "In-store cart"
+                : data.fixture
+                  ? `Cart, ${Object.values(cart).reduce((a, b) => a + b, 0)} sample items`
+                  : "Cart"
             }
           >
             <ShoppingCart size={21} />
-            {data.fixture && (
+            {data.fixture && !inStoreCart && (
               <span>{Object.values(cart).reduce((a, b) => a + b, 0)}</span>
             )}
           </Link>
@@ -129,7 +192,62 @@ export function Shell({
               : "INVITED STAFF WORKSPACE"}
           </div>
         )}
-        <main id="main">{children}</main>
+        <main id="main" tabIndex={branded ? -1 : undefined}>
+          {shopping && (
+            <nav className="ns-shopping-nav" aria-label="Shopping tools">
+              <Link
+                href="/shop"
+                aria-current={path.startsWith("/shop") ? "page" : undefined}
+              >
+                Online shop
+              </Link>
+              {(data.fixture || publicFlags.barcodeScanning) && (
+                <>
+                  <Link
+                    href="/scan"
+                    prefetch={false}
+                    aria-current={path === "/scan" ? "page" : undefined}
+                  >
+                    Scan Product
+                  </Link>
+                  <Link
+                    href="/cart?inStore=1"
+                    prefetch={false}
+                    aria-current={
+                      inStoreCart && path === "/cart" ? "page" : undefined
+                    }
+                  >
+                    In-store cart
+                  </Link>
+                </>
+              )}
+              <Link
+                href="/cart"
+                prefetch={false}
+                aria-current={
+                  path === "/cart" && !inStoreCart ? "page" : undefined
+                }
+              >
+                Online cart
+              </Link>
+            </nav>
+          )}
+          {!branded && (data.fixture || publicFlags.barcodeScanning) && (
+            <div className="actions shopping-entry">
+              <Link className="button secondary" href="/scan" prefetch={false}>
+                Scan Product
+              </Link>
+              <Link
+                className="button secondary"
+                href="/cart?inStore=1"
+                prefetch={false}
+              >
+                In-store cart
+              </Link>
+            </div>
+          )}
+          {children}
+        </main>
         <footer>
           <span>For the love of the collection.</span>
           {data.fixture && (
@@ -237,8 +355,13 @@ function ProductGrid({
             <h3>{p.name}</h3>
             <p>
               {money(p.priceCents)} <small>example price</small>
-              <ArrowUpRight size={18} />
             </p>
+            <small className="ns-availability">
+              Sample only · not for purchase
+            </small>
+            <span className="ns-card-action">
+              View product <ArrowUpRight size={18} aria-hidden="true" />
+            </span>
           </div>
         </Link>
       ))}
@@ -455,8 +578,10 @@ export function ProductPage({
       <Link className="back" href={back}>
         ← Back to shop
       </Link>
-      <div className="detail-grid">
-        <Art product={p} />
+      <div className="detail-grid product-layout">
+        <div className="product-gallery">
+          <Art product={p} />
+        </div>
         <div>
           <p className="eyebrow">{p.category} · FIXTURE PRODUCT</p>
           <h1>{p.name}</h1>
@@ -522,11 +647,14 @@ export function CartPage() {
           <div className="cart-items">
             {entries.map((p) => (
               <div className="cart-row" key={p.id}>
-                <div>
-                  <Link href={`/shop/${p.id}`}>
-                    <h3>{p.name}</h3>
-                  </Link>
-                  <p>{money(p.priceCents)} · example price</p>
+                <div className="ns-cart-product">
+                  <Art product={p} />
+                  <div>
+                    <Link href={`/shop/${p.id}`}>
+                      <h3>{p.name}</h3>
+                    </Link>
+                    <p>{money(p.priceCents)} · example price</p>
+                  </div>
                 </div>
                 <label>
                   Quantity

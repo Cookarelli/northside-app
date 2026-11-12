@@ -11,6 +11,7 @@ export const gradingFields = [
   "parallel",
 ] as const;
 export type IntakeInput = {
+  received_date?: string;
   customer_id: string;
   description: string;
   quantity: number;
@@ -22,6 +23,7 @@ export type IntakeInput = {
   parallel: string;
 };
 export type GradingCard = {
+  provider_card_reference?: string;
   card_id: string;
   case_id: string;
   customer_id: string;

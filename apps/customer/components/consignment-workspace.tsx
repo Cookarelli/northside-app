@@ -1,4 +1,6 @@
 "use client";
+import { CustomerPicker } from "./customer-picker";
+import { ServiceTermsPanel } from "./service-terms";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
@@ -103,17 +105,22 @@ function ItemFields({ item }: { item?: ConsignmentItem }) {
         />
         <Field
           name="provider_reference"
-          label="Provider item reference"
+          label="Private provider reference — staff only"
           value={item?.provider_reference || ""}
         />
         <Field
+          name="provider_card_reference"
+          label="Customer-visible provider card reference — this card only"
+          value={item?.provider_card_reference ?? ""}
+        />
+        <Field
           name="submission_reference"
-          label="Submission reference"
+          label="Shared submission/order reference — staff only"
           value={item?.submission_reference}
         />
         <Field
           name="listing_reference"
-          label="Listing reference"
+          label="Private listing reference — staff only"
           value={item?.listing_reference}
         />
         <label>
@@ -314,7 +321,13 @@ export function ConsignmentWorkspace({
         <p role="alert" className="grading-notice">
           {error}.{" "}
           {!data && (
-            <Link href={staff ? "/staff/login" : "/account"}>
+            <Link
+              href={
+                staff
+                  ? "/staff/login"
+                  : "/account?returnTo=%2Fmy-cards%2Fconsignment"
+              }
+            >
               Open {staff ? "staff sign-in" : "account"}
             </Link>
           )}
@@ -326,6 +339,15 @@ export function ConsignmentWorkspace({
       {!data && !error && <p>Loading saved records…</p>}
       {data && (
         <>
+          {(!staff || ["owner", "admin"].includes(data.role ?? "")) && (
+            <ServiceTermsPanel
+              key={`${fixture}:${who}`}
+              service="consignment"
+              fixture={fixture}
+              actor={who}
+              staff={staff}
+            />
+          )}
           <aside className="consignment-health">
             <strong>Fanatics Collect: {data.integration.state}</strong>
             <p>{data.integration.message}</p>
@@ -426,6 +448,7 @@ export function ConsignmentWorkspace({
                 </section>
                 {detail ? (
                   <ItemDetail
+                    staff={staff}
                     key={detail.item.id + ":" + detail.item.version}
                     detail={detail}
                     writer={writer}
@@ -449,9 +472,10 @@ export function ConsignmentWorkspace({
               <section className="panel consignment-intake">
                 <h2>New consignment intake</h2>
                 <p>
-                  Save one physical card per intake. Only a verified customer
-                  account can be selected. Unmatched spreadsheet records stay in
-                  staff review.
+                  Save one physical card per intake. Image uploads accept JPEG,
+                  PNG or WebP up to 5 MiB and are confirmed in private storage.
+                  Only a verified customer account can be selected. Unmatched
+                  spreadsheet records stay in staff review.
                 </p>
                 <Form
                   label="Save consignment intake"
@@ -465,21 +489,11 @@ export function ConsignmentWorkspace({
                     return result;
                   }}
                 >
-                  <label>
-                    Exact customer account
-                    <select name="customer_id" defaultValue="" required>
-                      <option value="" disabled>
-                        Select verified customer
-                      </option>
-                      {data.customers
-                        .filter((c) => c.verified)
-                        .map((c) => (
-                          <option value={c.id} key={c.id}>
-                            {c.display_name} · {c.id.slice(-8)}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                  <CustomerPicker
+                    customers={data.customers}
+                    fixture={fixture}
+                    verifiedOnly
+                  />
                   <ItemFields />
                 </Form>
               </section>
@@ -533,6 +547,7 @@ export function ConsignmentWorkspace({
   );
 }
 function ItemDetail({
+  staff,
   detail,
   writer,
   fixture,
@@ -540,6 +555,7 @@ function ItemDetail({
   get,
   reload,
 }: {
+  staff: boolean;
   detail: ConsignmentDetail;
   writer: boolean;
   fixture: boolean;
@@ -580,14 +596,19 @@ function ItemDetail({
           <dd>{money(i.fees_cents)}</dd>
         </div>
         <div>
-          <dt>Estimated net</dt>
+          <dt>
+            {i.financial_basis === "accepted_agreement"
+              ? "Amount due under accepted agreement"
+              : "Estimated net"}
+          </dt>
           <dd>{money(i.net_cents)}</dd>
         </div>
       </dl>
       {i.net_cents === null && (
         <p className="grading-notice">
-          Net is unknown until a verified sale and all fees are recorded.
-          Missing fees have not been treated as zero.
+          {i.financial_basis === "pending_agreement"
+            ? "Payout is unresolved pending approved applicable terms and a verified sale. No rate or payout is promised."
+            : "Net is unknown until a verified sale and all fees are recorded. Missing fees have not been treated as zero."}
         </p>
       )}
       {i.net_cents !== null && i.net_cents < 0 && (
@@ -607,21 +628,26 @@ function ItemDetail({
         </strong>
         <p>
           {i.settlement_count
-            ? `${money(i.settled_cents)} recorded${i.net_cents !== null ? " of " + money(i.net_cents) + " estimated net" : ""}.`
+            ? `${money(i.settled_cents)} recorded${i.net_cents !== null ? " of " + money(i.net_cents) + (i.financial_basis === "accepted_agreement" ? " accepted amount due" : " estimated net") : ""}.`
             : "No active settlement reference recorded."}
         </p>
         <small>Informational only. No transfer is initiated here.</small>
       </div>
       <h3>Submission and listing</h3>
-      <p>
-        Channel: {i.channel || "Unknown"}
-        <br />
-        Provider item: {i.provider_reference || "Unknown"}
-        <br />
-        Submission: {i.submission_reference || "Unknown"}
-        <br />
-        Listing: {i.listing_reference || "Unknown"}
-      </p>
+      {i.provider_card_reference && (
+        <p>Provider card reference: {i.provider_card_reference}</p>
+      )}
+      {staff && (
+        <p>
+          Channel: {i.channel || "Unknown"}
+          <br />
+          Provider item: {i.provider_reference || "Unknown"}
+          <br />
+          Submission: {i.submission_reference || "Unknown"}
+          <br />
+          Listing: {i.listing_reference || "Unknown"}
+        </p>
+      )}
       {i.source_updated_at && (
         <p className="fine">
           Last reviewed source timestamp: {date(i.source_updated_at)}
@@ -783,8 +809,9 @@ function ItemDetail({
           <details>
             <summary>Record an existing settlement</summary>
             <p>
-              Use evidence of an actual external settlement. Known sale and
-              total fees are required. Partial amounts are supported;
+              Use evidence of an actual external settlement. New request items
+              require an approved applicable agreement. Historical items retain
+              their recorded sale and fee basis. Partial amounts are supported;
               overpayments are rejected for review.
             </p>
             <Form

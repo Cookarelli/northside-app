@@ -1,6 +1,8 @@
 import { ShopPage } from "@/components/preview";
 import { LiveShop } from "@/components/live-shop";
 import { fixturesAllowed } from "@/lib/policy.mjs";
+import { Suspense } from "react";
+import { ShopLoading } from "@/components/shop-loading";
 export default async function Page({
   searchParams,
 }: {
@@ -11,15 +13,17 @@ export default async function Page({
   const one = (key: string) =>
     typeof params[key] === "string" ? (params[key] as string) : undefined;
   return (
-    <LiveShop
-      input={{
-        q: one("q"),
-        category: one("category"),
-        collection: one("collection"),
-        after: one("after"),
-        collectionsAfter: one("collectionsAfter"),
-      }}
-      campaign={one("campaign")}
-    />
+    <Suspense fallback={<ShopLoading />}>
+      <LiveShop
+        input={{
+          q: one("q"),
+          category: one("category"),
+          collection: one("collection"),
+          after: one("after"),
+          collectionsAfter: one("collectionsAfter"),
+        }}
+        campaign={one("campaign")}
+      />
+    </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { Camera, ScanLine } from "lucide-react";
 import {
   ScanDeduplicator,
   type ScanResult,
@@ -23,21 +24,31 @@ async function reader() {
 const friendly = (e: unknown) => {
   const s = e instanceof Error ? e.message : String(e);
   if (/NotAllowed|Permission|permission/.test(s))
-    return "Camera access was declined. You can allow it in browser settings, or enter a code or search below.";
+    return "Camera access was declined. Allow it in browser settings, enter a code or choose a saved label image.";
   if (/NotFound|NotReadable|camera_unavailable/.test(s))
-    return "A camera is unavailable. Enter a code, choose a label image or search below.";
+    return "A camera is unavailable. Enter a code or choose a saved label image.";
   if (/shopcode|foreign|unsupported|malformed/.test(s))
-    return "This code is not a supported Northside label or a verified product barcode. Opaque Shopify Shopcodes cannot be treated as cart items. Search for the product below.";
+    return "This code is not a supported Northside label or a verified product barcode. Opaque Shopify Shopcodes cannot be treated as cart items. Check the barcode or ask staff for help.";
   return s.replaceAll("_", " ");
 };
 export function StoreScanner({
   endpoint,
   fixture,
+  shopping,
 }: {
   endpoint: string;
   fixture: boolean;
+  shopping?: {
+    locked: boolean;
+    add: (
+      code: string,
+      variantId: string,
+      reviewedPriceCents: number,
+    ) => Promise<void>;
+  };
 }) {
   const [code, setCode] = useState(""),
+    [resolvedCode, setResolvedCode] = useState(""),
     [search, setSearch] = useState(""),
     [matches, setMatches] = useState<StoreProduct[]>([]),
     [searched, setSearched] = useState(false),
@@ -88,7 +99,7 @@ export function StoreScanner({
     if (!r.ok) throw Error(b.error || "request_failed");
     return b;
   }
-  async function resolve(value: string) {
+  async function resolve(value: string, format?: string) {
     if (inflight.current) return;
     if (!dedupe.current.accept(value.trim())) {
       setNotice("Duplicate scan ignored.");
@@ -99,13 +110,20 @@ export function StoreScanner({
     setError("");
     setNotice("");
     setResult(null);
+    setResolvedCode("");
     try {
-      const b = (await call("resolve", { code: value })) as ScanResult;
+      const b = (await call("resolve", {
+        code: value,
+        ...(shopping && format === "EAN13" ? { format: "ean13" } : {}),
+      })) as ScanResult;
       if (mounted.current) {
         setResult(b);
+        setResolvedCode(b.resolved_code || value);
         setVariant(b.selected_variant || "");
         setNotice(
-          "Code checked. Choose a variant before any future cart action.",
+          shopping
+            ? "Product found. Review the variant, price and availability before adding."
+            : "Code checked. Choose a variant before any future cart action.",
         );
       }
     } catch (e) {
@@ -168,7 +186,7 @@ export function StoreScanner({
               const text = found[0].text;
               stop();
               setCode(text);
-              await resolve(text);
+              await resolve(text, found[0].format);
               return;
             }
           }
@@ -188,10 +206,33 @@ export function StoreScanner({
     }
   }
   const chosen = result?.availability.variants.find((v) => v.id === variant),
-    locations = result?.product.variants.find(
+    registeredVariant = result?.product.variants.find(
       (v) => v.variant_id === variant,
-    )?.locations;
+    );
+  const locations = registeredVariant?.locations;
   async function add() {
+    if (shopping) {
+      if (inflight.current || shopping.locked || !chosen?.available) return;
+      inflight.current = true;
+      setBusy(true);
+      setError("");
+      try {
+        await shopping.add(
+          resolvedCode,
+          chosen.id,
+          Math.round(Number(chosen.price.amount) * 100),
+        );
+        setNotice(
+          "Added to your in-store cart. Scanning does not reserve stock.",
+        );
+      } catch (e) {
+        setError(friendly(e));
+      } finally {
+        inflight.current = false;
+        setBusy(false);
+      }
+      return;
+    }
     if (
       fixture ||
       !publicFlags.barcodeScanning ||
@@ -205,9 +246,11 @@ export function StoreScanner({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "add",
+          action: "scan-add",
+          code: resolvedCode,
           variantId: chosen.id,
           quantity: 1,
+          reviewedPriceCents: Math.round(Number(chosen.price.amount) * 100),
         }),
       });
       const b = await r.json();
@@ -220,14 +263,20 @@ export function StoreScanner({
     }
   }
   return (
-    <section className="loyalty-card">
-      <h2>Staff scanner preview</h2>
+    <section className="loyalty-card ns-scanner" aria-busy={busy}>
+      <h2>{shopping ? "Scan Product" : "Staff scanner preview"}</h2>
       <p>
         {fixture
           ? "SAMPLE codes and fictional availability."
           : "Live lookups use the published Shopify catalog."}{" "}
         Scanning never adjusts inventory or adds an item automatically.
       </p>
+      {shopping && !running && (
+        <div className="ns-camera-idle" aria-hidden="true">
+          <ScanLine size={48} strokeWidth={1.5} />
+          <span>SCAN. REVIEW. COLLECT.</span>
+        </div>
+      )}
       <video
         ref={video}
         muted
@@ -243,7 +292,7 @@ export function StoreScanner({
           onClick={() => void camera()}
           disabled={running || busy}
         >
-          Start camera
+          <Camera size={18} aria-hidden="true" /> Start camera
         </button>
         <button className="button secondary" type="button" onClick={stop}>
           Stop camera
@@ -258,6 +307,7 @@ export function StoreScanner({
         Read a saved label image
         <input
           type="file"
+          disabled={busy}
           accept="image/png,image/jpeg,image/webp"
           onChange={async (e) => {
             const file = e.target.files?.[0];
@@ -273,7 +323,7 @@ export function StoreScanner({
               if (!found[0]?.text)
                 throw Error("No readable barcode found. Try manual entry.");
               setCode(found[0].text);
-              await resolve(found[0].text);
+              await resolve(found[0].text, found[0].format);
             } catch (err) {
               setError(friendly(err));
             }
@@ -281,6 +331,7 @@ export function StoreScanner({
         />
       </label>
       <form
+        className="ns-scan-entry"
         onSubmit={(e) => {
           e.preventDefault();
           stop();
@@ -302,34 +353,36 @@ export function StoreScanner({
           />
         </label>
         <button className="button" disabled={busy}>
-          Check code
+          {busy ? "Checking…" : "Check code"}
         </button>
       </form>
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setError("");
-          try {
-            setMatches(await call("search", { query: search }));
-            setSearched(true);
-          } catch (err) {
-            setError(friendly(err));
-          }
-        }}
-      >
-        <label>
-          Search product, family or SKU
-          <input
-            required
-            maxLength={80}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </label>
-        <button className="button secondary" disabled={busy}>
-          Search products
-        </button>
-      </form>
+      {!shopping && (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setError("");
+            try {
+              setMatches(await call("search", { query: search }));
+              setSearched(true);
+            } catch (err) {
+              setError(friendly(err));
+            }
+          }}
+        >
+          <label>
+            Search product, family or SKU
+            <input
+              required
+              maxLength={80}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          <button className="button secondary" disabled={busy}>
+            Search products
+          </button>
+        </form>
+      )}
       <>
         {searched && !matches.length && (
           <p role="status">No registered products match this search.</p>
@@ -358,6 +411,7 @@ export function StoreScanner({
           {error}
         </p>
       )}
+      {busy && <p role="status">Checking your selection…</p>}
       {notice && (
         <p role="status" className="loyalty-notice">
           {notice}
@@ -371,6 +425,21 @@ export function StoreScanner({
               : "Approved retail projection"}
           </span>
           <h3>{result.product.title}</h3>
+          <div className="ns-result-image">
+            {result.product.image ? (
+              // Shopify image bytes are loaded by the browser, never fetched from a scanned URL.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={result.product.image.url}
+                alt={result.product.image.altText || result.product.title}
+                width={240}
+                height={180}
+                style={{ objectFit: "contain", maxWidth: "100%" }}
+              />
+            ) : (
+              <p className="small">No product image is available.</p>
+            )}
+          </div>
           <p className="small">
             {fixture
               ? "Fictional stock and prices for this preview"
@@ -385,6 +454,7 @@ export function StoreScanner({
           <label>
             Product variant
             <select
+              disabled={busy}
               value={variant}
               onChange={(e) => setVariant(e.target.value)}
             >
@@ -398,10 +468,24 @@ export function StoreScanner({
           </label>
           {chosen && (
             <>
-              <p>
-                {fixture ? "SAMPLE " : ""}${chosen.price.amount} USD ·{" "}
+              <p className="ns-result-price">
+                {fixture ? "SAMPLE " : ""}${chosen.price.amount} USD
+              </p>
+              <p className="ns-availability">
                 {chosen.available ? "Available online" : "Unavailable for cart"}
               </p>
+              <dl className="ns-product-meta">
+                <div>
+                  <dt>Variant</dt>
+                  <dd>{chosen.title}</dd>
+                </div>
+                {registeredVariant?.sku && (
+                  <div>
+                    <dt>SKU</dt>
+                    <dd>{registeredVariant.sku}</dd>
+                  </div>
+                )}
+              </dl>
               <h4>Approved retail locations</h4>
               {locations?.length ? (
                 <ul>
@@ -422,18 +506,25 @@ export function StoreScanner({
             className="button"
             disabled={
               busy ||
-              fixture ||
-              !publicFlags.barcodeScanning ||
-              !publicFlags.purchases ||
+              (shopping
+                ? shopping.locked
+                : fixture ||
+                  !publicFlags.barcodeScanning ||
+                  !publicFlags.purchases) ||
               !chosen?.available
             }
             onClick={() => void add()}
           >
-            Add to Shopify cart — disabled
+            {shopping
+              ? busy
+                ? "Adding…"
+                : "Add to cart"
+              : "Add to Shopify cart — disabled"}
           </button>
           <p className="small">
-            Customer scanning, walking directions and pickup are not active. No
-            walking distance or shelf position is inferred from the schematic.
+            {shopping
+              ? "This is an unpaid shopping list. Staff confirm the items, stock and final total at the register."
+              : "Customer scanning, walking directions and pickup are not active. No walking distance or shelf position is inferred from the schematic."}
           </p>
         </article>
       )}

@@ -1,11 +1,10 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import type { Sql, Actor } from "./db";
+import { requireCustomer, type Sql, type Actor } from "./db";
 import { uuid, AccessError } from "./security";
 import { boundedJson } from "./grading-api";
 import { text } from "./grading";
 import { authorizedFile } from "./records";
-import { supabase } from "./providers";
 import {
   consignmentDashboard,
   consignmentDetail,
@@ -48,16 +47,23 @@ export async function consignmentApi(
           throw new AccessError(404, "no_real_fixture_files");
         return { url: "/grading-sample.svg" };
       }
-      const result = await supabase(true)
-        .storage.from("northside-private")
-        .createSignedUrl(file.object_key, 60);
-      if (result.error) throw new AccessError(503, "file_unavailable");
-      return { url: result.data.signedUrl };
+      return {
+        url: `/api/private/files/${uuid(u.searchParams.get("file")!)}/content`,
+      };
     }
     return consignmentDashboard(db, a);
   }
   const b = await boundedJson(request);
   switch (b.action) {
+    case "accept-offer":
+      requireCustomer(a);
+      if (b.confirmed !== true)
+        throw new AccessError(400, "explicit_offer_acceptance_required");
+      await db.query("select ns.accept_consignment_offer($1,$2)", [
+        uuid(text(b.item_id, 36, true)),
+        uuid(text(b.offer_id, 36, true)),
+      ]);
+      return { accepted: true };
     case "intake":
       return createConsignment(db, a, b);
     case "update":

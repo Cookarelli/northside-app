@@ -95,15 +95,35 @@ export async function authorizedFile(db: Sql, actor: Actor, id: string) {
   uuid(id);
   if (!actor.customer_id)
     requireRole(actor, ["owner", "admin", "operations", "read_only"]);
-  const file = (
-    await db.query<{ object_key: string; mime_type: string }>(
-      "select object_key,mime_type from ns.file_objects where tenant_id=$1 and id=$2 and ready" +
-        (actor.customer_id ? " and customer_id=$3" : ""),
+  type FileRow = {
+    card_id: string;
+    object_key: string;
+    mime_type: string;
+    content_sha256: string | null;
+    byte_length: number | null;
+  };
+  const projection =
+    "select card_id,object_key,mime_type,to_jsonb(f)->>'content_sha256' as content_sha256,(to_jsonb(f)->>'byte_length')::integer as byte_length from ns.file_objects f where tenant_id=$1 and id=$2 and ready";
+  let file = (
+    await db.query<FileRow>(
+      projection + (actor.customer_id ? " and customer_id=$3" : ""),
       actor.customer_id
         ? [actor.tenant_id, id, actor.customer_id]
         : [actor.tenant_id, id],
     )
   ).rows[0];
+  if (!file && actor.customer_id) {
+    // An approved grading receipt claim is exact-case access, never consignment
+    // ownership or access to the other cards in a shared provider order.
+    const candidate = (
+      await db.query<FileRow>(projection, [actor.tenant_id, id])
+    ).rows[0];
+    if (candidate) {
+      const { gradingCard } = await import("./grading");
+      await gradingCard(db, actor, candidate.card_id);
+      file = candidate;
+    }
+  }
   if (!file) throw new AccessError(404, "file_not_found");
   return file;
 }

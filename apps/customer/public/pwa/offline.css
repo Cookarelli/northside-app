@@ -1,1 +1,83 @@
-*{box-sizing:border-box}body{font:18px/1.6 system-ui,sans-serif;color:#163345;background:#f5f8fb;margin:0;padding:32px 20px}main{max-width:580px;margin:10vh auto;background:white;padding:32px;border:1px solid #d4dfe9;border-radius:16px}img{max-width:100%;height:auto}h1{line-height:1.15}a{display:inline-block;background:#123d55;color:white;padding:12px 20px;border-radius:8px;text-decoration:none}.small{font-size:14px;color:#53677a}
+/* Public, self-contained counterpart of the approved customer tokens. */
+:root {
+  color-scheme: light;
+  --ns-blue: #087bff;
+  --ns-navy: #071526;
+  --ns-bg: #fff;
+  --ns-secondary: #f5f7fa;
+  --ns-text: #172033;
+  --ns-border: #e2e8f0;
+  --ns-action: #0667d8;
+  --ns-muted: #526172;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font:
+    18px/1.6 system-ui,
+    sans-serif;
+  color: var(--ns-text);
+  background: var(--ns-secondary);
+  margin: 0;
+  min-height: 100dvh;
+  padding: max(24px, env(safe-area-inset-top))
+    max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
+    max(20px, env(safe-area-inset-left));
+  overflow-wrap: anywhere;
+}
+main {
+  max-width: 580px;
+  margin: min(10vh, 80px) auto;
+  background: var(--ns-bg);
+  border: 1px solid var(--ns-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.brand {
+  background: var(--ns-navy);
+  padding: 24px 32px;
+}
+.content {
+  padding: 12px 32px 24px;
+}
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+h1 {
+  line-height: 1.15;
+}
+a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  background: var(--ns-action);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+a:hover {
+  background: #0558bc;
+}
+a:focus-visible {
+  outline: 3px solid var(--ns-blue);
+  outline-offset: 4px;
+}
+.small {
+  font-size: 14px;
+  color: var(--ns-muted);
+}
+@media (max-width: 600px) {
+  main {
+    margin-block: 20px;
+  }
+  .brand {
+    padding: 22px;
+  }
+  .content {
+    padding: 8px 22px 20px;
+  }
+}

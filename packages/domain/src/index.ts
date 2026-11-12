@@ -167,7 +167,7 @@ export type CommerceState = {
     eventId: string;
   }[];
 };
-const initial = (): CommerceState => ({
+export const initialCommerceState = (): CommerceState => ({
   creationTimes: [],
   sessions: {},
   mappings: structuredClone(mappings),
@@ -178,6 +178,7 @@ const initial = (): CommerceState => ({
   checkins: [],
   redemptions: [],
 });
+const initial = initialCommerceState;
 export class CommerceError extends Error {
   constructor(
     message: string,

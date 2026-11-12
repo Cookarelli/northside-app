@@ -22,6 +22,7 @@ const db = await PGlite.create(),
 for (const file of [
   "202609120001_identity_and_records.sql",
   "202609120003_commerce.sql",
+  "20261029133844_commerce_delivery_integrity.sql",
 ])
   await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
 process.env.SESSION_ENCRYPTION_KEY = Buffer.alloc(32, 9).toString("base64");
@@ -85,6 +86,7 @@ await role("northside_auth", (s) =>
   bindCustomer(s, actor(b), "gid://shopify/Customer/2"),
 );
 const state: OrderSnapshot = {
+  test: false,
   id: "gid://shopify/Order/100",
   customerId: "gid://shopify/Customer/1",
   name: "SAMPLE ORDER",
@@ -100,6 +102,8 @@ const delivery = (topic = "orders/paid", orderId = state.id) => ({
   delivery: randomUUID(),
   topic,
   orderId,
+  bodyHash: "a".repeat(64),
+  apiVersion: "2026-07" as const,
 });
 await db.query(
   "insert into ns.shopify_orders(tenant_id,shop,order_id,shopify_customer_id,name,financial_status,currency,total_cents,received_cents,refunded_cents,provider_updated_at,fingerprint) values($1,'foreign.myshopify.com','gid://shopify/Order/999','gid://shopify/Customer/3','OTHER TENANT SAMPLE ORDER','PAID','USD',500,500,0,now(),'sample-foreign')",

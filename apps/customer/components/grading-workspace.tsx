@@ -1,4 +1,6 @@
 "use client";
+import { CustomerPicker } from "./customer-picker";
+import { ServiceTermsPanel } from "./service-terms";
 import Link from "next/link";
 import { GradingQuoteEditor } from "./grading-quote-editor";
 import {
@@ -264,6 +266,14 @@ export function GradingWorkspace({
         {busy ? "Saving…" : message}
       </p>
       {!data && !error && <p>Loading saved records…</p>}
+      {data && staff && ["owner", "admin"].includes(data.role ?? "") && (
+        <ServiceTermsPanel
+          service="grading"
+          fixture={fixture}
+          actor="staff"
+          staff
+        />
+      )}
       {data && (
         <>
           <div className="grading-toolbar">
@@ -376,7 +386,7 @@ export function GradingWorkspace({
               </>
             )}
             {staff && writer && page === "New intake" && (
-              <Intake data={data} send={send} />
+              <Intake data={data} send={send} fixture={fixture} />
             )}
             {staff && writer && page === "Batches" && <Batches />}
             {staff && writer && page === "Imports" && (
@@ -462,7 +472,15 @@ export function GradingWorkspace({
     </div>
   );
 }
-function Intake({ data, send }: { data: GradingData; send: Send }) {
+function Intake({
+  data,
+  send,
+  fixture,
+}: {
+  data: GradingData;
+  send: Send;
+  fixture: boolean;
+}) {
   const [quantity, setQuantity] = useState(3),
     [request, setRequest] = useState(() => crypto.randomUUID()),
     [savedCase, setSavedCase] = useState("");
@@ -522,21 +540,14 @@ function Intake({ data, send }: { data: GradingData; send: Send }) {
             return r;
           }}
         >
-          <label>
-            Customer record
-            <select name="customer_id" required defaultValue="">
-              <option value="" disabled>
-                Select exact customer
-              </option>
-              {data.customers.map((c) => (
-                <option value={c.id} key={c.id}>
-                  {c.display_name} · {c.id.slice(-8)} ·{" "}
-                  {c.verified ? "verified account" : "receipt claim required"}
-                </option>
-              ))}
-            </select>
-          </label>
+          <CustomerPicker customers={data.customers} fixture={fixture} />
           <Field name="description" label="Card description" required />
+          <Field
+            name="received_date"
+            label="Drop-off date"
+            type="date"
+            required
+          />
           <div className="grading-fields">
             {[
               ["sport", "Sport / category"],
@@ -778,6 +789,11 @@ function CardDetail({
               }
             >
               <StateSelect data={data} value={c.status_key} />
+              <Field
+                name="provider_card_reference"
+                label="Provider card reference — this card only"
+                value={c.provider_card_reference ?? ""}
+              />
               <label>
                 Findings (customer visible)
                 <textarea

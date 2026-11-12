@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     jar.set(SESSION_COOKIE, "", { ...cookieOptions, maxAge: 0 });
     jar.set(ATTEMPT_COOKIE, "", { ...cookieOptions, maxAge: 0 });
     jar.set("__Host-ns_cart", "", { ...cookieOptions, maxAge: 0 });
+    jar.set("__Host-ns_shopping", "", { ...cookieOptions, maxAge: 0 });
     jar.set("__Host-ns_campaign", "", { ...cookieOptions, maxAge: 0 });
     let target = new URL("/account", appOrigin());
     if (session?.provider === "shopify" && tokens?.id_token) {

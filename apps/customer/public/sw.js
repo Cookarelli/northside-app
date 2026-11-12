@@ -1,5 +1,5 @@
-/* Northside PWA v1. Cache allowlist contains public static files only. */
-const CACHE = "northside-public-v1";
+/* Northside PWA v2 refreshes public offline branding; the allowlist is unchanged. */
+const CACHE = "northside-public-v2";
 const STATIC = [
   "/pwa/offline.html",
   "/pwa/offline.css",

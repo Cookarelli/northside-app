@@ -1,0 +1,752 @@
+/* Northside shopping surfaces reuse the Home palette and existing commerce controls. */
+.northside-shopping-shell {
+  --ink: var(--ns-text);
+  --muted: var(--ns-muted);
+  --forest: var(--ns-action);
+  --line: var(--ns-border);
+  --paper: var(--ns-bg);
+  overflow-wrap: anywhere;
+}
+.northside-shopping-shell > main {
+  width: 100%;
+  max-width: 1288px;
+  margin: 0 auto;
+  padding: 0 max(32px, env(safe-area-inset-right)) 64px
+    max(32px, env(safe-area-inset-left));
+}
+.northside-shopping-shell h1,
+.northside-shopping-shell h2,
+.northside-shopping-shell h3 {
+  color: var(--ns-text);
+  letter-spacing: -0.035em;
+}
+.northside-shopping-shell h1 {
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.12;
+  max-width: 24ch;
+}
+.northside-shopping-shell h2 {
+  font-size: clamp(23px, 2.5vw, 30px);
+}
+.northside-shopping-shell p {
+  line-height: 1.6;
+}
+.northside-shopping-shell .eyebrow {
+  color: var(--ns-action);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+.northside-shopping-shell .intro,
+.northside-shopping-shell .page-heading {
+  margin: 32px 0;
+  max-width: 760px;
+}
+.northside-shopping-shell .intro h1,
+.northside-shopping-shell .page-heading h1 {
+  margin: 12px 0 16px;
+}
+.northside-shopping-shell .intro p:last-child,
+.northside-shopping-shell .page-heading > p {
+  color: var(--ns-muted);
+  max-width: 65ch;
+}
+.northside-shopping-shell .ns-shopping-nav {
+  display: flex;
+  gap: 4px 20px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ns-border);
+}
+.northside-shopping-shell .ns-shopping-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ns-muted);
+  border-bottom: 2px solid transparent;
+}
+.northside-shopping-shell .ns-shopping-nav a[aria-current] {
+  color: var(--ns-action);
+  border-color: var(--ns-blue);
+}
+.northside-shopping-shell .button {
+  background: var(--ns-action);
+  color: white;
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: 9px;
+  font-size: 14px;
+  gap: 9px;
+  border: 1px solid transparent;
+}
+.northside-shopping-shell .button:hover:not(:disabled) {
+  background: #0559ba;
+}
+.northside-shopping-shell .button.secondary {
+  background: white;
+  border-color: #8695a8;
+  color: var(--ns-action);
+}
+.northside-shopping-shell .button.secondary:hover:not(:disabled) {
+  background: #edf5ff;
+}
+.northside-shopping-shell button:disabled {
+  background: #e2e8f0;
+  border-color: #e2e8f0;
+  color: #526172;
+  opacity: 1;
+  cursor: not-allowed;
+}
+.northside-shopping-shell .plain,
+.northside-shopping-shell .back {
+  color: var(--ns-action);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding-block: 10px;
+}
+.northside-shopping-shell .actions {
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.northside-shopping-shell label {
+  font-size: 13px;
+  color: var(--ns-text);
+  line-height: 1.5;
+}
+.northside-shopping-shell input:not(.ns-header-search input),
+.northside-shopping-shell select {
+  min-height: 48px;
+  border: 1px solid #8695a8;
+  background: white;
+  border-radius: 9px;
+  font-size: 16px;
+  color: var(--ns-text);
+  padding: 12px;
+  max-width: 100%;
+}
+.northside-shopping-shell input:disabled,
+.northside-shopping-shell select:disabled {
+  background: var(--ns-secondary);
+  color: var(--ns-muted);
+}
+.northside-shopping-shell :is(select, summary):focus-visible {
+  outline: 3px solid var(--ns-blue);
+  outline-offset: 4px;
+}
+.northside-shopping-shell .shop-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  padding: 20px;
+  margin: 0 0 24px;
+  border: 1px solid var(--ns-border);
+  border-radius: 14px;
+  background: var(--ns-secondary);
+  gap: 16px;
+}
+.northside-shopping-shell .shop-tools .search {
+  flex: 1 1 300px;
+}
+.northside-shopping-shell .shop-tools > label:not(.search) {
+  flex: 1 1 180px;
+}
+.northside-shopping-shell .collection-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 24px 0;
+  align-items: center;
+}
+.northside-shopping-shell .collection-links a {
+  color: var(--ns-text);
+  background: white;
+  border: 1px solid #8695a8;
+  border-radius: 30px;
+  min-height: 44px;
+  padding: 11px 17px;
+  font-size: 13px;
+}
+.northside-shopping-shell .collection-links a[aria-current] {
+  color: white;
+  background: var(--ns-action);
+  border-color: var(--ns-action);
+}
+.northside-shopping-shell .product-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.northside-shopping-shell .product {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ns-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: white;
+  transition: border-color 0.15s;
+}
+.northside-shopping-shell .product:hover {
+  border-color: var(--ns-blue);
+}
+.northside-shopping-shell .product > .catalog-image,
+.northside-shopping-shell .product > .product-art {
+  width: 100%;
+  height: 230px;
+  object-fit: contain;
+  border-radius: 0;
+  background-color: var(--ns-secondary);
+}
+.northside-shopping-shell .product-copy {
+  padding: 18px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
+}
+.northside-shopping-shell .product-copy > small:first-child {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ns-muted);
+}
+.northside-shopping-shell .product-copy :is(h2, h3) {
+  font:
+    650 17px/1.4 Arial,
+    sans-serif;
+  margin: 0;
+  letter-spacing: -0.025em;
+}
+.northside-shopping-shell .product-copy > p {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ns-text);
+  display: block;
+}
+.northside-shopping-shell .product-copy p small {
+  display: block;
+  font-size: 11px;
+  color: var(--ns-muted);
+  font-weight: 400;
+}
+.northside-shopping-shell .ns-availability {
+  color: #245a42;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.northside-shopping-shell .ns-card-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--ns-border);
+  color: var(--ns-action);
+  font-size: 13px;
+  font-weight: 650;
+  min-height: 44px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.northside-shopping-shell .empty {
+  background: var(--ns-secondary);
+  border: 1px solid var(--ns-border);
+  border-radius: 16px;
+  text-align: center;
+  padding: 36px 24px;
+  margin-block: 20px;
+}
+.northside-shopping-shell .empty h2,
+.northside-shopping-shell .empty h3 {
+  margin: 0 0 12px;
+}
+.northside-shopping-shell .empty p {
+  color: var(--ns-muted);
+}
+.northside-shopping-shell .detail-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 48px;
+  margin-block: 24px;
+}
+.northside-shopping-shell .detail-grid > * {
+  min-width: 0;
+}
+.northside-shopping-shell .product-gallery {
+  border: 1px solid var(--ns-border);
+  background: var(--ns-secondary);
+  border-radius: 18px;
+}
+.northside-shopping-shell .product-gallery :is(.catalog-image, .product-art) {
+  width: 100%;
+  height: 460px;
+  object-fit: contain;
+}
+.northside-shopping-shell .product-controls .price,
+.northside-shopping-shell .detail-grid .price {
+  color: var(--ns-text);
+  font-size: 30px;
+  font-weight: 700;
+  margin: 20px 0;
+}
+.northside-shopping-shell .detail-grid > div > .button {
+  margin-top: 20px;
+  width: 100%;
+}
+.northside-shopping-shell .product-quantity {
+  border-color: var(--ns-border);
+}
+.northside-shopping-shell .quantity-stepper {
+  border-color: #8695a8;
+}
+.northside-shopping-shell .quantity-stepper input {
+  width: 60px;
+  border: 0;
+  margin: 0;
+  text-align: center;
+}
+.northside-shopping-shell .quantity-stepper button {
+  min-width: 44px;
+  min-height: 48px;
+  color: var(--ns-text);
+  background: var(--ns-secondary);
+}
+.northside-shopping-shell .collector-disclosure {
+  border-color: var(--ns-border);
+}
+.northside-shopping-shell .notice,
+.northside-shopping-shell .loyalty-notice,
+.northside-shopping-shell [role="alert"] {
+  background: #edf5ff;
+  border: 1px solid #b2d5ff;
+  border-radius: 12px;
+  padding: 16px;
+  color: var(--ns-text);
+  font-size: 14px;
+}
+.northside-shopping-shell [role="alert"] {
+  background: #fff3f2;
+  border-color: #dba7a4;
+}
+.northside-shopping-shell [role="status"]:empty {
+  margin: 0;
+  padding: 0;
+}
+.northside-shopping-shell .cart-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: start;
+  padding: 24px;
+  border: 1px solid var(--ns-border);
+  border-radius: 14px;
+  margin-bottom: 16px;
+}
+.northside-shopping-shell .cart-row > div {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.northside-shopping-shell .cart-row > label {
+  flex: 0 1 110px;
+}
+.northside-shopping-shell .cart-row input {
+  width: 100%;
+}
+.northside-shopping-shell .cart-row p {
+  color: var(--ns-muted);
+  font-size: 14px;
+}
+.northside-shopping-shell .ns-cart-product {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.northside-shopping-shell .ns-cart-product .product-art {
+  flex: 0 0 96px;
+  width: 96px;
+  height: 120px;
+  overflow: hidden;
+  border-radius: 9px;
+}
+.northside-shopping-shell .ns-cart-product .sample-box {
+  transform: scale(0.5);
+}
+.northside-shopping-shell .cart-total {
+  margin-left: auto;
+  width: min(100%, 480px);
+  padding: 28px;
+  background: var(--ns-secondary);
+  border: 1px solid var(--ns-border);
+  border-radius: 16px;
+}
+.northside-shopping-shell .cart-total .button {
+  width: 100%;
+}
+.northside-shopping-shell .cart-total h2 {
+  font-size: 24px;
+}
+.northside-shopping-shell .ns-cart-quantity form {
+  display: block;
+}
+.northside-shopping-shell .ns-cart-quantity label {
+  max-width: 210px;
+}
+.northside-shopping-shell .ns-cart-quantity input {
+  margin-top: 8px;
+  width: 100%;
+}
+.northside-shopping-shell .ns-cart-quantity .actions {
+  gap: 8px;
+  margin-top: 12px;
+}
+.northside-shopping-shell .ns-cart-quantity .button {
+  font-size: 12px;
+  padding: 10px 14px;
+}
+.northside-shopping-shell .ns-workspace-links {
+  display: none;
+}
+.northside-shopping-shell .loyalty-card {
+  background: white;
+  border: 1px solid var(--ns-border);
+  padding: 28px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+}
+.northside-shopping-shell .ns-scanner > h2 {
+  margin: 0 0 10px;
+}
+.northside-shopping-shell .ns-scanner > p {
+  color: var(--ns-muted);
+  font-size: 13px;
+}
+.northside-shopping-shell .ns-camera-idle {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  background: var(--ns-navy);
+  color: #68b5ff;
+  border-radius: 12px;
+  border-bottom: 3px solid var(--ns-blue);
+  padding: 36px 16px;
+  margin-top: 24px;
+}
+.northside-shopping-shell .ns-camera-idle span {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+}
+.northside-shopping-shell .store-camera {
+  margin-top: 24px;
+  max-height: 360px;
+  background: var(--ns-navy);
+}
+.northside-shopping-shell .ns-scanner > label {
+  padding: 18px 0;
+  border-block: 1px solid var(--ns-border);
+  margin-block: 24px;
+}
+.northside-shopping-shell input[type="file"] {
+  background: var(--ns-secondary);
+  padding: 10px;
+  font-size: 13px;
+  min-width: 0;
+}
+.northside-shopping-shell input[type="file"]::file-selector-button {
+  background: white;
+  color: var(--ns-action);
+  border: 1px solid #8695a8;
+  border-radius: 5px;
+  min-height: 36px;
+  margin-right: 10px;
+}
+.northside-shopping-shell .ns-scan-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+.northside-shopping-shell .store-result {
+  border: 1px solid #b2d5ff;
+  border-top: 3px solid var(--ns-blue);
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  margin-top: 24px;
+}
+.northside-shopping-shell .store-result .badge {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: #edf5ff;
+  color: var(--ns-action);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.northside-shopping-shell .store-result h3 {
+  font-size: 25px;
+  line-height: 1.3;
+  margin: 14px 0 20px;
+}
+.northside-shopping-shell .ns-result-image {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  background: var(--ns-secondary);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.northside-shopping-shell .store-result .ns-result-price {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 20px 0 4px;
+  color: var(--ns-text);
+}
+.northside-shopping-shell .ns-product-meta {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+  margin: 12px 0;
+  border-block: 1px solid var(--ns-border);
+}
+.northside-shopping-shell .ns-product-meta > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.northside-shopping-shell .ns-product-meta dt {
+  color: var(--ns-muted);
+  font-size: 12px;
+}
+.northside-shopping-shell .ns-product-meta dd {
+  font-weight: 600;
+  text-align: right;
+  margin: 0;
+  font-size: 13px;
+}
+.northside-shopping-shell .store-result h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+.northside-shopping-shell .store-result ul {
+  padding-left: 18px;
+  font-size: 13px;
+}
+.northside-shopping-shell .store-result > .button {
+  margin-top: 16px;
+  width: 100%;
+}
+.northside-shopping-shell .shopping-lines {
+  margin: 0;
+}
+.northside-shopping-shell .shopping-lines > li {
+  padding: 24px 0;
+  gap: 20px;
+}
+.northside-shopping-shell .shopping-lines img {
+  width: 104px;
+  height: 120px;
+  background: var(--ns-secondary);
+  border-radius: 10px;
+}
+.northside-shopping-shell .shopping-lines h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.northside-shopping-shell .shopping-lines p {
+  color: var(--ns-muted);
+  font-size: 13px;
+}
+.northside-shopping-shell .ns-list-card > .price {
+  color: var(--ns-text);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 24px 0 8px;
+}
+.northside-shopping-shell .ns-list-card > .button {
+  min-width: 240px;
+  margin-top: 12px;
+}
+.northside-shopping-shell .ns-register-handoff {
+  border: 1px solid #b2d5ff;
+  border-radius: 14px;
+  background: #f4f8ff;
+  padding: 24px;
+  margin-top: 24px;
+}
+.northside-shopping-shell .ns-register-handoff > h3 {
+  margin: 0 0 16px;
+  font-size: 25px;
+}
+.northside-shopping-shell .ns-unpaid {
+  display: block;
+  padding: 12px;
+  background: var(--ns-navy);
+  border-left: 3px solid var(--ns-blue);
+  color: white;
+  border-radius: 5px;
+  font-size: 13px;
+}
+.northside-shopping-shell .ns-register-handoff > img {
+  display: block;
+  background: white;
+  padding: 0;
+  border: 1px solid var(--ns-border);
+  border-radius: 0;
+  margin: 24px auto;
+}
+.northside-shopping-shell .ns-register-handoff input {
+  font: 13px/1.5 monospace;
+  background: white;
+}
+.northside-shopping-shell .ns-register-handoff > .button {
+  width: 100%;
+  white-space: normal;
+}
+.northside-shopping-shell .ns-shop-loading {
+  padding-top: 30px;
+}
+.northside-shopping-shell .ns-loading-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.northside-shopping-shell .ns-loading-grid > div {
+  height: 330px;
+  background: var(--ns-secondary);
+  border: 1px solid var(--ns-border);
+  border-radius: 16px;
+}
+@media (min-width: 1000px) {
+  .ns-shopping-workspace:has(.ns-scanner) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 0 28px;
+    align-items: start;
+  }
+  .ns-shopping-workspace:has(.ns-scanner) > .page-heading {
+    grid-column: 1/-1;
+  }
+  .ns-shopping-workspace:has(.ns-scanner) > [role="alert"] {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 1000px) {
+  .northside-shopping-shell .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .northside-shopping-shell .detail-grid {
+    gap: 28px;
+  }
+  .northside-shopping-shell .product-gallery :is(.catalog-image, .product-art) {
+    height: 360px;
+  }
+}
+@media (max-width: 700px) {
+  .northside-shopping-shell > main {
+    padding: 0 max(18px, env(safe-area-inset-right)) 40px
+      max(18px, env(safe-area-inset-left));
+  }
+  .northside-shopping-shell .ns-shopping-nav {
+    gap: 2px 16px;
+    padding-block: 10px;
+  }
+  .northside-shopping-shell .ns-shopping-nav a {
+    font-size: 12px;
+  }
+  .northside-shopping-shell .intro,
+  .northside-shopping-shell .page-heading {
+    margin: 26px 0;
+  }
+  .northside-shopping-shell .shop-tools {
+    padding: 16px;
+    gap: 14px;
+  }
+  .northside-shopping-shell .shop-tools .search {
+    flex-basis: 100%;
+  }
+  .northside-shopping-shell .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .northside-shopping-shell .product > .catalog-image,
+  .northside-shopping-shell .product > .product-art {
+    height: 176px;
+  }
+  .northside-shopping-shell .product-copy {
+    padding: 13px;
+    gap: 8px;
+  }
+  .northside-shopping-shell .product-copy :is(h2, h3) {
+    font-size: 14px;
+  }
+  .northside-shopping-shell .product-copy > p {
+    font-size: 17px;
+  }
+  .northside-shopping-shell .product-copy > small:first-child {
+    font-size: 9px;
+  }
+  .northside-shopping-shell .ns-card-action {
+    font-size: 12px;
+    gap: 4px;
+  }
+  .northside-shopping-shell .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-top: 12px;
+  }
+  .northside-shopping-shell .product-gallery :is(.catalog-image, .product-art) {
+    height: 330px;
+  }
+  .northside-shopping-shell .detail-grid h1 {
+    font-size: 30px;
+  }
+  .northside-shopping-shell .loyalty-card,
+  .northside-shopping-shell .store-result,
+  .northside-shopping-shell .ns-register-handoff {
+    padding: 18px;
+  }
+  .northside-shopping-shell .ns-scanner > .actions .button {
+    flex: 1;
+    padding-inline: 12px;
+  }
+  .northside-shopping-shell .ns-scan-entry {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .northside-shopping-shell .shopping-lines > li {
+    gap: 14px;
+  }
+  .northside-shopping-shell .shopping-lines > li > div {
+    flex-basis: 180px;
+  }
+  .northside-shopping-shell .shopping-lines img {
+    width: 80px;
+    height: 96px;
+  }
+  .northside-shopping-shell .cart-row {
+    padding: 18px;
+    gap: 14px;
+  }
+  .northside-shopping-shell .cart-total {
+    padding: 22px;
+  }
+  .northside-shopping-shell .ns-list-card > .button {
+    width: 100%;
+    min-width: 0;
+  }
+  .northside-shopping-shell .ns-loading-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .northside-shopping-shell .product {
+    transition: none;
+  }
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
+import { ArrowUpRight } from "lucide-react";
+import { CatalogPhoto } from "./catalog-photo";
 import {
   formatMoney,
   shopLink,
@@ -7,26 +8,10 @@ import {
   type Merchandise,
 } from "@/lib/commerce";
 import { browse, storefront } from "@/lib/server/storefront";
+import { basketballCartEnabled } from "@/lib/approved-basketball-sales";
 export function ProductImage({ product }: { product: Merchandise }) {
-  const image = product.featuredImage;
-  let allowed = false;
-  try {
-    const url = new URL(image?.url || "");
-    allowed = url.protocol === "https:" && url.hostname === "cdn.shopify.com";
-  } catch {
-    /* Show an honest missing-photo state. */
-  }
-  return allowed && image ? (
-    <Image
-      className="catalog-image"
-      src={image.url}
-      alt={image.altText || product.title}
-      width={700}
-      height={700}
-      unoptimized
-    />
-  ) : (
-    <div className="catalog-image missing-image">Product photo unavailable</div>
+  return (
+    <CatalogPhoto featuredImage={product.featuredImage} title={product.title} />
   );
 }
 export async function LiveShop({
@@ -45,8 +30,9 @@ export async function LiveShop({
         <p className="eyebrow">THE CARD SHOP</p>
         <h1>Make room for your next find.</h1>
         <p>
-          Browse Northside’s published online collection. Purchases are not open
-          yet.
+          {basketballCartEnabled
+            ? "Browse Northside’s published online collection. Selected basketball products are available to purchase."
+            : "Browse Northside’s published online collection. Purchases are not open yet."}
         </p>
       </div>
       {data &&
@@ -154,13 +140,18 @@ export async function LiveShop({
                   <ProductImage product={p} />
                   <div className="product-copy">
                     <small>{p.productType || "Collectibles"}</small>
-                    <h3>{p.title}</h3>
-                    <p>From {formatMoney(p.priceRange.minVariantPrice)}</p>
-                    <small>
+                    <h2>{p.title}</h2>
+                    <p className="ns-card-price">
+                      From {formatMoney(p.priceRange.minVariantPrice)}
+                    </p>
+                    <small className="ns-availability">
                       {p.availableForSale
                         ? "Available online"
                         : "Currently unavailable"}
                     </small>
+                    <span className="ns-card-action">
+                      View product <ArrowUpRight size={18} aria-hidden="true" />
+                    </span>
                   </div>
                 </Link>
               ))}
@@ -193,7 +184,7 @@ export async function LiveShop({
           </nav>
         </>
       ) : (
-        <div className="empty">
+        <div className="empty" role="status">
           <h2>Catalog unavailable</h2>
           <p>
             Shopify is awaiting connection or could not be reached. Draft

@@ -1,4 +1,5 @@
 "use client";
+import { ServiceTermsPanel } from "./service-terms";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -90,6 +91,10 @@ export function QuoteSummary({
 function Status({ card: c }: { card: PortalCard }) {
   return (
     <>
+      {c.received_date && <p>Drop-off date: {c.received_date}</p>}
+      {c.provider_card_reference && (
+        <p>Provider card reference: {c.provider_card_reference}</p>
+      )}
       <span className="badge">
         {c.status_key === "ready_to_submit" && !c.approval_current
           ? "Approval needs renewal"
@@ -298,6 +303,14 @@ export function CustomerGradingPortal({
         {busy ? "Saving your decision…" : message}
       </p>
       {!data && !error && <p>Loading your saved cards…</p>}
+      {data && (
+        <ServiceTermsPanel
+          key={`${fixture}:${actor}`}
+          service="grading"
+          fixture={fixture}
+          actor={actor}
+        />
+      )}
       {data?.cards.length === 0 && (
         <section className="empty">
           <h2>No grading cards linked yet</h2>
@@ -371,10 +384,16 @@ export function CustomerGradingPortal({
                     <details className="collector-disclosure">
                       <summary>Card information</summary>
                       <p>{c.description}</p>
+                      <h3>Notes from Northside</h3>
+                      <p className="preserve-lines">
+                        {c.customer_notes || "No additional customer notes."}
+                      </p>
                       <p className="fine">
                         Card {c.card_id}
                         <br />
-                        Dropped off {when(c.received_at)}
+                        {c.received_date
+                          ? `Drop-off date ${c.received_date}`
+                          : `Receipt recorded ${when(c.received_at)}`}
                       </p>
                     </details>
                   ) : (

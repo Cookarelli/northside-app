@@ -34,16 +34,16 @@
     "@types/pngjs": "6.0.5",
     "@electric-sql/pglite": "0.5.8",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.1",
     "prettier": "3.9.6"
   },
   "dependencies": {
-    "next": "16.3.8",
+    "next": "16.4.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "postgres": "3.4.9",
     "qrcode": "1.5.4",
-    "zod": "4.1.12"
+    "zod": "4.6.6"
   },
   "type": "module"
 }

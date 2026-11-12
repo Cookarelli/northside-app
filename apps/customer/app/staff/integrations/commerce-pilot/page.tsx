@@ -244,6 +244,11 @@ export default async function Page({
       <section className="notice">
         <h2>Checkout and collection remain disabled</h2>
         <p>
+          <Link prefetch={false} href="/staff/integrations/checkout-test">
+            Separate development-store checkout test →
+          </Link>
+        </p>
+        <p>
           The existing shop and cart own checkout, buyer identity and
           server-stored cart handles. Real guest/customer checkout, taxes,
           discounts, retail fulfillment, signed payment delivery and staff

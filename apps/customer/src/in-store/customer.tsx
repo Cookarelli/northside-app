@@ -1216,16 +1216,32 @@ export default function Customer({
         </div>
       </footer>
       <div className="mobile-nav">
-        <Link prefetch={false} href="/in-store/">
+        <Link
+          prefetch={false}
+          href="/in-store/"
+          aria-current={page === "home" ? "page" : undefined}
+        >
           Explore
         </Link>
-        <Link prefetch={false} href="/in-store/scan">
+        <Link
+          prefetch={false}
+          href="/in-store/scan"
+          aria-current={page === "scan" ? "page" : undefined}
+        >
           Scan
         </Link>
-        <Link prefetch={false} href="/in-store/basket">
+        <Link
+          prefetch={false}
+          href="/in-store/basket"
+          aria-current={page === "basket" ? "page" : undefined}
+        >
           Basket ({count})
         </Link>
-        <Link prefetch={false} href="/in-store/status">
+        <Link
+          prefetch={false}
+          href="/in-store/status"
+          aria-current={page === "status" ? "page" : undefined}
+        >
           Status
         </Link>
       </div>

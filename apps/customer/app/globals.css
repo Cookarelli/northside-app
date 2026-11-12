@@ -1385,3 +1385,9 @@ select {
   .collector-shell input:not([type="checkbox"]):not([type="range"]), .collector-shell select { font-size: 16px; }
 }
 @media(prefers-reduced-motion: reduce) { .collector-shell * { scroll-behavior: auto; } }
+
+.shopping-entry { padding: 1rem 0; }
+.shopping-lines { list-style: none; padding: 0; }
+.shopping-lines > li { display: flex; gap: 1rem; flex-wrap: wrap; border-bottom: 1px solid var(--line, #d9e3e9); padding: 1rem 0; }
+.shopping-lines > li > div { flex: 1 1 16rem; min-width: 0; }
+.shopping-lines .actions { flex-wrap: wrap; align-items: center; }

@@ -1,10 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, LockKeyhole } from "lucide-react";
 import type { CartView, Merchandise } from "@/lib/commerce";
 import { formatMoney } from "@/lib/commerce";
-import { publicFlags } from "@/lib/policy.mjs";
+import {
+  basketballCartEnabled,
+  variantPurchasesEnabled,
+} from "@/lib/approved-basketball-sales";
 const messages: Record<string, string> = {
   purchases_disabled: "Purchases are not open yet.",
   quantity_unavailable:
@@ -17,6 +20,12 @@ const messages: Record<string, string> = {
   sign_in_required:
     "Sign in again, or start a new guest cart after signing out.",
   invalid_quantity: "Enter a whole quantity from 1 to 99.",
+  variant_not_approved_for_sale:
+    "This item is not approved for app purchases. Only selected basketball products are available.",
+  sale_price_changed_review_required:
+    "The price changed. Please contact Northside before purchasing this item.",
+  scan_price_changed_review_required:
+    "The price changed. Refresh your selection and review it before continuing.",
 };
 async function requestCart(body?: object) {
   const r = await fetch("/api/commerce/cart", {
@@ -39,12 +48,13 @@ export function ProductControls({ product }: { product: Merchandise }) {
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false);
   const variant = product.variants.nodes.find((v) => v.id === selected);
+  const purchasesEnabled = variantPurchasesEnabled(selected);
   const available =
     !!variant?.availableForSale &&
     !variant.currentlyNotInStock &&
     (variant.quantityAvailable || 0) >= n;
   return (
-    <div className="product-controls">
+    <div className="product-controls" aria-busy={busy}>
       <p className="price">
         {variant ? formatMoney(variant.price) : "Variant unavailable"}
       </p>
@@ -108,7 +118,7 @@ export function ProductControls({ product }: { product: Merchandise }) {
       </p>
       <button
         className="button"
-        disabled={!publicFlags.purchases || !available || busy}
+        disabled={!purchasesEnabled || !available || busy}
         onClick={async () => {
           setBusy(true);
           try {
@@ -125,12 +135,12 @@ export function ProductControls({ product }: { product: Merchandise }) {
           }
         }}
       >
-        {!publicFlags.purchases && <LockKeyhole size={17} aria-hidden="true" />}
-        {publicFlags.purchases
+        {!purchasesEnabled && <LockKeyhole size={17} aria-hidden="true" />}
+        {purchasesEnabled
           ? busy
             ? "Adding…"
             : "Add to cart"
-          : "Purchases not open yet"}
+          : "Purchases not open for this item"}
       </button>
       <p role="status">{notice}</p>
       <Link className="back" href="/cart" prefetch={false}>
@@ -139,6 +149,83 @@ export function ProductControls({ product }: { product: Merchandise }) {
       <p className="fine">
         Adding an item does not reserve it. Pickup is unavailable.
       </p>
+    </div>
+  );
+}
+export function CartQuantityControls({
+  quantity,
+  busy,
+  title,
+  onChange,
+  resetRevision = 0,
+}: {
+  quantity: number;
+  busy: boolean;
+  title: string;
+  onChange: (quantity: number) => void;
+  resetRevision?: number;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    // An authoritative reload can confirm the same quantity after rejecting a draft.
+    // Sync the uncontrolled input without replacing its node or keyboard focus.
+    if (input.current) input.current.value = String(quantity);
+  }, [quantity, resetRevision]);
+  return (
+    <div className="ns-cart-quantity">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onChange(Number(new FormData(e.currentTarget).get("quantity")));
+        }}
+      >
+        <label>
+          Quantity
+          <input
+            ref={input}
+            name="quantity"
+            aria-label={`Quantity for ${title}`}
+            type="number"
+            min="1"
+            max="99"
+            defaultValue={quantity}
+            required
+            disabled={busy}
+          />
+        </label>
+        <div className="actions">
+          <button
+            type="button"
+            className="button secondary"
+            aria-label={`Decrease ${title}`}
+            disabled={busy || quantity <= 1}
+            onClick={() => onChange(quantity - 1)}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            aria-label={`Increase ${title}`}
+            disabled={busy || quantity >= 99}
+            onClick={() => onChange(quantity + 1)}
+          >
+            +
+          </button>
+          <button className="button secondary" disabled={busy}>
+            Update quantity
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            aria-label={`Remove ${title}`}
+            onClick={() => onChange(0)}
+          >
+            Remove
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -172,7 +259,7 @@ export function LiveCart() {
           are finalized at checkout.
         </p>
       </div>
-      {!publicFlags.purchases ? (
+      {!basketballCartEnabled ? (
         <div className="empty">
           <h2>Purchases are not open yet</h2>
           <p>Real checkout testing and store setup are still pending.</p>
@@ -203,40 +290,14 @@ export function LiveCart() {
                       {formatMoney(line.cost.totalAmount)}
                     </p>
                   </div>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const d = new FormData(e.currentTarget);
-                      act({
-                        action: "update",
-                        lineId: line.id,
-                        quantity: Number(d.get("quantity")),
-                      });
-                    }}
-                  >
-                    <label>
-                      Quantity
-                      <input
-                        key={line.quantity}
-                        name="quantity"
-                        type="number"
-                        min="1"
-                        max="99"
-                        defaultValue={line.quantity}
-                        required
-                      />
-                    </label>
-                    <button disabled={busy}>Update</button>
-                  </form>
-                  <button
-                    className="plain"
-                    disabled={busy}
-                    onClick={() =>
-                      act({ action: "update", lineId: line.id, quantity: 0 })
+                  <CartQuantityControls
+                    quantity={line.quantity}
+                    title={line.merchandise.product.title}
+                    busy={busy}
+                    onChange={(quantity) =>
+                      void act({ action: "update", lineId: line.id, quantity })
                     }
-                  >
-                    Remove
-                  </button>
+                  />
                 </div>
               ))}
               <div className="cart-total">
@@ -265,7 +326,7 @@ export function LiveCart() {
           )}
         </>
       )}
-      <p role="status">{notice}</p>
+      <p role="status">{busy ? "Updating your cart…" : notice}</p>
       <Link className="back" href="/shop">
         Continue browsing →
       </Link>

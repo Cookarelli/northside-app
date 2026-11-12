@@ -116,6 +116,24 @@ export async function bindCustomer(db: Sql, actor: Actor, shopifyId: string) {
   if (row?.shopify_id !== shopifyId)
     throw new AccessError(403, "verified_customer_conflict");
 }
+export async function verifiedBuyerId(query: Query) {
+  const data = await query<{ customer: { id: string } | null }>(
+    "query CheckoutBuyer { customer { id } }",
+    {},
+  );
+  if (!data.customer)
+    throw new AccessError(401, "customer_account_unavailable");
+  return gid(data.customer.id, "Customer");
+}
+export async function verifyBuyerMapping(context: {
+  actor: Actor;
+  accessToken: string;
+}) {
+  const id = await verifiedBuyerId(await customerQuery(context.accessToken));
+  // Orders can be discovered without first visiting Account. Only the current
+  // Customer Account API response can establish this shop-scoped mapping.
+  await transaction("auth", (db) => bindCustomer(db, context.actor, id));
+}
 export async function customerAccount(query: Query, after?: string) {
   const data = await query<{
     customer: CustomerProfile & { orders: Connection<CustomerOrder> };

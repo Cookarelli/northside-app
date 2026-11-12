@@ -48,6 +48,7 @@ function harness() {
       keys: async () => [
         "northside-private-obsolete",
         "northside-public-v1",
+        "northside-public-v2",
         "unrelated-app",
       ],
       delete: async (name) => deleted.push(name),
@@ -138,9 +139,29 @@ test("logout clears obsolete Northside caches and locks other tabs without inter
     data: { type: "LOGOUT" },
     source: { id: "caller" },
   });
-  assert.deepEqual(h.deleted, ["northside-private-obsolete"]);
+  assert.deepEqual(h.deleted, [
+    "northside-private-obsolete",
+    "northside-public-v1",
+  ]);
   assert.equal(h.messages.length, 1);
   assert.equal(h.messages[0].type, "SESSION_LOCKED");
+});
+test("activating the branding update removes old public assets and retains only the current Northside cache", async () => {
+  const h = harness();
+  await h.dispatch("activate");
+  assert.deepEqual(h.deleted, [
+    "northside-private-obsolete",
+    "northside-public-v1",
+  ]);
+  await h.dispatch("install");
+  assert.deepEqual(h.puts, [
+    "/pwa/offline.html",
+    "/pwa/offline.css",
+    "/northside-logo.svg",
+    "/pwa/icon-180.png",
+    "/pwa/icon-192.png",
+    "/pwa/icon-512.png",
+  ]);
 });
 test("lock-screen push discards untrusted private payload and arbitrary deep links", async () => {
   const h = harness();

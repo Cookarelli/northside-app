@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { LoungeFeature } from "./lounge-feature";
 import Image from "next/image";
 import { useState, useEffect, useCallback, type FormEvent } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -370,6 +371,7 @@ export function BreakWorkspace({
           )}
         </>
       )}
+      {!staff && !personal && !id && <LoungeFeature />}
       <p className="loyalty-footnote">
         Purchases remain disabled pending live Shopify verification. Carts do
         not reserve spots. Reminders appear in this app only; email and push

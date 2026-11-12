@@ -85,6 +85,8 @@ export async function openPreviewDatabase(directory: string) {
         "grading_dispatches",
         "20260916195007_grading_staff_custody_and_dispatch.sql",
       ],
+      ["service_terms", "20261105185734_customer_service_terms_tracking.sql"],
+      ["service_requests", "20261106183817_service_requests_v1.sql"],
     ]) {
       const present = (
         await db.query<{ present: string | null }>(
@@ -97,6 +99,11 @@ export async function openPreviewDatabase(directory: string) {
           await readFile(resolve("supabase/migrations", file), "utf8"),
         );
     }
+    const requestRecoveryReady = (await db.query<{ ready: boolean }>(
+      "select exists(select from pg_policies where schemaname='ns' and tablename='service_request_notes' and policyname='staff_read' and qual not like '%read_only%') and exists(select from pg_proc where pronamespace='ns'::regnamespace and proname='submit_service_request' and position('Configured service level and declared value required' in prosrc)>0) and exists(select from pg_proc where pronamespace='ns'::regnamespace and proname='claim_service_request' and position($$status='pending'$$ in prosrc)>0) as ready"
+    )).rows[0]?.ready;
+    if (!requestRecoveryReady)
+      await db.exec(await readFile(resolve("supabase/migrations", "20261110150000_service_request_recovery_privacy.sql"), "utf8"));
     const tokens: Record<string, string> = {};
     for (const [name, n] of [
       ["a", 1],

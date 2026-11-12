@@ -1,0 +1,41 @@
+NORTHSIDE — PROMPT 3 CATALOG / SINGLES ARRIVALS — NOVEMBER 5, 2026
+
+IMPLEMENTATION
+The native Home and Shop reuse the versioned mobile catalog client, existing approved Storefront projection and public product detail. The optional request feed=singles-new-arrivals selects a separate configured arrival collection. A product must be published, positively belong to BOTH the approved catalog and verified Singles collections, and carry the existing ns:merchandising:new-arrival-verified tag. Titles, SKU, prices, stock quantities, dates and absence from Sealed/Graded collections never classify a single. No new response metadata or identity/cart system was added.
+
+BACKEND CONFIGURATION — SERVER ONLY
+NORTHSIDE_MOBILE_APPROVED_COLLECTION remains the existing explicit approval scope.
+NORTHSIDE_MOBILE_NEW_ARRIVALS_COLLECTION and NORTHSIDE_MOBILE_SINGLES_COLLECTION are new blank placeholders in mobile-mvp.env.example. Configure them only for an approved staging catalog. The existing New Arrivals handle new-arrivals was verified by read-only Admin access; no verified Singles collection exists among the current15collections. No actual environment value was set here.
+The opt-in feed alone requests Product.tags and requires the Storefront token's unauthenticated_read_product_tags permission. Ordinary catalog, release, product detail and scanner documents remain tag-free and retain their original permission requirements. Missing mapping/scope/network causes an unavailable/error state, never a fallback to general merchandise or the private Draft snapshot. No new permission or app installation was granted.
+
+ORDER AND NEWNESS
+Current Shopify New Arrivals collection712386412913 uses an ALL TAGGED_WITH source condition for ns:merchandising:new-arrival-verified and ALPHA_ASC order. The implementation preserves the merchant's collection order; it does not infer an arrival date or invent a recent-days window. A chronological arrival-date policy, if desired, is a business decision. Existing tags and collection records were not modified.
+
+ACTUAL SHOPIFY THEME
+Theme source: /Users/northside/Documents/Codex/2026-10-29/northside-horizon-theme/theme
+Working branch: codex/prompt3-singles-20261105; HEAD ff0ba50b959ccf3c02cd2541c24e53959ba05444.
+The new northside-singles section and homepage instance reuse Horizon's native product-card blocks and Northside theme tokens. All3collectionpickers stay blank. It checks at most50arrival candidates, then displays the configured card limit; an empty bounded preview is described accordingly. Cards cannot expose Quick Add in this section. Existing global Quick Add settings and other sections' behavior are preserved. Checkout controls remain off. The60 reviewed theme changes were uploaded only to unpublished theme209248715121; no live theme publication occurred.
+Actual preview: https://9i3hnb-jw.myshopify.com/?preview_theme_id=209248715121
+
+IMAGES
+Native Home/Shop/product detail share an approved-Shopify-image component. Missing, disallowed or failed images show an accessible unavailable state. Source changes reset a failed load; explicit product refresh retries the same URL. Next customer-web product images now use the same strict public image contract and have a load-error fallback/new-source recovery. No generated product photography, remote private image source or Admin credential enters the client. The new theme section reuses its existing native gallery. Tests use synthetic image hosts/callbacks, not real CDN or physical-device acceptance.
+
+INVENTORY / COUNTER / PAYMENT
+Shopify remains authority. Public native catalog quantities remain null; private location stock and staff metadata are not projected. The existing scan/cart/current-price/finite-availability checks and unpaid counter handoff are unchanged. Catalog cursor progress is now checked even on nonempty pages, preventing repeated-page loops. Expired observations and stale response suppression retain existing rules.
+Read-only metadata verified3distinct active pools: RetailFloor121087263089, BreakerStorage121202770289, ExcessStorage121239273841. Those are Shopify Location IDs, not public shelf counts or proof of fulfillment routing. No quantities were read for public display, summed, decremented or reserved by this work. Register payment remains manual.
+
+VERIFICATION
+822uniqueapplicationtests passed:356customer service tests,19customer script tests,263root/core/shared contract tests,6pilot tests and178native tests. The11focusedarrival tests are included in356, not counted again. Another30localLiquid cases passed, for852cross-surface cases. Root/customer/native/portableTypeScript checks, relevant changed-source lint, web/iOS exports, customerWebpack build and client server-secret-identifier scans pass. Native broad lint retains exactly7errors+1warning present in the baseline; ThemeCheck retains0errors+6unchangedwarnings. No rules or assertions were disabled. Initial mock/renderer/resource/sandbox failures and their fixes/retries are retained in verification logs.
+Purchase-flow tests used only isolated synthetic provider replies, local test identities and temporary PGlite/SQL data with provider network denied. They are not real checkout, inventory concurrency or paid-order acceptance. No live payment/order was created.
+
+REVIEW / LIMITS
+The fresh existing IAB storefront session rendered the real uploaded Singles New Arrivals section at1280x720 with no Liquid errors, no horizontal overflow, a sticky header and0purchasecontrols in the section. Screenshot: PROMPT3_SHOPIFY_SINGLES_DESKTOP.jpg in task outputs. It currently shows its truthful unconfigured state. Positive populated states were tested with synthetic data.
+Static mobile audit and simulated native tests passed. Actual mobile browser/touch, screen-reader, signed iPhone/Android builds and hardware scanning remain UNPERFORMED/BLOCKED. Browser session access is not the same as Admin API access; no password/security bypass was used.
+
+REMAINING WORK
+Business/catalog: approve a verified Singles classification/collection, approved public catalog selection and merchandising order; publish no Draft products without separate product/channel approval. Configure the native staging handles and required optional tag-read permission; select the3theme resources after approval. Deploy app/backend staging source when authorized; this source was not deployed through Vercel/EAS.
+Website content: actual Fanatics Live URL, approved Zach/Andrew bios/headshots, confirmed break/show details, planned pizza readiness and approved family/pizza photos; canonical Page bindings after review.
+Private status: carry approved portal origin/deployment, safe grading/consignment login returns, hosted account isolation and authorized owner-specific records into the CUSTOMER-ACCOUNT task. This phase did not change authentication or pretend private tracking was live.
+
+BOUNDARIES
+Draft products, prices, inventory, channels, production theme, production flags, server secrets, EAS identifiers and scanner/counter services were preserved. No real funds, blanket3%fee, advance percentage, store submission, worker activation, deployment, merge or reset was performed.

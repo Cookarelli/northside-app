@@ -25,6 +25,7 @@ for (const file of [
   "breaks",
   "store",
   "engagement",
+  "qa-remediation",
 ]) {
   const result = spawnSync(process.execPath, [`scripts/${file}-smoke.mjs`], {
     stdio: "inherit",

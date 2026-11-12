@@ -34,9 +34,20 @@ export async function photoBytes(request: Request) {
   if (!size) throw new AccessError(400, "photo_required");
   return Buffer.concat(chunks);
 }
-export async function normalizePhoto(bytes: Uint8Array, mime: string) {
-  if (!bytes.length || bytes.length > MAX_PHOTO_BYTES)
-    throw new AccessError(413, "photo_exceeds_4_MiB");
+export async function normalizePhoto(
+  bytes: Uint8Array,
+  mime: string,
+  maxBytes = MAX_PHOTO_BYTES,
+) {
+  if (![MAX_PHOTO_BYTES, 5242880].includes(maxBytes))
+    throw new AccessError(500, "invalid_photo_limit");
+  if (!bytes.length || bytes.length > maxBytes)
+    throw new AccessError(
+      413,
+      maxBytes === MAX_PHOTO_BYTES
+        ? "photo_exceeds_4_MiB"
+        : "photo_exceeds_5_MiB",
+    );
   if (!["image/jpeg", "image/png", "image/webp"].includes(mime))
     throw new AccessError(415, "unsupported_photo_export_as_JPEG_PNG_or_WebP");
   if (!matchesFileType(bytes, mime))
@@ -55,10 +66,12 @@ export async function normalizePhoto(bytes: Uint8Array, mime: string) {
       .flatten({ background: "#fff" })
       .jpeg({ quality: 95, chromaSubsampling: "4:4:4" })
       .toBuffer({ resolveWithObject: true });
-    if (data.length > MAX_PHOTO_BYTES)
+    if (data.length > maxBytes)
       throw new AccessError(
         413,
-        "processed_photo_exceeds_4_MiB_export_a_smaller_JPEG",
+        maxBytes === MAX_PHOTO_BYTES
+          ? "processed_photo_exceeds_4_MiB_export_a_smaller_JPEG"
+          : "processed_photo_exceeds_5_MiB_export_a_smaller_JPEG",
       );
     return {
       bytes: data,

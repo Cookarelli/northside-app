@@ -379,8 +379,36 @@ test("encryption is bound to session and rejects tampering; same origin and exac
       headers: { origin: "https://preview.example.test" },
     }),
   );
+  for (const path of ["/services/request", "/my-cards/requests"])
+    assert.equal(safeReturn(path), path);
+  for (const path of [
+    "//evil.test/services/request",
+    "https://evil.test/services/request",
+    "/services/request?returnTo=https://evil.test",
+    "/services/request/../staff",
+    "/services/request/",
+    "/my-cards/requests#other",
+    "/my-cards/requests%2f..%2fstaff",
+  ]) assert.equal(safeReturn(path), "/account");
   assert.equal(safeReturn("//evil.test"), "/account");
   assert.equal(safeReturn("/my-cards"), "/my-cards");
+  assert.equal(safeReturn("/my-cards/consignment"), "/my-cards/consignment");
+  for (const path of [
+    "https://evil.test/my-cards/consignment",
+    "//evil.test/my-cards/consignment",
+    "/%2f%2fevil.test/my-cards/consignment",
+    "/my-cards/consignment?customerId=other",
+    "/my-cards/consignment#other",
+    "/my-cards/consignment/../grading",
+    "/my-cards/consignment%2f..%2fstaff",
+    "/my-cards/consignment/other",
+    "/my-cards/consignment-extra",
+    "/my-cards/consignment/",
+    "/my-cards//consignment",
+    "/my-cards/Consignment",
+    "/my-cards/consignment\n",
+  ])
+    assert.equal(safeReturn(path), "/account");
 });
 test("auth role can map verified subjects but cannot read operational records", async () => {
   await db.transaction(async (tx) => {

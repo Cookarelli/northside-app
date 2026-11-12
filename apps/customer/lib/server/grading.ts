@@ -78,6 +78,9 @@ export function intakeInput(value: unknown): IntakeInput {
     throw new AccessError(400, "intake_required");
   const v = value as Record<string, unknown>;
   return {
+    ...(v.received_date === undefined || v.received_date === ""
+      ? {}
+      : { received_date: receivedDate(v.received_date) }),
     customer_id: uuid(text(v.customer_id, 36, true)),
     description: text(v.description, 500, true),
     quantity: integer(v.quantity),
@@ -88,6 +91,17 @@ export function intakeInput(value: unknown): IntakeInput {
     card_number: text(v.card_number ?? "", 80),
     parallel: text(v.parallel ?? "", 100),
   };
+}
+export function receivedDate(value: unknown) {
+  const v = text(value, 10, true);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(v) ||
+    !Number.isFinite(Date.parse(v)) ||
+    new Date(v).toISOString().slice(0, 10) !== v ||
+    Date.parse(v) > Date.now()
+  )
+    throw new AccessError(400, "valid_past_drop_off_date_required");
+  return v;
 }
 export async function gradingSettings(db: Sql, actor: Actor) {
   const value = (
@@ -289,7 +303,7 @@ export async function createIntake(
     [actor.tenant_id, caseId, input.customer_id],
   );
   await db.query(
-    "insert into ns.grading_intakes(tenant_id,case_id,customer_id,examination_cents,settings_version,request_id,import_id) values($1,$2,$3,$4,$5,$6,$7)",
+    "insert into ns.grading_intakes(tenant_id,case_id,customer_id,examination_cents,settings_version,request_id,import_id,received_date) values($1,$2,$3,$4,$5,$6,$7,$8)",
     [
       actor.tenant_id,
       caseId,
@@ -298,6 +312,7 @@ export async function createIntake(
       settings.version,
       requestId,
       importId,
+      input.received_date ?? null,
     ],
   );
   for (let n = 0; n < input.quantity; n++) {
@@ -364,13 +379,17 @@ export async function updateGradingCard(
   await reasonOn(db, body.reason, source);
   try {
     await db.query(
-      "update ns.grading_cards set status_key=$3,findings=$4,customer_notes=$5,result=$6,certificate=$7,result_kind=$8,version=version+1,updated_at=clock_timestamp() where tenant_id=$1 and card_id=$2",
+      "update ns.grading_cards set status_key=$3,findings=$4,customer_notes=$5,result=$6,certificate=$7,result_kind=$8,provider_card_reference=$9,version=version+1,updated_at=clock_timestamp() where tenant_id=$1 and card_id=$2",
       [
         actor.tenant_id,
         id,
         status,
         ...values,
         body.result_kind ?? card.result_kind,
+        text(
+          body.provider_card_reference ?? card.provider_card_reference ?? "",
+          200,
+        ),
       ],
     );
   } catch (e) {

@@ -524,6 +524,7 @@ test("portal: tenant boundaries and absent sessions cannot inspect approvals or 
 test("portal: login return paths preserve card/exam destinations and reject open redirects", () => {
   for (const path of [
     "/my-cards/grading",
+    "/my-cards/consignment",
     `/my-cards/grading/card/${ids[0]}`,
     `/my-cards/grading/exam/${ids[0]}`,
     "/grading",
@@ -536,6 +537,11 @@ test("portal: login return paths preserve card/exam destinations and reject open
     "/my-cards/grading?returnTo=https://evil.test",
     "/my-cards/grading/card/not-a-uuid",
     "/%2f%2fevil.test",
+    "/my-cards/consignment?returnTo=https://evil.test",
+    "/my-cards/consignment#details",
+    "/my-cards/consignment/../../api/private",
+    "/my-cards/consignment/",
+    "/my-cards/consignment-other",
   ])
     assert.equal(safeReturn(path), "/account");
 });

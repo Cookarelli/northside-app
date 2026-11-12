@@ -17,6 +17,11 @@ import {
   cents,
 } from "./shopify-config";
 export type Query = <T>(query: string, variables: object) => Promise<T>;
+export type CartPolicy = {
+  assertVariant: (variantId: string) => void;
+  assertCart: (cart: Cart) => void;
+  reviewedPriceCents?: (variantId: string) => number | undefined;
+};
 const PAGE = "pageInfo { hasNextPage endCursor }";
 const MONEY = "amount currencyCode";
 const VARIANT = `id title availableForSale quantityAvailable currentlyNotInStock price { ${MONEY} }`;
@@ -110,27 +115,50 @@ export function checkAvailable(v: Variant | null, n: number) {
   if (
     !v?.availableForSale ||
     v.currentlyNotInStock ||
+    !Number.isSafeInteger(v.quantityAvailable) ||
     v.quantityAvailable === null ||
     v.quantityAvailable < n
   )
     throw new AccessError(409, "quantity_unavailable");
   cents(v.price);
 }
-export async function available(query: Query, id: string, n: number) {
+export async function available(
+  query: Query,
+  id: string,
+  n: number,
+  reviewedPriceCents?: number,
+) {
   const v = (
     await query<{ node: Variant | null }>(
       `query Availability($id: ID!) { node(id: $id) { ... on ProductVariant { ${VARIANT} } } }`,
       { id: gid(id, "ProductVariant") },
     )
   ).node;
+  if (v?.id !== id) throw new AccessError(409, "quantity_unavailable");
   checkAvailable(v, quantity(n));
+  if (
+    reviewedPriceCents !== undefined &&
+    cents(v!.price) !== reviewedPriceCents
+  )
+    throw new AccessError(409, "scan_price_changed_review_required");
 }
-function validCart(cart: Cart | null): Cart {
+function validCart(cart: Cart | null, policy?: CartPolicy): Cart {
   if (!cart) throw new AccessError(409, "cart_expired");
   if (cart.lines.pageInfo.hasNextPage || cart.lines.nodes.length > 99)
     throw new AccessError(409, "cart_too_large");
   cents(cart.cost.totalAmount);
   cents(cart.cost.subtotalAmount);
+  for (const line of cart.lines.nodes) {
+    if (
+      !line.merchandise?.id ||
+      !Number.isInteger(line.quantity) ||
+      line.quantity < 1
+    )
+      throw new AccessError(409, "cart_changed_review_required");
+    gid(line.merchandise.id, "ProductVariant");
+    cents(line.cost.totalAmount);
+  }
+  policy?.assertCart(cart);
   return cart;
 }
 export function cartView(cart: Cart): CartView {
@@ -144,7 +172,12 @@ export function cartView(cart: Cart): CartView {
     discountCodes: cart.discountCodes,
   };
 }
-export async function readCart(query: Query, id: string, checkout = false) {
+export async function readCart(
+  query: Query,
+  id: string,
+  checkout = false,
+  policy?: CartPolicy,
+) {
   return validCart(
     (
       await query<{ cart: Cart | null }>(
@@ -152,6 +185,7 @@ export async function readCart(query: Query, id: string, checkout = false) {
         { id },
       )
     ).cart,
+    policy,
   );
 }
 async function mutate(
@@ -160,6 +194,7 @@ async function mutate(
   declarations: string,
   args: string,
   variables: object,
+  policy?: CartPolicy,
 ) {
   const response = await query<
     Record<
@@ -177,22 +212,34 @@ async function mutate(
   const result = response[operation];
   if (!result || result.userErrors.length || result.warnings.length)
     throw new AccessError(409, "cart_changed_review_required");
-  return validCart(result.cart);
+  return validCart(result.cart, policy);
 }
-export async function createCart(query: Query, customerToken?: string) {
-  return mutate(query, "cartCreate", "$input: CartInput!", "input: $input", {
-    input: {
-      buyerIdentity: {
-        countryCode: "US",
-        ...(customerToken ? { customerAccessToken: customerToken } : {}),
+export async function createCart(
+  query: Query,
+  customerToken?: string,
+  policy?: CartPolicy,
+) {
+  return mutate(
+    query,
+    "cartCreate",
+    "$input: CartInput!",
+    "input: $input",
+    {
+      input: {
+        buyerIdentity: {
+          countryCode: "US",
+          ...(customerToken ? { customerAccessToken: customerToken } : {}),
+        },
       },
     },
-  });
+    policy,
+  );
 }
 export async function updateBuyer(
   query: Query,
   id: string,
   customerToken?: string,
+  policy?: CartPolicy,
 ) {
   return mutate(
     query,
@@ -203,6 +250,7 @@ export async function updateBuyer(
       id,
       buyer: { countryCode: "US", customerAccessToken: customerToken || null },
     },
+    policy,
   );
 }
 export async function applyDiscount(
@@ -240,20 +288,29 @@ export async function addLine(
   cartId: string,
   variantId: string,
   n: number,
+  reviewedPriceCents?: number,
+  policy?: CartPolicy,
 ) {
+  policy?.assertVariant(variantId);
   quantity(n);
   gid(variantId, "ProductVariant");
-  const cart = await readCart(query, cartId);
+  const cart = await readCart(query, cartId, false, policy);
   const existing = cart.lines.nodes
     .filter((l) => l.merchandise.id === variantId)
     .reduce((s, l) => s + l.quantity, 0);
-  await available(query, variantId, quantity(existing + n));
+  await available(
+    query,
+    variantId,
+    quantity(existing + n),
+    policy?.reviewedPriceCents?.(variantId) ?? reviewedPriceCents,
+  );
   return mutate(
     query,
     "cartLinesAdd",
     "$id: ID!, $lines: [CartLineInput!]!",
     "cartId: $id, lines: $lines",
     { id: cartId, lines: [{ merchandiseId: variantId, quantity: n }] },
+    policy,
   );
 }
 export async function updateLine(
@@ -261,9 +318,10 @@ export async function updateLine(
   cartId: string,
   lineId: string,
   n: number,
+  policy?: CartPolicy,
 ) {
   quantity(n, true);
-  const cart = await readCart(query, cartId),
+  const cart = await readCart(query, cartId, false, policy),
     line = cart.lines.nodes.find((l) => hashToken(l.id) === lineId);
   if (!line) throw new AccessError(404, "cart_line_unavailable");
   if (!n)
@@ -273,25 +331,42 @@ export async function updateLine(
       "$id: ID!, $lines: [ID!]!",
       "cartId: $id, lineIds: $lines",
       { id: cartId, lines: [line.id] },
+      policy,
     );
   const other = cart.lines.nodes
     .filter((l) => l.id !== line.id && l.merchandise.id === line.merchandise.id)
     .reduce((s, l) => s + l.quantity, 0);
-  await available(query, line.merchandise.id, quantity(other + n));
+  await available(
+    query,
+    line.merchandise.id,
+    quantity(other + n),
+    policy?.reviewedPriceCents?.(line.merchandise.id),
+  );
   return mutate(
     query,
     "cartLinesUpdate",
     "$id: ID!, $lines: [CartLineUpdateInput!]!",
     "cartId: $id, lines: $lines",
     { id: cartId, lines: [{ id: line.id, quantity: n }] },
+    policy,
   );
 }
 export async function checkout(
   query: Query,
   cartId: string,
   customerToken?: string,
+  allowedHosts?: readonly string[],
+  policy?: CartPolicy,
 ) {
-  const cart = await updateBuyer(query, cartId, customerToken);
+  const reviewed = await readCart(query, cartId, false, policy);
+  const cart = await updateBuyer(query, cartId, customerToken, policy);
+  if (
+    JSON.stringify(reviewed.cost) !== JSON.stringify(cart.cost) ||
+    JSON.stringify(reviewed.lines) !== JSON.stringify(cart.lines) ||
+    JSON.stringify(reviewed.discountCodes) !==
+      JSON.stringify(cart.discountCodes)
+  )
+    throw new AccessError(409, "cart_changed_review_required");
   if (!cart.lines.nodes.length) throw new AccessError(409, "cart_empty");
   const amounts = new Map<string, number>();
   for (const l of cart.lines.nodes)
@@ -299,15 +374,22 @@ export async function checkout(
       l.merchandise.id,
       (amounts.get(l.merchandise.id) || 0) + l.quantity,
     );
-  for (const [id, n] of amounts) await available(query, id, n);
-  const fresh = await readCart(query, cartId, true);
+  for (const [id, n] of amounts)
+    await available(query, id, n, policy?.reviewedPriceCents?.(id));
+  const fresh = await readCart(query, cartId, true, policy);
   if (
     JSON.stringify(fresh.cost) !== JSON.stringify(cart.cost) ||
-    JSON.stringify(fresh.lines) !== JSON.stringify(cart.lines)
+    JSON.stringify(fresh.lines) !== JSON.stringify(cart.lines) ||
+    JSON.stringify(fresh.discountCodes) !== JSON.stringify(cart.discountCodes)
   )
     throw new AccessError(409, "cart_changed_review_required");
-  const url = new URL(fresh.checkoutUrl || "https://invalid.invalid");
-  const allowed = [
+  let url: URL;
+  try {
+    url = new URL(fresh.checkoutUrl || "https://invalid.invalid");
+  } catch {
+    throw new AccessError(503, "checkout_destination_unverified");
+  }
+  const allowed = allowedHosts ?? [
     commerceConfig().shop,
     "shopify.com",
     ...(process.env.SHOPIFY_CHECKOUT_HOSTS || "").split(",").filter(Boolean),
@@ -316,6 +398,7 @@ export async function checkout(
     url.protocol !== "https:" ||
     url.username ||
     url.password ||
+    url.port ||
     !allowed.includes(url.hostname)
   )
     throw new AccessError(503, "checkout_destination_unverified");
@@ -326,6 +409,7 @@ export async function cartCampaigns(
   id: string,
   first?: string,
   last?: string,
+  policy?: CartPolicy,
 ) {
   const attributes = [
     { key: "ns_first_campaign", value: first || "" },
@@ -337,5 +421,6 @@ export async function cartCampaigns(
     "$id: ID!, $attributes: [AttributeInput!]!",
     "cartId: $id, attributes: $attributes",
     { id, attributes },
+    policy,
   );
 }

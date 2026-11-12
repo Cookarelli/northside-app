@@ -67,6 +67,7 @@ export async function adminQuery(): Promise<Query> {
 type Bag = { shopMoney: Money };
 export type OrderSnapshot = {
   id: string;
+  test: boolean;
   customerId: string | null;
   name: string;
   financialStatus: string;
@@ -84,6 +85,7 @@ export async function fetchOrder(
   const data = await query<{
     order: {
       id: string;
+      test: boolean;
       customer: { id: string } | null;
       name: string;
       displayFinancialStatus: string;
@@ -94,14 +96,31 @@ export async function fetchOrder(
       totalRefundedSet: Bag;
     } | null;
   }>(
-    `query ReconcileOrder($id: ID!) { order(id: $id) { id customer { id } name displayFinancialStatus cancelledAt updatedAt currentTotalPriceSet { shopMoney { amount currencyCode } } totalReceivedSet { shopMoney { amount currencyCode } } totalRefundedSet { shopMoney { amount currencyCode } } } }`,
+    `query ReconcileOrder($id: ID!) { order(id: $id) { id test customer { id } name displayFinancialStatus cancelledAt updatedAt currentTotalPriceSet { shopMoney { amount currencyCode } } totalReceivedSet { shopMoney { amount currencyCode } } totalRefundedSet { shopMoney { amount currencyCode } } } }`,
     { id: gid(id, "Order") },
   );
   const o = data.order;
-  if (!o || o.id !== id || !Number.isFinite(Date.parse(o.updatedAt)))
+  if (
+    !o ||
+    o.id !== id ||
+    typeof o.test !== "boolean" ||
+    ![
+      "AUTHORIZED",
+      "EXPIRED",
+      "PAID",
+      "PARTIALLY_PAID",
+      "PARTIALLY_REFUNDED",
+      "PENDING",
+      "REFUNDED",
+      "VOIDED",
+    ].includes(o.displayFinancialStatus) ||
+    !Number.isFinite(Date.parse(o.updatedAt)) ||
+    (o.cancelledAt !== null && !Number.isFinite(Date.parse(o.cancelledAt)))
+  )
     throw new AccessError(503, "order_state_unavailable");
   return {
     id: o.id,
+    test: o.test,
     customerId: o.customer ? gid(o.customer.id, "Customer") : null,
     name: o.name,
     financialStatus: o.displayFinancialStatus,

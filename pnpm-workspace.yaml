@@ -9,3 +9,8 @@ allowBuilds:
   unrs-resolver: false
 patchedDependencies:
   braces@3.0.3: patches/braces@3.0.3.patch
+
+# Patched compatible transitive releases; audit remains enabled.
+overrides:
+  "zod@>=4.0.0 <4.6.6": 4.6.6
+  "vite@8.3.2": 8.3.3

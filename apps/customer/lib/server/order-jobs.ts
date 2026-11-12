@@ -8,10 +8,8 @@ import {
 import { type Sql, transaction } from "./db";
 import { SHOP, TENANT } from "./providers";
 import { AccessError } from "./security";
-import { gid } from "./shopify-config";
+import { gid, TESTED_API_VERSION } from "./shopify-config";
 import { adminQuery, fetchOrder, type OrderSnapshot } from "./admin-shopify";
-import { enqueueBreakOrder } from "./break-worker";
-import { enqueueLoyaltyOrder } from "./loyalty-worker";
 export async function rawBody(request: Request, maxBytes = 1024 * 1024) {
   if (!request.body) throw new AccessError(400, "body_required");
   const reader = request.body.getReader(),
@@ -32,6 +30,8 @@ export async function rawBody(request: Request, maxBytes = 1024 * 1024) {
 export function verifyDelivery(raw: Buffer, headers: Headers, secret: string) {
   if (!secret) throw new AccessError(503, "webhook_not_configured");
   const value = headers.get("x-shopify-hmac-sha256") || "";
+  if (!/^[A-Za-z0-9+/]{43}=$/.test(value))
+    throw new AccessError(401, "invalid_webhook_signature");
   const received = Buffer.from(value, "base64"),
     expected = createHmac("sha256", secret).update(raw).digest();
   if (
@@ -41,6 +41,8 @@ export function verifyDelivery(raw: Buffer, headers: Headers, secret: string) {
     throw new AccessError(401, "invalid_webhook_signature");
   if (headers.get("x-shopify-shop-domain") !== SHOP)
     throw new AccessError(403, "unrecognized_shop");
+  if (headers.get("x-shopify-api-version") !== TESTED_API_VERSION)
+    throw new AccessError(400, "unsupported_api_version");
   const topic = headers.get("x-shopify-topic") || "",
     delivery = headers.get("x-shopify-webhook-id") || "";
   if (
@@ -52,7 +54,11 @@ export function verifyDelivery(raw: Buffer, headers: Headers, secret: string) {
     ].includes(topic)
   )
     throw new AccessError(400, "unsupported_webhook_topic");
-  if (!/^[a-f0-9-]{36}$/i.test(delivery))
+  if (
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+      delivery,
+    )
+  )
     throw new AccessError(400, "invalid_delivery_id");
   let payload;
   try {
@@ -73,7 +79,13 @@ export function verifyDelivery(raw: Buffer, headers: Headers, secret: string) {
       : typeof source === "string" && /^[0-9]+$/.test(source)
         ? `gid://shopify/Order/${source}`
         : source;
-  return { delivery, topic, orderId: gid(id, "Order") };
+  return {
+    delivery: delivery.toLowerCase(),
+    topic,
+    orderId: gid(id, "Order"),
+    bodyHash: createHash("sha256").update(raw).digest("hex"),
+    apiVersion: TESTED_API_VERSION,
+  };
 }
 export async function receiveOn(
   db: Sql,
@@ -85,10 +97,43 @@ export async function receiveOn(
       [TENANT, event.delivery],
     )
   ).rows[0];
-  if (!receipt) return { duplicate: true };
+  if (!receipt) {
+    const prior = (
+      await db.query<{
+        shop: string;
+        order_id: string;
+        topic: string;
+        body_hash: string | null;
+        api_version: string | null;
+      }>(
+        `select j.shop,j.order_id,j.topic,j.body_hash,j.api_version from ns.webhook_receipts r
+       join ns.order_jobs j on j.tenant_id=r.tenant_id and j.receipt_id=r.id
+       where r.tenant_id=$1 and r.provider='shopify' and r.source_id=$2`,
+        [TENANT, event.delivery],
+      )
+    ).rows[0];
+    if (
+      !prior ||
+      prior.shop !== SHOP ||
+      prior.order_id !== event.orderId ||
+      prior.topic !== event.topic ||
+      prior.body_hash !== event.bodyHash ||
+      prior.api_version !== event.apiVersion
+    )
+      throw new AccessError(409, "delivery_conflict");
+    return { duplicate: true };
+  }
   await db.query(
-    "insert into ns.order_jobs(tenant_id,receipt_id,shop,order_id,topic) values($1,$2,$3,$4,$5)",
-    [TENANT, receipt.id, SHOP, event.orderId, event.topic],
+    "insert into ns.order_jobs(tenant_id,receipt_id,shop,order_id,topic,body_hash,api_version) values($1,$2,$3,$4,$5,$6,$7)",
+    [
+      TENANT,
+      receipt.id,
+      SHOP,
+      event.orderId,
+      event.topic,
+      event.bodyHash,
+      event.apiVersion,
+    ],
   );
   return { duplicate: false };
 }
@@ -127,6 +172,19 @@ export async function reconcileOn(
     `${TENANT}/${SHOP}/${job.order_id}`,
   ]);
   const s = await load(job.order_id);
+  if (
+    !(
+      await db.query(
+        "select 1 from ns.order_jobs where tenant_id=$1 and receipt_id=$2 and lease_token=$3 and lease_until>clock_timestamp()",
+        [TENANT, job.receipt_id, job.lease_token],
+      )
+    ).rows.length
+  )
+    throw new AccessError(503, "order_lease_expired");
+  if (s.test !== false)
+    throw new AccessError(409, "test_order_excluded_from_live_ledger");
+  if (!Number.isFinite(Date.parse(s.updatedAt)))
+    throw new AccessError(503, "invalid_order_timestamp");
   if (s.id !== job.order_id)
     throw new AccessError(503, "order_identity_mismatch");
   const fingerprint = createHash("sha256")
@@ -191,6 +249,11 @@ export async function failOn(db: Sql, job: Job) {
   );
 }
 export async function runOrderJobs(limit = 10) {
+  // A CLI invocation alone must not activate an operational processor.
+  if (process.env.NORTHSIDE_ORDER_PROCESSOR_MODE !== "reconcile-only")
+    return { completed: 0, failed: 0, disabled: true };
+  if (!Number.isInteger(limit) || limit < 1 || limit > 10)
+    throw new AccessError(400, "invalid_job_limit");
   let completed = 0,
     failed = 0;
   await transaction("commerce", (db) =>
@@ -210,10 +273,8 @@ export async function runOrderJobs(limit = 10) {
             const done = await reconcileOn(db, job, (id) =>
               fetchOrder(query, id),
             );
-            if (done) {
-              await enqueueLoyaltyOrder(db, job.order_id, job.receipt_id);
-              await enqueueBreakOrder(db, job.order_id, job.receipt_id);
-            }
+            // This mode records authoritative order state only. No loyalty,
+            // break allocation, fulfillment, collection, payment or inventory action.
             return done;
           })(),
         )

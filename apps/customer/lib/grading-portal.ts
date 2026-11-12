@@ -37,6 +37,7 @@ export function quoteComplete(q: GradingQuote | null) {
   );
 }
 export type PortalCard = Omit<GradingCard, "customer_id" | "batch_id"> & {
+  received_date?: string | null;
   received_at: string;
   photos: ExamPhoto[];
   exam: { id: string; revision: number; signed_at: string } | null;

@@ -191,11 +191,12 @@ test("guest and verified-customer checkout recheck stock and fetch a fresh Shopi
   for (const token of [undefined, "SAMPLE_verified_customer_token"]) {
     const p = provider();
     assert.equal(await checkout(p.query, cart.id, token), cart.checkoutUrl);
-    assert.deepEqual(p.calls[0].v.buyer, {
+    assert.ok(p.calls[0].q.startsWith("query Cart"));
+    assert.deepEqual(p.calls[1].v.buyer, {
       countryCode: "US",
       customerAccessToken: token || null,
     });
-    assert.ok(p.calls[1].q.includes("Availability"));
+    assert.ok(p.calls[2].q.includes("Availability"));
     assert.ok(p.calls.at(-1)?.q.includes("checkoutUrl"));
   }
   await assert.rejects(
@@ -273,6 +274,7 @@ test("GraphQL transport rejects provider errors and silent API-version fall-forw
 function signed(raw: Buffer, topic = "orders/paid", shop = SHOP) {
   return new Headers({
     "x-shopify-shop-domain": shop,
+    "x-shopify-api-version": "2026-07",
     "x-shopify-topic": topic,
     "x-shopify-webhook-id": randomUUID(),
     "x-shopify-hmac-sha256": createHmac("sha256", "SAMPLE_SECRET")
@@ -381,6 +383,7 @@ test("Admin reconciliation uses Shopify totals and rejects a mismatched returned
       order: {
         id: "gid://shopify/Order/100",
         name: "SAMPLE",
+        test: false,
         customer: null,
         displayFinancialStatus: "PARTIALLY_REFUNDED",
         cancelledAt: null,
@@ -400,4 +403,16 @@ test("Admin reconciliation uses Shopify totals and rejects a mismatched returned
     fetchOrder(q, "gid://shopify/Order/200"),
     /order_state_unavailable/,
   );
+});
+
+test("availability fails closed for absent quantity, malformed stock and a provider variant mismatch", async () => {
+  for (const n of [undefined, NaN, 0.5, -1])
+    assert.throws(
+      () => checkAvailable({ ...variant, quantityAvailable: n } as Variant, 1),
+      /quantity_unavailable/,
+    );
+  const q: Query = async <T>() =>
+    ({ node: { ...variant, id: "gid://shopify/ProductVariant/999" } }) as T;
+  const { available } = await import("../lib/server/storefront");
+  await assert.rejects(available(q, variant.id, 1), /quantity_unavailable/);
 });

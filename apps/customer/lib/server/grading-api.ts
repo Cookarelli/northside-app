@@ -2,7 +2,6 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { Sql, Actor } from "./db";
 import { AccessError, uuid } from "./security";
-import { supabase } from "./providers";
 import {
   gradingDashboard,
   gradingDetail,
@@ -19,7 +18,13 @@ import {
   gradingWriter,
   audit,
 } from "./grading";
-import { quoteWorkspace, saveQuote } from "./grading-portal";
+import {
+  quoteWorkspace,
+  saveQuote,
+  portalData,
+  portalDetail,
+  portalExport,
+} from "./grading-portal";
 import { contact, settings, batch } from "./grading-operations";
 import {
   previewImport,
@@ -60,6 +65,27 @@ export async function gradingApi(
 ) {
   const url = new URL(request.url);
   if (request.method === "GET") {
+    const selectors = ["quote", "card", "import", "export", "file"].filter(
+      (k) => url.searchParams.has(k),
+    );
+    if (
+      selectors.length > 1 ||
+      selectors.some((k) => url.searchParams.getAll(k).length !== 1)
+    )
+      throw new AccessError(400, "one_record_selector_required");
+    // The legacy route must use the same explicit customer projection as the
+    // current portal. Raw grading rows contain staff/shared-batch metadata.
+    if (actor.customer_id) {
+      if (url.searchParams.has("card"))
+        return portalDetail(db, actor, uuid(url.searchParams.get("card")!));
+      if (url.searchParams.has("quote"))
+        return quoteWorkspace(db, actor, uuid(url.searchParams.get("quote")!));
+      if (url.searchParams.has("import"))
+        throw new AccessError(403, "staff_permission_required");
+      if (url.searchParams.has("export"))
+        return { csv: await portalExport(db, actor) };
+      if (!url.searchParams.has("file")) return portalData(db, actor);
+    }
     if (url.searchParams.has("quote"))
       return quoteWorkspace(db, actor, uuid(url.searchParams.get("quote")!));
     if (url.searchParams.has("card"))
@@ -83,11 +109,7 @@ export async function gradingApi(
           throw new AccessError(404, "no_real_fixture_files");
         return { url: "/grading-sample.svg" };
       }
-      const result = await supabase(true)
-        .storage.from("northside-private")
-        .createSignedUrl(file.object_key, 60);
-      if (result.error) throw new AccessError(503, "file_unavailable");
-      return { url: result.data.signedUrl };
+      return { url: `/api/private/files/${id}/content` };
     }
     return gradingDashboard(db, actor);
   }

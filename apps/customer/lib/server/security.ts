@@ -104,7 +104,10 @@ export function safeReturn(value: unknown) {
       "/rewards",
       "/staff",
       "/my-cards/grading",
+      "/my-cards/consignment",
       "/grading",
+      "/services/request",
+      "/my-cards/requests",
     ].includes(value)
   )
     return value;

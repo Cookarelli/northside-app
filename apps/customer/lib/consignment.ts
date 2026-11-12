@@ -1,5 +1,7 @@
 export const consignmentStates = {
   received: "Received at Northside",
+  accepted: "Accepted for consignment",
+  declined: "Declined for consignment",
   preparing: "Preparing submission",
   submitted: "Submitted to partner",
   processing: "Partner processing",
@@ -12,6 +14,9 @@ export const consignmentStates = {
 } as const;
 export type ConsignmentState = keyof typeof consignmentStates;
 export type ConsignmentItem = {
+  financial_basis?: "accepted_agreement" | "legacy_net" | "pending_agreement";
+  agreement_version?: string | null;
+  provider_card_reference?: string;
   id: string;
   card_id: string;
   case_id: string;

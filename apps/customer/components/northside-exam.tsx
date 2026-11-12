@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { wrapPhotoDialogTab } from "@/lib/photo-dialog-focus";
 import {
   blankExam,
   examProblems,
@@ -47,6 +48,9 @@ export function PhotoView({
     [retry, setRetry] = useState(0),
     [zoom, setZoom] = useState(1);
   const dialog = useRef<HTMLDialogElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const closeControl = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
   const src = `${endpoint}&photo=${photo.id}&retry=${retry}`;
   return (
     <div className="exam-photo-view">
@@ -54,6 +58,7 @@ export function PhotoView({
         <p role="alert">
           Stored photo unavailable.{" "}
           <button
+            ref={trigger}
             type="button"
             className="plain"
             onClick={() => {
@@ -66,12 +71,14 @@ export function PhotoView({
         </p>
       ) : (
         <button
+          ref={trigger}
           className="exam-image-button"
           type="button"
           aria-label={`Zoom ${photoLabels[photo.kind]} photo`}
           onClick={() => {
             setZoom(1);
             dialog.current?.showModal();
+            closeControl.current?.focus();
           }}
         >
           <Image
@@ -87,13 +94,20 @@ export function PhotoView({
       <dialog
         ref={dialog}
         className="exam-zoom"
+        aria-labelledby={titleId}
+        onClose={() => trigger.current?.focus()}
+        onKeyDown={(event) => wrapPhotoDialogTab(event, event.currentTarget)}
         onClick={(e) => {
           if (e.target === e.currentTarget) dialog.current?.close();
         }}
       >
         <div className="exam-zoom-controls">
-          <strong>{photoLabels[photo.kind]}</strong>
-          <button type="button" onClick={() => dialog.current?.close()}>
+          <strong id={titleId}>{photoLabels[photo.kind]} photo</strong>
+          <button
+            ref={closeControl}
+            type="button"
+            onClick={() => dialog.current?.close()}
+          >
             Close
           </button>
           <label>

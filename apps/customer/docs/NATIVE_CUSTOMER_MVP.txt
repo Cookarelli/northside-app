@@ -1,0 +1,98 @@
+NORTHSIDE CUSTOMER MOBILE MVP — LOCAL IMPLEMENTATION / RELEASE ACCEPTANCE PENDING
+
+The native application now implements all five customer tabs and product/privacy
+screens. No production service, product, feature flag, purchasing, redemption,
+notification, physical pickup or submission has been activated.
+
+BACKEND CONFIGURATION
+Combine mobile.env.example and mobile-mvp.env.example privately on the approved
+staging backend. All existing confidential Shopify auth/Storefront integrations
+and restricted northside_auth/northside_runtime SQL connections remain server-only.
+The native client receives only a public HTTPS API origin and public build IDs.
+
+NORTHSIDE_MOBILE_APPROVED_COLLECTION is a published Shopify collection handle whose
+membership the company explicitly approves for public mobile merchandise. A generic
+all-products collection is not implicit approval. No product is automatically added
+to a collection, published or changed by this code. The adapter checks current
+Storefront publication/publishedAt and collection membership. Product detail, scans
+and optional releases recheck membership; local registry presence alone is not approval.
+NORTHSIDE_MOBILE_RELEASE_COLLECTION optionally supplies published release merchandise;
+only products also present in the approved collection can appear. Do not label a
+future release date unless supplied in verified business content. No Draft products
+or unpublished release placeholders are exposed.
+
+Catalog search is a bounded literal title/description/productType search inside the
+approved collection, not a search that widens to every shop product. Categories are
+Storefront productType filters. A search inspects up to8 provider pages per response;
+if none match within that bound, an empty page can still carry hasNextPage=true and
+the native UI offers continuation. No false exhausted/empty claim is made. Product
+variant pages are100 at a time; product approval checks up to100 collection memberships
+and fails closed when membership is not found. Review scalability for larger stores.
+Observations expire after60seconds and the UI removes expired prices/availability.
+Only approved public Shopify CDN images are accepted. Images can be absent without
+inventing artwork. SKU/barcode come from current Storefront data. Inventory quantities,
+staff pool/location data and online-store checkout URLs are not projected.
+
+Native scanning additionally needs NORTHSIDE_MOBILE_SCAN_READS_APPROVED=true and the
+existing exact NORTHSIDE_QR_ORIGIN plus reviewed registry mappings. This new native
+read boundary does not change web publicFlags.barcodeScanning. Barcode/QR input is
+parsed without arbitrary URL fetches, checked for exactly one verified target,
+re-proven against Shopify and checked against approved publication/membership.
+Valid camera EAN13 representations of UPC-A may try the exact code plus the UPC
+candidate; ambiguity, unavailable proofs or conflicting identities fail closed.
+A final current detail read rechecks SKU/barcode so a changed mapping is not reused.
+No scan creates a cart, reserves inventory, starts checkout or changes any pool.
+The three original inventory pools and their existing policies are unchanged.
+
+Home info reads only published, nonfixture, Northside-brand upcoming event rows
+through the existing engagement role. Unknown dates/locations remain unknown.
+Store address/hours/phone come only from operator-reviewed public JSON. Privacy,
+account deletion web access and support URLs must be direct HTTPS destinations on
+the approved backend or Northside website. No placeholder policy/contact address is
+invented. Missing business content is shown honestly and blocks store readiness.
+
+WALLET / ACCOUNT
+All private reads resolve the existing Shopify-only native session, customer UUID
+and owner/tenant RLS. Wallet uses the existing live ledger adapter without enrolling,
+earning, reserving, issuing vouchers or redeeming. Unlaunched/not-enrolled states
+omit balances entirely, preserving unknown versus real0 and signed debt. Ready
+responses expose only balances/tier and read-only reward labels/costs. Raw rule,
+voucher, reservation and ledger snapshots are not returned. Existing public loyalty
+flags remain unchanged and false. The actual ledger launch is a separate business
+approval; this work does not activate it.
+Account retains real Customer Account profile/orders and owned grading/consignment
+summaries, and adds a narrow owned break purchase summary. Legacy payment evidence
+is labeled separately. No staff notes, addresses, cross-owner batch totals, payment
+secrets or internal identifiers/snapshots are exposed. Optional wallet/break/privacy
+reads can be unavailable without inventing a disconnected result;401 still clears
+the private session. Private state is cleared on logout/background/account changes.
+
+DELETION REQUESTS
+New local migration20261104161250_native_customer_privacy_requests.sql adds one
+private auth-only request table. It was generated with Supabase CLI and not applied
+to any hosted database. Original migrations are untouched. Review the existing
+hash-tracked full migration plan before applying to a selected staging database.
+POST /api/mobile/v1/me/deletion-request accepts only confirmation=DELETE MY ACCOUNT,
+requires a verified native customer and a login family created within15minutes,
+records an idempotent active request and revokes that native family. GET of the same
+path returns only the current owner's latest request status. Runtime/anonymous roles
+have no table access; the auth role cannot update or mark requests completed.
+The UI binds typed confirmation to the current customer/session and says requested,
+not deleted. The client clears local credentials after receipt. Ambiguous network
+loss is not automatically retried; reauthenticate and check status before retrying.
+
+This initiates deletion; it does NOT fulfill legal/provider deletion automatically.
+A reviewed operator workflow, retention policy, Shopify identity/data handling,
+request monitoring, response process and independent public deletion web page must
+be completed and verified before store review. The queue currently has no automatic
+notification/fulfillment worker. Do not claim completion, a response deadline or
+policy acceptance that has not been supplied by the company. No existing customer
+identity/ownership was changed or deleted by implementation/testing.
+
+TEST/RELEASE LIMITS
+Automated tests use synthetic provider data and local PGlite. Actual Shopify data,
+hosted roles/RLS/concurrency, company policies, signed iPhone/Android builds and
+physical-camera behavior require staging/device acceptance. Camera-only permissions
+must be verified on native binaries: no microphone/audio/photo library/location.
+Use the final manual QA matrix and blocker report in the task outputs. Keep all
+production activations and store submission outside this work.

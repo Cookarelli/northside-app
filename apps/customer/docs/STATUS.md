@@ -1,3 +1,358 @@
+## November 11, 2026 — Native Scan/Shopify Cart staging verified
+
+The user authorized the reviewed API-only staging setup. READY Preview
+`dpl_4bCXDmiAqkGQtUnspuu5WebX3vNp` serves the dedicated native API alias. Only that
+alias is exempted from Vercel protection; project SSO remains all-deployments and
+production `dpl_GeU8U7LfUy5t8jx2SynG5WkgjyZQ` is unchanged. Host routing blocks
+website/checkout/staff/auth/assets. Protected and anonymous live six-scan and
+Shopify Cart add/change/read/remove checks pass; test carts were left empty.
+Server-only Retail Floor authorization and hosted strict Postgres persistence
+accepted the live flow. No new credentials, scope/role grants, order, reservation,
+inventory deduction, charge, theme, product or production change was made.
+
+Native Scan/Cart retains the five bottom tabs and branding. It uses exact indexed
+barcode/SKU/product QR matches, encrypted server cart keys, opaque SecureStore
+handles, canonical totals and durable uncertain-write fencing. Checkout/POS is
+disabled. Native/shared checkpoint `ef946a735cc8f022279a410d3b050494d91017d7`
+preserves unrelated backend work. Internal iOS 0.1.0(3), build
+`f5d9757d-2d7c-4a62-a24c-e40ae5fec0cf`, FINISHED with existing signing. Downloaded
+IPA confirms team/bundle/build/API configuration and registered iPhone eligibility.
+Actual native API/controller live restoration also passes with an in-memory handle
+adapter. Physical camera/SecureStore acceptance remains unverified.
+
+Checks: native257/shared152 pass; focused server121 pass with the pre-existing
+obsolete checkout expectation failure; ingress4 pass; all TypeScript and affected
+lint, isolated customer build/HTTP guard and iOS export pass. See root
+`docs/qa/NORTHSIDE-SCAN-CART-2026-11-11.md` for full evidence and phone checklist.
+
+## November 10, 2026 — Six verified basketball products and protected web purchasing
+
+The user's seven-product live-sales exception was applied to six exact existing
+Shopify variants. Optic UPC 746134157646 remains held: neither existing Optic
+candidate has that barcode. No duplicate, unrelated catalog change, baseball
+change, theme publication or native release was made. Keep the six matched
+products live and preserve legitimate sales; do not rerun the absolute quantity
+corrections. Shopify readback, product links and the seven-row readiness/ESL
+manifest are in the active task's outputs/BASKETBALL_2026-11-10 deliverables.
+
+Customer web purchasing uses a frozen six-variant allowlist, approved server
+prices and fresh whole-cart checks. General public purchase/reward/store gates
+remain disabled. Existing ownership, buyer identity and server-only provider
+credentials are preserved. The user explicitly approved the branch-specific
+Preview selector SHOPIFY_TRUSTED_BUYER_IP_HEADER=x-vercel-forwarded-for. Production,
+all-deployment SSO and native settings remain unchanged. Final deployment and
+source-hash evidence are recorded with the task output; no Git commit or push.
+
+The six products were found through Shopify public search and the real web app
+catalog. Both one-each carts have a $529.70 merchandise subtotal, support quantity
+changes and reach unpaid Shopify checkout. No order, charge, physical scanner
+test or refund was performed. Retail Floor can fulfill/ship online orders but
+has no configured local pickup. The public custom domain remains Square Online;
+its separate catalog is not established as synchronized with Shopify. Native
+iPhone access and physical POS hardware/payment checks remain pending.
+
+Independent focused checks: 43 tests, customer TypeScript, changed-file ESLint
+and isolated production Webpack build pass. A narrow cart label fix keeps visible
+Quantity/Remove labels short and product-specific accessible names intact.
+The mobile web shop was checked at 390x844 with all six images loaded and no
+horizontal overflow. This is browser acceptance, not native-device acceptance.
+
+Shop/Fanatics parent publication was removed in normal Admin for the five affected
+products. Automatic default-variant records remain unchanged. Two hidden parent
+assignments remain unresolved: Microsoft Copilot on six and generic Headless on
+five; neither was exposed by the supported Admin per-product controls inspected.
+Required Online Store, POS and named Northside Headless publication remain intact.
+Service terms and the proposed 105% total hammer-price offer remain pending.
+
+## November 10, 2026 — Monday website and native presentation verification
+
+Continued the November 9 baseline within the existing dirty checkout. Four native
+presentation files now show the confirmed Forest Hills address while disconnected,
+accurate Wallet/service-request unavailable states, and shared storefront text,
+controls and input styling. The web safe-return allowlist adds only the existing
+`/services/request` and `/my-cards/requests` routes; hostile host/query/fragment/
+traversal variants remain rejected. No persistence/auth policy or provider setup
+was broadened. App changes remain local; no Vercel deployment or signed build.
+
+Independent checks pass: 28 native focused tests, 4 additional selected Home/Wallet
+tests, 35 customer privacy/request/tracking tests, TypeScript and changed-file
+ESLint. Customer isolated Webpack production build and native web export pass.
+Phone 390x844 and tablet 1024x1366 app navigation/widths were inspected. These
+are browser/native-component checks, not physical-device acceptance.
+
+Shopify presentation changes were uploaded only to unpublished theme 209248715121
+and inspected at desktop 1440x1000 and phone 390x844. White content and blue accents
+preserve the existing hero/branding/dark footer. Services link to real Shopify
+inquiries and the existing protected card-status portal; inactive request previews
+and unconfirmed hours were removed. Native policy links replace an unreliable
+popover. Theme Check: 0 errors, 6 existing warnings. Catalog readback remains
+0 ACTIVE / 484 DRAFT / 2257 ARCHIVED; no catalog writes or publication.
+
+Full evidence, exact changed files, limitations and Prompt 3 gaps are in the
+current task's `outputs/MONDAY_2026-11-09/WEBSITE_AND_UI.txt`. Guest/native transport,
+approved terms (including pending 105% TOTAL hammer excluding buyer premium),
+receiving details and signed-device acceptance remain gated. No real message,
+payment, service submission or notification was sent.
+
+## November 6, 2026 — Staff workspace design lift (local verification)
+
+The user requested clearer staff home and submission pages after confirming the
+SAMPLE inquiry is Review with its owner assigned. Reused Northside navy/blue,
+scoped CSS modules, visible focus and 48px primary controls. Staff home now leads
+with Requests & follow-up, separate received-card desks and readable workspace
+cards. Shared inquiry/service forms use numbered sections, explicit next steps,
+stored references and the unchanged applicable terms/retry flow. Staff sign-in
+uses the same design without changing authentication. Queue adds reference/name/
+email search, friendly state/owner labels, clear filters and readable assignment
+controls. Server-projected can_edit hides writer controls for read-only staff;
+existing backend authorization is unchanged. Inactive owners remain explicit
+until reassigned; confirmed saves refresh form defaults by request version.
+
+Validation: customer TypeScript and ESLint pass; existing 393 TypeScript +19
+script tests pass, plus the added queue role regression passes (8/8 affected
+request tests). Isolated production Webpack build passes. Independent source
+review completed two cycles; contrast/role/owner findings corrected. Browser
+layout and functional QA are recorded in the task's Friday staff design report.
+No schema, migrations, theme, products, checkout, rates, staff memberships,
+credentials, notification delivery or production settings changed. Hosted design
+availability and physical-device verification must be read from that report;
+local checks alone do not establish deployment or iPhone results.
+
+## November 6, 2026 — Friday Prompt 4 service requests
+
+The shared v1 pre-receipt request layer now serves the customer web app, prepared Shopify transport, native iOS/Android client and staff request queue. Inquiries, submitted requests and received physical cards remain distinct. The implementation reuses existing intake, card photos, revision-bound grading quotes/approvals, provider batches, custody and My Cards. Guest claims require a hashed private capability, verified account and independent staff review. Staff may record inquiries; collectors must accept service terms through their own form. Assignment, dated follow-up/history, immutable one-time conversion and a retriable redacted test-only outbox are implemented.
+
+Reviewed migration `20261106183817_service_requests_v1.sql` (SHA256 `73217d268b631bb157aa52576a120d18a027f017f57801fc40690eae9a5b8558`) was applied alone to the owner-designated nonproduction project `nrsuosydvjqovrevmych`, after all16 predecessor hashes matched. Hosted verification:17 ledger rows,12 new RLS tables,0 PUBLIC execution grants,0 service requests,0 approved terms,0 active offers, SGC unconfirmed, private bucket still private, previous2 grading intakes/1 consignment item preserved. The dashboard cannot SET ROLE northside_runtime (42501); no permissions were broadened. Authenticated hosted flow, public approved transport and physical device acceptance remain pending.
+
+New request-origin consignment items have individual acceptance/decline/list/sale states and cannot fall back to historical net while their agreement is pending. Confirmed offers require explicit eligibility, verified hammer sale, immutable accepted terms/rate/hammer/payout snapshots and recorded payment evidence. The proposed105% TOTAL of hammer, excluding buyer premium, remains internal pending_confirmation; May102% inactive. Historical settlements retain their original basis. No Spring Special price, provider timeline, result, payout or mail-in ZIP/date was invented.
+
+Verification:393 customer tests and19 script checks;194 prior native tests plus19 new actual-screen/API/controller regressions;263 root tests covered (one loopback sandbox failure resolved by its8-test worker-file rerun);6 pilot checks recorded separately. Independent request/contract17 checks and6 overlapping PostgreSQL18.4 transactions passed. Affected TypeScript, local production customer/control builds, iOS/Android/web exports and phone390x844/tablet1024x1366 customer privacy checks passed. See Friday service-flow deliverables for exact final deployment, validation limitations and evidence; local exports are not signed/installed device builds.
+
+Public operation remains gated by approved full terms, provider/service details, approved reachable public API origin/transport and real account/device acceptance. Pre-receipt file attachments were not added; existing private card photographs remain available after staff intake. Theme209248715121 remains unpublished with checkout disabled and request API URL unset. All products remain DRAFT. No production deployment, catalog activation or real customer notification is authorized by this work.
+
+## November 6, 2026 — Friday POS rehearsal; catalog remains DRAFT
+
+Friday Prompt 2 reused the existing scanner, encrypted shopping list, explicit
+Add, quantity edits and unpaid staff handoff. Existing dirty branch, index,
+tracking/intake/My Cards work, theme and deployment were preserved. This run
+made local fixes only; READY Preview `dpl_3DziMZ4synTPFAGbKtJnBr2V5NMW` has
+not received them.
+
+Fixed quantity drafts surviving a successful Reload after a rejected/unsaved
+edit. A revision sync restores the canonical quantity without remounting the
+input. Independent regressions reproduce two failures before and pass all
+three after. Browser SAMPLE journeys verified explicit Add, quantity changes,
+removal, rejected-stock recovery, unpaid/frozen handoff, authenticated staff
+inspection and canceled-reference rejection at phone/tablet browser widths.
+This does not establish physical iPhone/iPad/Victa or keyboard-focus retention.
+
+Fixed shopping-mode web camera/saved-image UPC handling: pinned ZXing can
+return a UPC-A as `EAN13` with a leading zero. Shared native candidate logic
+checks checksum-valid aliases against every present registry/Storefront proof,
+rejects conflicting identities or failed exact proofs, and returns the canonical
+code for Add and subsequent revalidation. Manual/Code128 matching stays exact;
+non-shopping scanner behavior is unchanged. Independent review accepted both
+fixes. Seven real-PGlite/synthetic-Storefront regressions pass; focused existing
+server tests 53/53 pass. Three actual-scanner component checks (mocked decoder/HTTP)
+also pass: EAN13 canonical Add, exact manual text and exact Code128. The quantity
+regressions 3/3, native shopping 22/22,
+selected native scanner 19 (20 unrelated cases not selected), and mocked POS
+bridge 3/3 passed. These are focused checks, not a rerun of the historical 868.
+Current customer TypeScript, lint of nine edited source files, isolated Next
+production build and 135-client-artifact secret/config scan pass. The build copy
+contains no private env and blocks provider fetches. Three previously recorded
+native/config lint errors remain outside this change.
+
+Read-only Shopify verification: store `9i3hnb-jw.myshopify.com`, 0 ACTIVE /
+2,707 DRAFT (EXACT). Candidate product `15993266209137`, variant
+`64522036511089`, SKU/barcode `887521156221`, stored USD 5.95, taxable and
+tracked, Retail Floor `121087263089`: available/on-hand 20, committed 0.
+No product/channel/price/stock/payment writes occurred. No real catalog record
+was copied into the public registry. Price approval, physical recount, actual
+POS tax/profile/location and device versions remain unverified.
+
+User reports two Verifone Victa Mobile QR/payment devices and 10.1-inch iPads.
+Shopify documentation permits built-in scanning in mobile selling mode;
+docked countertop payment mode disables the built-in scanner. Pairing and
+actual hardware results remain NOT TESTED. Saved-image browser file selection
+was blocked by the Chrome extension's file-URL access setting; offline pixels
+and actual decoder/parser checks pass independently.
+
+Current handoff `northside-handoff:v1:<opaque token>` supports authorized
+unpaid-summary inspection only. Existing POS bridge is an uninstalled mock
+prototype using an older URL protocol. Installed extension identity/config,
+authenticated claim/ack/location binding and order correlation are missing;
+automatic POS import and physical sale/receipt/stock/refund acceptance remain
+BLOCKED. No production release, migration, app installation or real charge.
+
+Report and physical checklist: Friday task `outputs/FRIDAY_POS_REPORT.txt`.
+The report includes the exact unapplied one-product/POS-channel proposal;
+Steve's DRAFT hold remains in force. Next Friday Prompt 3 starts from the
+preserved unpublished theme `209248715121`, corrects the Forest Hills address,
+and verifies mobile/desktop links and honest service-request states.
+
+## November 5, 2026 — Hosted card tracking; acceptance remains HOLD
+
+The existing customer application is now deployed to the verified nonproduction
+Vercel project `northside-customer-pilot` (`prj_ew70zOV4frVoFmU5nfljsNDoxHbZ`,
+team `team_iPL9ti94DMgRhfyzvbgjzZdG`). Deployment
+`dpl_3DziMZ4synTPFAGbKtJnBr2V5NMW` is READY. The existing protected staging
+alias now resolves to that deployment:
+https://northside-customer-pilot-git-in-a7ee5f-steves-projects-e37a4ef4.vercel.app
+The previous immutable Preview is preserved; no production promotion occurred.
+
+The uploaded source is the preserved dirty `codex/card-tracking-20261105` work at
+base `9f74e7c725fc9a0d85482afb91c73e6627979521`, not a claim that these changes
+were committed. The reviewed 330-file upload aggregate is
+`a6b5266bbd1fcbf7547f5e429e946b67a5d2c52cfb42aaface622800d2e07468`.
+The Preview branch name `integration/supervised-store` selected existing
+branch-scoped environment settings. All application, scanner, catalog, native
+Expo/EAS and dependency source was retained. This entry is the only subsequent
+repository edit. The hosted Next build compiled and passed TypeScript. The
+prior 868 passing application tests were not rerun; 16 focused operator-helper
+mock tests were run separately. Three existing native/config lint errors remain
+(two Metro require imports and one auth-test any); they did not block this
+customer staging build and a clean native lint gate is still not claimed.
+
+The owner explicitly confirmed Supabase `nrsuosydvjqovrevmych` is nonproduction
+and existing records are test data. Actual Preview checks verified its API/DB
+mapping, TLS-authorized restricted runtime/auth SQL roles and private
+`northside-private` Storage bucket. Only the reviewed additive
+`20261105185734_customer_service_terms_tracking.sql` was applied through the
+authenticated official owner SQL Editor; its SHA and all 15 prior ledger hashes
+match, ledger count16, with 9/9 metadata/security checks passing. Existing
+records were preserved. Public Supabase signup was disabled by a separately
+reviewed operator action; UI reload and the actual Auth settings API confirm
+signup disabled/email enabled. Existing staff memberships remain unchanged.
+The local owner connection still returns28P01; no password was reset or owner
+credential installed in runtime. Three other pending commerce/native/privacy
+migrations were deliberately not applied. Dashboard backup was observed about
+11–12h old; restoration was not tested.
+
+Actual hosted verification: existing owner staff sign-in; verified approved
+Shopify customer A login and exact My Cards return; one new explicit SAMPLE
+grading card; front/back images confirmed in private Storage and loaded by its
+customer; manual On hold update, entered SAMPLE drop-off date, distinct per-card reference,
+customer-visible note and dated history persisted across reload and the direct
+owner API. Private intake/update reasons were absent. Customer staff-directory
+access, staff actor-query customer impersonation and post-logout card access
+returned error-only denials. Seven anonymous HTTP API checks passed, including
+actor/fixture/native boundaries and foreign-Origin rejection with private
+no-store headers. Two staff HTTP200 client shells were not counted as auth
+passes. Authenticated API status/headers were not captured by browser navigation.
+
+A separate SAMPLE consignment A intake and private attachment were saved;
+amounts remain NULL/unknown, shared reference is explicitly SAMPLE, no listing,
+provider request, sale or settlement occurred. Staff image retrieval passed;
+customer consignment visibility/isolation remains untested. Existing grading
+approval/dispatch gates were preserved; no exam/quote was published to force a
+shared batch. Existing in-app/audit infrastructure is retained; external
+notification delivery remains disabled and NOT TESTED.
+
+The user deferred Joey to tomorrow. His completed customer sign-in, distinct
+A/B identities, cross-customer record/photo denial and two-customer shared-order
+case are NOT TESTED. Do not count customer A success or old local/pilot results
+as those checks. No approved service terms or acceptance receipts exist; Brody
+and Nick must supply exact approved forms/text/service/version/approval evidence,
+status responsibilities, identifier definitions, retention and notification
+consent policy. Do not invent terms or seed sample text as business policy.
+
+Signed connected iPhone builds remain HOLD. Reuse
+`@northside-collectibles/northside-customer`, project
+`ecfde92e-a01e-4158-b0ce-13908afa39ab`, and the approved iOS preview bundle/scheme.
+Confirm active Apple company signing access, register both iPhones, review/apply
+native session/privacy prerequisites and an approved native-reachable staging
+API/callback configuration, then prepare the connected internal profile. The
+current interface-only iOS preview rejects an API origin; protected Vercel SSO
+cannot be replaced by a bypass secret embedded in the client. No EAS build,
+registration, signing or physical-device test occurred in this task.
+
+Theme209248715121, Shopify Draft products, the three inventory pools, disabled
+live checkout, scanner/unpaid counter handoff and Northside HQ remain preserved.
+No production activation, real payment/funds or commerce-provider write or Northside Cash
+work occurred. Detailed hosted evidence and review links are in the task outputs
+`HOSTED_CARD_TRACKING_REPORT_20261105.txt` and
+`HOSTED_CARD_TRACKING_QA_20261105.json`.
+
+---
+
+# November 5, 2026 — Manual customer card tracking
+
+Extended the existing grading/consignment intake, customer portal, Shopify/staff sessions, owner/claim projections, private photo storage and notification records. Staff select an exact existing customer, record actual drop-off dates/per-card provider references, and persist manual statuses with dated customer history. Native Account now opens service-specific My Cards. Mixed-customer provider orders remain staff-only; internal notes, exam drafts and private reasons never enter customer DTOs. Private photo content is authorized on every request. Generic attachments retain 5 MiB support; existing exam photos retain their 4 MiB limit.
+
+Added configurable immutable service terms with customer/service/version/server-date acceptance and no repeat for an unchanged version; no real terms or status policy is seeded. Existing selected-card/exam/quote approvals and physical dispatch/custody guards remain required. Exact web account returns and protected native cold-start destinations reuse the existing identity integration. Independent review fixed conflicting legacy API selectors, implicit customer selection, session-renewal boundaries and stale terms/UI effects.
+
+868 unique application tests pass with zero failures/skips; four type checks, customer changed-source lint, web/iOS exports and customer build pass. Selected native/config lint has no new diagnostics and retains three independently proven baseline errors. Actual isolated local browser intake/photos/status/history/public-note/terms/other-customer denial passes, including responsive desktop Chrome 390/820 widths. Hosted Shopify login, hosted Storage/migration/concurrency, native devices/touch and actual notification delivery remain NOT TESTED. No external messages were sent.
+
+No hosted deployment or migration: existing Vercel Preview was identified, but usable credentials and separation of its database/private Storage from production cannot be verified. Dedicated Supabase access and migration-owner credentials are missing. The theme portal origin remains blank pending a verified HTTPS staging portal and callbacks. All scanner/catalog/inventory/Expo/EAS and theme work is preserved; theme 209248715121 remains UNPUBLISHED and production checkout disabled. No real customer/provider/payment/stock/product activation occurred. Read docs/CARD_TRACKING_WORKFLOW.txt for exact source, additive migration, acceptance limits, staging dependency and required Brody/Nick inputs. Northside Cash is outside this task.
+
+# November 5, 2026 — Prompt 3 catalog and guarded singles arrivals
+
+The existing customer app/backend now supports the opt-in Singles New Arrivals catalog feed through explicit server-side collection mappings and the existing verified-arrival tag. Published+approved catalog+Singles membership is required; no single classification or date window is inferred. Optional tag-read permission is isolated to the new feed, preserving ordinary catalog/product/release/scanner queries. Repeated provider cursors fail closed even on nonempty pages. Native and Next product-image error states now recover safely without fabricated artwork.
+
+Independent verification passed 822 unique app tests plus 30 Liquid cases, four TypeScript checks, changed-source lint, native web/iOS exports, customer Webpack build and client secret-identifier scans. Native broad lint has the identical seven baseline errors and one warning; Theme Check has zero errors and the same six baseline warnings. Synthetic test identities/providers and isolated local purchase tests were used; no real payment or inventory mutation.
+
+Actual Shopify theme source is separate from this repository: Northside Horizon Oct 27 Preview209248715121, still UNPUBLISHED. Prompt2 was real source uploaded to that theme; its local gallery contains actual remote desktop captures. Prompt3's guarded native-card singles section was also uploaded to that draft and rendered in an existing desktop session. Three collection pickers remain blank; a verified Singles collection is missing. Fresh Admin metadata confirms the existing New Arrivals tag rule, alphabetical collection order and three distinct active inventory pools. App/backend changes remain local.
+
+Scanner/counter/auth/checkout gates and existing dirty work were preserved. Mobile static/simulated checks do not establish actual mobile browser, touch, screen-reader or physical-device acceptance. The private-status portal-origin/deployment/login/owner-data work is explicitly carried into the customer-account task, separate from missing website/business content. Read docs/NATIVE_CATALOG_ARRIVALS.txt for exact configuration, source, evidence and remaining blockers. No production publication or activation.
+
+# November 2, 2026 — Phase 5 visual QA/regression audit
+
+Audit-only on isolated `codex/visual-qa-20261102`; no application, API, auth, inventory, payment, policy, worker or production behavior changed. Reviewed all 28 customer/gated route patterns through source, existing tests and representative local fixture/disconnected-production browser states. Main Home/shop/secondary screens substantially align with the supplied Horizon navy/blue/white/photo reference. Account/orders/notifications/install/signed-out, PWA chrome/offline and separate in-store surfaces retain legacy treatment. Confirmed additional findings: show read failures collapse to a false confirmed-empty message; photo dialog lacks an authored accessible name. Development React script-tag/LCP diagnostics are retained for investigation, without an inferred exposure or measured performance failure.
+
+445/445 unit/service tests, root/customer typecheck/lint (one pre-existing root warning), all three webpack builds and 130-artifact client scan pass. Production release smoke fails: GET /shop/sample-baseball returns streamed200 instead of expected404. Body is not-found/noindex/private-no-store; tested sample product/identity markers are absent, so this is a status-contract defect, not demonstrated fixture/auth/payment exposure. Original first script was8pass/1fail/5notrun; all other11 scripts passed, and the five remaining original assertions passed independently. Thus137/138 original smoke assertions observed pass,1fails; original wrapper remains failed. Anonymous read-only29 and supplemental shopping gates4 pass. All315 checked application files and169 protected files were unchanged before this required STATUS note.
+
+Browser:47 measured states, planned CSS widths320/390/412/820/1024/1440 (plus initial520), no observed horizontal overflow or unlabeled visible form fields flagged. Captured filter/back, sample unavailable variant/cart, unknown/sold-out/valid barcode, unpaid ready/cancel, wallet owner switch, consignment unknown values, grading owner denial/quote reflow, event/gated/utility/pilot states. Actual local preview outage and browser history returned generic offline content with no private records. No physical iOS/Android/camera/install/hosted provider result claimed. Sample lists were canceled; no external message or worker was sent/run. Temporary servers stopped. Outputs contain full feature classifications, screens, defects, exact tests, change manifest and release recommendation.
+
+Recommendation: NO-GO for public/transactional release. Resolve the failed status contract, error/a11y/theme defects and required hosted/device/provider acceptance. Public purchases/earning/redemption/scans/aisles/pickup remain hard false. Real Shopify identity/catalog/inventory/payment/stock/fulfillment, approved loyalty economics, Storage/partner coverage and physical-device behavior remain blocked or unverified. Ready to Pay is an unpaid frozen list, with no stock reservation or automatic POS import. Only this audit record was added; no deployment, migration, provider write, production data change or activation occurred.
+
+# November 2, 2026 — Phase 4 secondary-screen parity
+
+Applied the shared navy/white/blue customer theme to rewards and Points history, consignment, grading entry/list/card/exam, breaks/saved reminders, and Northside shows. Existing workspaces, native forms, private files, quote/exam decisions, status workflows and real-data projection remain intact. Rookie/Vet/HOF/GOAT and all balances/rules are unchanged. The new customer-only shell scope excludes staff, Mission Control, Hobby Key, Home and Shop. A small reusable lounge feature on public breaks/shows uses the actual supplied bar photo and links to existing Home #lounge; no menu, hours, schedule or booking functionality was invented. Six viewport layouts add safe areas/navy browser chrome. No backend/API/auth/data/policy/worker behavior changed.
+
+Independent source review and verification pass: 445/445 tests, including 142 focused grading/exam/consignment/loyalty/break/engagement cases; root/customer typecheck and lint (one pre-existing root warning); all three webpack builds; final client scan 130 artifacts. All 169 checked protected backend/API/package/worker files are unchanged. Initial sandbox listener failures passed unchanged with normal approval; stale generated dev route types were regenerated/archived without source/tsconfig changes, and baseline next-env restored. Exact attempts are retained.
+
+Browser sample checks passed at 320/390/820/1440px without measured horizontal overflow: wallet owner switching/zero state, unknown/partial consignment amounts, grading exact-card/incomplete-quote/confirmation controls, saved break reminders and disabled purchase/watch states, show unconfirmed date/location, keyboard skip, actual lounge photo/destination, and staff style isolation. Before/after screenshots, consistency report, patch and logs are in the design audit chat outputs. Only isolated sample enrollment/reminder records were written. Real identity/balances/private Storage, photo-modal/camera/PWA/device and hosted provider acceptance remain pending; fresh browser fixtures had no saved grading photos. No deployment or activation.
+
+The earlier Phase 3 screenshot/listener blocker is now resolved in the same local verification pass: before/after collection/product/cart/scanner/lookup/unpaid-handoff/register screenshots are captured; search/filter empty state, exact barcode/variant/SKU lookup, explicit add, excess-stock rejection, unpaid freeze/cancel/new reference and staff sign-in denial were browser checked. The full 445-test suite is green. The existing ready action still does not reserve stock or import to POS; those capabilities require separate backend review.
+
+# October 30, 2026 — Phase 3 shopping/scanner UI
+
+Implemented the existing collection/search/filter/detail/cart/scanner/result/unpaid register handoff presentation on isolated branch `codex/shopping-scanner-design-20261030`. Shopping reuses the Phase 2 navy chrome and tokens, white content, accessible blue actions, existing image/price/variant data, rounded cards, native controls and status/error states. Main destinations and query/cart/QR contracts are preserved. Scanner SKU metadata comes from the exact selected registered variant; customer manual entry remains barcode/approved link, not raw SKU search. No API/server/auth/policy/payment/inventory/reservation/worker logic changed. The existing ready action still revalidates and freezes an UNPAID list, without reserving stock or importing to POS. Real stock reservation requires separate review.
+
+Independent source review passes after scoping a shopping selector that initially collided with Home. Root/customer typecheck and lint pass (one pre-existing root warning); Customer/Control/Webhooks webpack builds pass; client scan passes 124 artifacts. Tests: 443 pass, 2 sandbox listener EPERM failures, so the full suite is not green. Customer tests pass 17 script + 295 application cases. All 169 checked protected backend/API/package/worker files remain unchanged. Source checks do not establish browser or live-provider acceptance.
+
+Before/after screenshots and browser checks are blocked: automatic approval review failed at model capacity before local preview start; no command ran and no bypass occurred. Assistance to start isolated sample previews was requested. Physical camera/PWA, real Shopify data/mappings/stock and register acceptance remain pending. Public commerce/scanning and workers remain disabled; no publication or production data change. Phase 3 implementation report, incremental patch, source manifest and exact verification logs are in the design audit chat outputs.
+
+# October 30, 2026 — customer Home design parity
+
+Implemented the Phase 2 Home UI on isolated branch `codex/home-design-parity-20261030`, preserving the October 29 pending customer scan/cart source. Home now has scoped navy navigation/header/footer, search and notifications links, the requested HOBBY LIVES HERE hero and lounge anchors, white category/product sections, existing break/show data, and an existing-endpoint wallet preview. Other feature presentation and navigation destinations are retained. Server/auth/cart/QR/policy/worker services are unchanged; no publication or feature activation occurred.
+
+Storefront browse is reused for product images, prices and availability. Featured/release collection discovery follows existing opaque collection pagination with an eight-page bound; incomplete discovery is unavailable, never falsely empty. New releases are not inferred from alphabetical product order. Fixture products/wallets remain explicitly labeled and impossible as a live-data fallback. The wallet uses the existing private API with no-store and an abortable client read.
+
+The user subsequently supplied IMG_2941.JPG, IMG_2942.JPG and Northside Collectibles Blue Neon Homepage.png. The real LED wall now supplies the hero and the real bar counter supplies the lounge. Mockup typography, blue HERE. emphasis, dark category/release cards and filled product actions are adapted for the existing app without copying sample prices or commerce-readiness claims. Two metadata-free 1920×1440 WebP photos total 209,630 bytes; category cutouts add 84,406 bytes. Hero preload, lounge lazy loading, mobile LED framing and protected text zones are implemented. No stock or generated scene was substituted.
+
+Independent verification: 445 unique automated tests covered (full existing suite plus final five Home tests), root/customer typecheck and lint pass, Customer/Control/Webhooks webpack production builds pass, and the client configuration scan passes 122 artifacts. One pre-existing root lint warning remains. Initial sandbox listener failures and a render-clock lint failure were resolved and retained in logs. Final focused checks/builds followed pagination, safe-area, skip-link and supplied-photography refinements. Root/customer typecheck, customer lint and five Home tests passed after photo integration; the final mobile photo CSS also passed its own build/client scan.
+
+Browser checks: no horizontal overflow at 320, 390, 768, 820, 1100 and 1440px; five mobile navigation targets measured 55px high; one H1. Search reaches the existing shop query, lounge anchor and scanner destination work, and keyboard skip focus lands on MAIN. Sample wallet values come from the existing sample API. Unconfigured live mode has no product cards/prices or sample wallet substitution and keeps scan links gated. Before/after screenshots and full evidence are saved in the Phase 2 audit chat outputs. These are desktop browser viewports, not physical-device/camera/PWA or live-provider acceptance.
+
+# October 29, 2026 — safe commerce test preparation
+
+Added separately configured, staff-authorized development-store checkout,
+authenticated read-only inventory diagnostics, and a disabled private importer
+with immutable delivery identity and canonical order reconciliation hardening.
+Live purchases, pickup, POS, loyalty processing and the coding worker remain
+disabled. The public webhook receiver remains metadata-only. No hosted migration
+or provider write was performed.
+
+Full local checks pass: 412 repository tests, lint/typecheck, three production
+builds, twelve production rejection suites and client configuration scan;
+dependency audits report zero advisories after compatible Next/Zod/Vite patches.
+Current Headless access returns zero products. Actual development-store checkout,
+live location/variant/barcode proof and hosted order processing require operator
+configuration and acceptance. Read the [implementation report](../../../docs/launch-implementation-20261029.md)
+before any physical commerce test or processor activation.
+
 # October 20, 2026 — collector mobile design pass
 
 My Cards now opens the existing owned grading gallery with a direct Consignment
@@ -666,3 +1021,243 @@ The protected Customer preview at `0eea16ffd458ec44877f367af18e36a8804288f8` com
 Customer account Sign out now submits the existing same-origin native POST provider-logout route, which revokes and erases the local session before redirecting to the discovered Shopify logout endpoint. Staff and finish-local-sign-out behavior remain local. A per-document BroadcastChannel source marker prevents this page's own privacy listener from interrupting the native POST; other tabs, legacy messages, storage locks and back/forward restoration protections retain their fail-closed behavior. Independent review and a real two-tab browser regression with a delayed logout response passed: the initiating page reached the provider destination while the other private tab locked.
 
 Verification passed 342 tests (84 root, 241 customer, 17 customer script checks), both TypeScript checks, lint (one existing root warning), both configured builds, and actual-credential scans of 37 browser artifacts. Hosted provider logout, durable revocation and back-button privacy remain pending at this source checkpoint and must be recorded in the current ignored pilot readiness report after deployment. Purchases, POS writes, loyalty redemption and production workers remain disabled. No database reset, migration, staff-role change, production publication or merge was performed.
+
+
+## October 29, 2026 — commerce continuation
+
+Committed cart ownership now precedes buyer-bearing Shopify calls, including
+lost-response cases; verified Customer Account IDs establish ownership before
+cart mutation. Checkout consistency checks and canonical financial-state
+validation were strengthened. Joined SQL/provider-fixture coverage brings the
+suite to 416 passing tests. Lint/typecheck, zero-advisory dependency audits and
+all three webpack production builds pass. Default Turbopack is blocked by
+port-binding EPERM. Current production smoke execution was blocked before
+server start by automatic approval-review capacity; prior smoke results are
+not reused as current success. No real Shopify payment or hosted delivery passed.
+
+The staff development-store guest checkout still needs an isolated test customer
+identity/cart/order realm before authenticated end-to-end test purchasing can
+be claimed. Live purchases, the metadata-only public receiver and disabled
+workers remain unchanged. See [the continuation report](../../../docs/commerce-continuation-20261029.md) for exact changes, evidence and blockers.
+
+
+## October 29, 2026 — local scan-to-cart continuation
+
+Receipt status and deployed Customer/Mission Control Vercel authentication are
+**UNVERIFIED**, neither passed nor failed. External polling is stopped at the
+user's request. Existing observations above are historical.
+
+Implemented a strictly parsed scan-add contract using the existing encrypted
+cart and registry architecture: fresh registered-variant/publication/approved
+retail checks, reviewed-price comparison at both provider reads, aggregate stock
+validation and unchanged break-cart policy. Nine new local acceptance tests pass.
+Purchase/scanner gates and every disabled processor/worker remain off. No external
+requests, deployment, actual payment or inventory writes occurred.
+
+Final checks: 292 customer tests pass; 131 other tests pass and two loopback
+listener tests fail with sandbox EPERM. Lint/typecheck and all three webpack
+production builds pass. Full pnpm test is not green. Authenticated development-store
+order isolation, installed POS handoff and live loyalty acceptance remain incomplete.
+See [local commerce report](../../../docs/local-commerce-20261029.md) for changed files, exact limits and remaining verification.
+
+
+## October 29, 2026 — customer scan, shopping list and unpaid register handoff
+
+Implemented the local customer journey at `/scan` and `/cart?inStore=1`, reusing
+the existing scanner/registry/Storefront reader and shared cart quantity controls.
+The encrypted, owner-bound list revalidates variants, price and stock, supports
+quantity/removal/subtotal, and freezes an unpaid expiring QR/reference for
+authenticated staff-assisted register entry. Cancellation revokes the reference.
+Existing checkout ownership safeguards and 41 pre-existing changed files were
+preserved on `feat/customer-scan-handoff-20261029`; no commit was created.
+
+Independent local validation: **440/440 tests**, root/customer lint and typecheck,
+Customer/Control/Webhooks production builds, and the 122-client-artifact scan pass.
+One existing root lint warning remains. Loopback test restrictions were resolved
+with local-only execution. Browser barcode, actual saved QR image, cart editing,
+unpaid handoff, staff retrieval, cancellation, unknown/sold-out/duplicate handling
+and 390px/820px layouts were checked. Physical devices and hosted use remain
+unverified. No external check, provider/inventory write, deployment, role change,
+production payment or worker activation occurred. Production scan gates stay off.
+
+See `docs/customer-shopping-20261029.md` at the repository root for the exact
+isolated local launcher, fixture codes, staff sign-in, validation and blockers.
+
+## November 2, 2026 — Phase 6 QA remediation and commerce readiness
+
+Resolved the four failed Phase 5 features within local verification scope:
+rejected product documents and HEAD requests now return strict 404 before
+streaming; unsuccessful show reads have an unavailable state and fresh GET
+retry; photo dialogs have unique names, initial/return focus and explicit Tab
+wrapping; customer utilities, unavailable pages, offline assets and the separate
+in-store rehearsal/pilot use the approved navy/blue/white presentation. The
+collection skeleton is scoped to the listing. The PWA public cache version was
+updated while retaining its exact six-asset allowlist and private exclusions.
+Staff, Hobby Key, Shopify/API/auth contracts and every commerce gate remain
+unchanged. No backend service, migration, payment, inventory or reservation
+implementation was modified.
+
+Independent final checks pass: **456 unit/service tests** (133 root, 19 customer
+script, 304 customer application), root/customer typecheck and lint (one existing
+root warning), Customer/Control/Webhooks webpack builds, and a 129-artifact
+client configuration scan. The production-mode loopback wrapper passes **150
+case groups**: all 138 original cases with their scripts/assertions unchanged,
+plus 12 new remediation cases. All 29 read-only checks pass. An initially invalid
+new HTTP assertion for a client-computed CSS class is retained as a failed
+checkpoint; reviewed HTTP status/payload checks and separate rendered-DOM theme
+proof now pass. It was not used to weaken the strict 404 or privacy contracts.
+
+Browser checks cover 20 measured CSS reflows at 320–1440px, Account skip focus,
+both dialog Tab directions, Escape/Close focus return, zoom, exact sample scan
+variant/SKU, unavailable variants, cart totals, and an explicitly UNPAID handoff
+that was canceled. Two synthetic QA photos were confirmed only in an isolated
+sample database, with owner access and other-owner denial; no exam was published.
+The controlled sample-server outage and browser Back showed only the updated
+generic offline page, with no wallet or private records. These are desktop
+webview checks, not physical iOS/Android or screen-reader acceptance.
+
+All 47 features are inventoried with routes, services and tests in the task's
+`outputs/phase6/` review package: **27 verified locally, 12 blocked, 8 implemented
+but unverified, 0 failed**. Live catalog/identity/checkout, hosted private files,
+approved loyalty economics, provider sync/delivery, reservation/POS capability
+and physical-device acceptance remain separate. Missing configuration in the
+scrubbed test runtime does not establish a current hosted provider outage.
+The release recommendation remains **NO-GO for public/transactional release**;
+the local remediation is ready for review. No deployment, real order/charge,
+live inventory/customer change, auth bypass, operational worker or scheduler
+activation occurred. Owned app servers were stopped. Earlier pending work is
+preserved on `codex/phase6-qa-remediation`; no commit or push was made.
+
+
+## 2026-11-04 native customer MVP - local implementation; release acceptance pending
+
+The separate Expo customer app now implements approved published Shopify catalog/search/detail, camera/manual barcode lookup, read-only customer wallet, existing profile/orders/service/break summaries, and authenticated deletion-request initiation/status. Existing web purchase, loyalty, notification and pickup flags remain unchanged. The three inventory pools and Draft products are untouched. New backend adapters intersect explicit Shopify collection approval with current Storefront evidence and omit quantities/internal locations; private reads retain the existing customer identity/session/RLS boundary. Deletion requests remain pending until a reviewed operator process fulfills them; no customer account was deleted here.
+
+Local verification:79 native tests,330 customer TypeScript tests,19 customer script tests,256 root tests (including129 W02 cases),6 pilot tests, typechecks/lint,18 local PGlite migrations, Expo Doctor/dependency checks, local-only Shopify2026-07 schema validation and both Hermes exports pass. Independent review and evidence are retained in this task's MVP deliverables. Physical iPhone/Android and pixel-level browser QA are BLOCKED by missing signed builds/device tooling and unavailable browser controls. Live Shopify/staging, company policy/support/deletion web access, deletion fulfillment, hosted concurrency and store review remain unverified. No production activation or store submission occurred. See NATIVE_CUSTOMER_MVP.txt and the task outputs/MVP_MANUAL_QA_MATRIX.csv for behavior and remaining acceptance.
+
+
+## Native release QA / store compliance audit — 2026-11-04
+
+Release decision: HOLD. Four source findings were fixed in the isolated customer
+native app: foreground absolute-session expiry now clears credentials/private
+snapshots (including resume and exact-deadline races); stack screens respect the
+bottom safe-area inset; explicitly requested/scanned variants never silently
+substitute another sole variant; privacy wording distinguishes first-party
+analytics from documented Android ML Kit diagnostic/installation data.
+Seven focused regressions were added. Independent final checks passed 697 unique
+tests (86 native, 256 root, 330 customer, 19 customer scripts, 6 pilot), native/
+customer/root typechecks, customer lint, Expo Doctor/SDK/frozen locks, 18 disposable
+local migrations, offline Shopify schema validation, both native Hermes exports
+and disposable-copy supported Next Webpack build. Default Turbopack copy/symlink
+limitation remains documented. No signed archive/device/provider acceptance claimed.
+
+User confirmed approved deployment details, sanctioned reviewer identity and devices
+are not yet available. Existing customer pilot public mobile info redirects to
+Vercel SSO; no approved production API origin is configured. Physical iPhone/Android,
+real Shopify login/orders/catalog/ledger/scans, signed SDK/privacy/permission proof,
+company policy/support/external deletion resources, monitored deletion fulfillment,
+retention/logging facts, actual store screenshots and final metadata/disclosures
+remain blocked or unverified. No legal policies, contacts, retention periods,
+reviewer credentials or positive scan mappings were invented. Company review and
+explicit release approval remain necessary after blockers resolve.
+
+Native docs/RELEASE_QA.txt and this task's RELEASE_* outputs contain the evidence,
+51-row PASS/FAIL/BLOCKED/UNVERIFIED matrix, reviewer runbook and blocker list. No
+production deployment, hosted migration, store submission, customer deletion,
+purchase/redemption/notification/pickup activation or Shopify mutation occurred.
+All prior STATUS bytes were preserved; only this required audit note was appended.
+
+
+Final release QA metadata supplement: production Screen headers no longer show the
+non-production PREVIEW badge. Development/preview labels remain. One additional
+regression passes (87 native, 698 unique tests with unchanged backend/root results).
+This fifth source correction changes neither configuration nor dependencies.
+Physical, provider, signing, policy and store acceptance remain on HOLD. No release
+or store submission occurred. The earlier 697 count records the preceding run;
+698 is the final candidate aggregate after this correction.
+# November 10, 2026 — Prompt 3 backend
+
+Applied the two native session/privacy migrations and the request recovery/privacy
+leaf individually to designated nonproduction project nrsuosydvjqovrevmych. Both
+ledgers have 20 matching entries; six native tables are empty, RLS enabled and
+auth-only. Original migrations, credentials and business gates were preserved.
+
+The protected customer Preview was rebuilt and its stable alias updated after
+source/hash and HTTP checks. Request retries preserve uncertain submissions;
+acknowledged saves survive history-refresh failure; rejected claims cannot report
+pending; read-only staff cannot read private notes. Both request sign-in return
+paths were verified in the rendered phone/desktop preview. Focused tests: 151
+passed, plus TypeScript/lint and local/hosted customer builds. One marked SAMPLE
+inquiry recovered exactly once across hosted SQL transactions; its outbox is
+unsent. This does not establish HTTP/native end-to-end acceptance.
+
+Public staging ingress still needs the baseline's separate operator review.
+Real account isolation, bounded hosted test-sink rehearsal and signed-device
+acceptance remain pending. Terms and the 105% total-hammer proposal stay pending;
+DRAFT products, Shopify and production were unchanged. The current iOS preview
+remains interface-only. See PROMPT_3_BACKEND.txt in the November 9 output folder
+and NATIVE_MOBILE_AUTH.txt for evidence, exact scope and prerequisites.
+
+
+## November 12, 2026 — local source preservation and current project map
+
+Prompt 1 preservation verified the active source as this `northside-home` worktree on
+`codex/ios-preview-prerequisites-20261111`; the November 4 chat directory is a historical
+implementation/evidence location. Native `apps/mobile`, customer web/backend `apps/customer`,
+and operator `apps/control` share this repository. Northside HQ is a separate marketing
+repository. The separate current Shopify theme is the October 29 `northside-horizon-theme`
+workspace. No clone, branch replacement, pull, reset, stash, clean, push, merge or release
+was performed.
+
+Before editing, eleven existing repository/worktree states were saved locally with
+staged/unstaged binary patches, original Git indexes, manifests and 621 checksum-verified
+source files. Recovery patches reapplied successfully to independent indexes. The private
+recovery root is `/Users/northside/Documents/Codex/2026-11-12/files-pasted-by-the-user-northside/work/private-recovery/20261112T191435Z`;
+its permissions are private and it is outside this repository. Credentials, local environment
+files, dependency stores, signing files and customer records are excluded from source commits.
+The coherent existing package/lockfile changes are checkpointed together; unrelated Control
+UI, generated Next type declarations and temporary native probes remain untouched.
+
+The owner confirmed that iOS build 5 is installed. Fresh EAS reads match finished internal
+0.1.0(5), build `a025da77-37f9-4d19-8c7d-3b1a2458d37a`, source `3543f1e31297e9de22749b0f5e4d78cdeebc38f9`.
+This does not establish new physical-device or handheld acceptance. Fresh public native
+barcode/SKU reads pass for the original six control variants; their UPC strings and Monopoly's
+two URL mappings are retained. The pre-existing Allure addition remains separate from the
+six-product control test and has not been removed or used to explain their scanner results.
+
+The native API alias still selects READY Preview `dpl_2K494ucBP19H15caJ8LK1oKehFAK`.
+Before the current test/documentation edits, 609/611 supplied source hashes matched this
+worktree; the other two were documentation. A deployment Git SHA was not returned, so no
+Git-commit parity is claimed. Customer/control Vercel production still point to October 3
+builds, with only Preview-target environment metadata returned. The public company domain
+still serves Square/Weebly and `/app` returns 404. The intended Shopify draft209248715121
+remains UNPUBLISHED. Draft/local checksum comparison found527 matches,3 JSON byte differences
+(one settings document semantically equal), and2 remote-only app-page files. Those five remote
+versions were saved separately in private recovery; no theme upload or domain cutover occurred.
+
+Corrected two stale verification assumptions in `tests/checkout-test.test.ts` and
+`scripts/commerce-smoke.mjs`: limited six-variant purchasing reaches configured commerce
+validation, so forged input is rejected400 and an unapproved variant403 before provider access.
+Missing private configuration fails closed503. The public route and activation policies did
+not change. The smoke documents its scrubbed loopback prerequisites.
+
+Fresh checks: customer application427/427; script21/21; native259/259. Root Vitest initially
+passed296/297, with one socket-dependent worker timeout in the sandbox; all8 worker-file tests
+passed outside that sandbox on the focused rerun. Root/customer/native TypeScript passes;
+root/customer lint passes with one existing unused-variable warning. The separate customer
+production Webpack build passes, as do14 actual loopback HTTP rejection checks. Theme Check
+passes with0errors/6 existing warnings. No live cart, checkout, order, payment, stock, account,
+signing, provider-configuration or release mutation was performed in this task.
+
+A package-manager dependency refresh attempt during checking was stopped; missing native
+dependency entry points were restored from the existing November 11 frozen install after
+verifying identical native lockfiles and dependency graphs. Subsequent259 native tests and
+TypeScript passed using direct Node24, without another install or source/configuration changes.
+
+The source map, checkpoint commits, residual changes and launch blockers are recorded in
+`/Users/northside/Documents/Codex/2026-11-12/files-pasted-by-the-user-northside/outputs/NORTHSIDE-SOURCE-MAP-2026-11-12.txt`.
+Next technical work: reconcile the exact saved Shopify draft/local differences in a candidate,
+then verify browse/search/variant/cart on that candidate and prepare a stable public `/app`
+route. Native checkout remains disabled; payment/order/inventory and physical handheld/device
+acceptance are separate, still-unverified boundaries. No release readiness is inferred from
+passing local tests or the owner's build-number confirmation.

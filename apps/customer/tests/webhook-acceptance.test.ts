@@ -33,6 +33,7 @@ const db = await PGlite.create(),
 for (const file of [
   "202609120001_identity_and_records.sql",
   "202609120003_commerce.sql",
+  "20261029133844_commerce_delivery_integrity.sql",
 ])
   await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
 test.after(async () => {
@@ -68,6 +69,7 @@ function request(
     body: raw,
     headers: {
       "x-shopify-shop-domain": SHOP,
+      "x-shopify-api-version": "2026-07",
       "x-shopify-topic": topic,
       "x-shopify-webhook-id": delivery,
       "x-shopify-hmac-sha256": createHmac("sha256", secret)
@@ -81,6 +83,7 @@ async function intake(req: Request) {
   return transaction((s) => receiveOn(s, event));
 }
 const state: OrderSnapshot = {
+  test: false,
   id: "gid://shopify/Order/123",
   customerId: null,
   name: "SYNTHETIC ACCEPTANCE",

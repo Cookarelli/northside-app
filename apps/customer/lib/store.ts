@@ -72,6 +72,7 @@ export type RetailProduct = {
   title: string;
   handle: string;
   fixture: boolean;
+  image?: { url: string; altText: string | null } | null;
   variants: {
     id: string;
     variant_id: string;
@@ -84,7 +85,24 @@ export type RetailProduct = {
     }[];
   }[];
 };
+// Decoder aliases are candidates, never permission to silently choose a variant.
+export function scanCandidates(code: string, format?: string) {
+  const candidates = [code];
+  if (format === "ean13" && /^0[0-9]{12}$/.test(code)) {
+    let sum = 0;
+    for (
+      let i = code.length - 2, weight = 3;
+      i >= 0;
+      i--, weight = weight === 3 ? 1 : 3
+    )
+      sum += Number(code[i]) * weight;
+    if ((10 - (sum % 10)) % 10 === Number(code.at(-1)))
+      candidates.push(code.slice(1));
+  }
+  return candidates;
+}
 export type ScanResult = {
+  resolved_code?: string;
   product: RetailProduct;
   selected_variant: string | null;
   campaign_key: string | null;

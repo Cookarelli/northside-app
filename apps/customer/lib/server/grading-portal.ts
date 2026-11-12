@@ -255,9 +255,10 @@ export async function portalData(
     await db.query<{
       card_id: string;
       received_at: string;
+      received_date: string | null;
       approval_current: boolean;
     }>(
-      "select c.id as card_id,c.created_at as received_at,ns.grading_approval_current(c.tenant_id,c.id) as approval_current from ns.card_items c where c.tenant_id=$1 and c.id=any($2::uuid[])",
+      "select c.id as card_id,c.created_at as received_at,i.received_date::text,ns.grading_approval_current(c.tenant_id,c.id) as approval_current from ns.card_items c join ns.grading_intakes i on i.tenant_id=c.tenant_id and i.case_id=c.case_id where c.tenant_id=$1 and c.id=any($2::uuid[])",
       params,
     )
   ).rows;
@@ -320,6 +321,8 @@ export async function portalData(
         voided_at: c.voided_at,
         photos_complete: c.photos_complete,
         received_at: rec.received_at,
+        received_date: rec.received_date,
+        provider_card_reference: c.provider_card_reference,
         approval_current: rec.approval_current,
         withdrawal: withdrawals.find((w) => w.card_id === c.card_id) ?? null,
         photos: photos.filter((p) => p.card_id === c.card_id),

@@ -1,0 +1,106 @@
+NORTHSIDE MOBILE V1 BACKEND — ADDITIVE SERVER INTEGRATION
+
+New route: app/api/mobile/v1/[...path]/route.ts. All existing browser auth, CSRF,
+session, staff, commerce and ownership code is reused unchanged. No mobile staff
+endpoint exists. This is customer authority only.
+
+PUBLIC PROTOCOL
+POST /api/mobile/v1/auth/intents   {variant,appState,challenge,challengeMethod:S256}
+GET  /api/mobile/v1/auth/start?intent=<opaque intent>   system browser only
+GET  /api/mobile/v1/auth/callback                       Shopify HTTPS callback
+POST /api/mobile/v1/auth/exchange {intentId,ticket,appState,verifier}
+POST /api/mobile/v1/auth/renew    {renewalToken}
+POST /api/mobile/v1/auth/logout  {renewalToken}
+GET  /api/mobile/v1/me
+GET  /api/mobile/v1/me/orders?after=<opaque cursor>
+GET  /api/mobile/v1/me/cards[/<UUID>]
+GET  /api/mobile/v1/me/consignments[/<UUID>]
+Private GETs require Authorization: Bearer <native access credential>. Browser
+session cookies are rejected on JSON/bearer transport, including duplicate cookies.
+Responses use strict northside.mobile.v1 contracts, safe errors/request IDs and
+private no-store headers. No client-selected customer identity is accepted.
+Later MVP routes add owner-scoped request capture, tracking and deletion requests.
+Request capture does not record physical intake or activate service terms.
+There are no Admin/product/inventory mutation endpoints.
+
+SERVER ENVIRONMENT
+Use mobile.env.example alongside the existing backend environment privately:
+APP_ORIGIN=<approved public HTTPS staging origin>
+NORTHSIDE_MOBILE_ENVIRONMENT=staging
+NORTHSIDE_MOBILE_DEVELOPMENT_RETURN_URI=<approved scheme>://auth/return
+NORTHSIDE_MOBILE_PREVIEW_RETURN_URI=<separate approved scheme>://auth/return
+NORTHSIDE_FIXTURES=0
+SHOPIFY_SHOP=9i3hnb-jw.myshopify.com
+SHOPIFY_EXPECTED_ISSUER=<verify against this shop's current discovery>
+SHOPIFY_CUSTOMER_CLIENT_ID / SHOPIFY_CUSTOMER_CLIENT_SECRET
+SESSION_ENCRYPTION_KEY=<stable staging-only32-byte base64>
+DATABASE_URL=<verified TLS northside_runtime role>
+AUTH_DATABASE_URL=<verified TLS northside_auth role>
+NORTHSIDE_DATABASE_CA_CERT if the provider requires a private CA chain.
+SHOPIFY_API_VERSION=2026-07
+No native Admin/service-role/staff credential is needed. Do not copy server variables
+into EAS, EXPO_PUBLIC_* or the mobile config. Production uses a separate origin,
+secret set, database and NORTHSIDE_MOBILE_ENVIRONMENT=production; only the production
+variant is then accepted. No production values or flags have been configured here.
+
+Read-only local preflight from apps/customer (no values are printed):
+  node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/mobile-readiness.ts
+For a staging preview-only configuration, append --variant preview. Staging
+accepts development or preview; production accepts only production. This does
+not configure an API origin, change credentials or enable a connected build.
+This validates shape only. It does not establish hosted connectivity/provider grants.
+Runtime SQL rejects wrong roles, superuser/BYPASSRLS and unsafe TLS configuration.
+
+DATABASE
+20261104152327_native_mobile_customer_sessions.sql adds five RLS-protected
+auth-only tables plus bounded-lifetime/immutable-binding guards.
+20261104161250_native_customer_privacy_requests.sql adds the private request table.
+Both were individually applied on November 10, 2026 only to designated nonproduction
+project nrsuosydvjqovrevmych after backup/ledger verification and independent review.
+The recovery/privacy leaf 20261110150000 was applied before the protected app update.
+Both hosted ledgers now contain20 matching entries. Six native tables are empty,
+RLS enabled and auth-only; expanded app/client-role privilege readback passed.
+Original applied migration files are unchanged. Never replay these on an unverified
+project. The unrelated commerce_delivery_integrity migration remains unapplied.
+The existing hash-tracked migration runner applies ALL unapplied local migrations;
+do not use it as a native-only application command.
+Never put MIGRATION_DATABASE_URL in deployed runtime or mobile. Do not run
+supabase db reset, db push or destructive cleanup against existing hosted data.
+Use documented restricted LOGIN provisioning for northside_auth/northside_runtime;
+keep ns out of Data API exposed schemas and preserve existing restrictive policies.
+Hosted schema/grants were read back; native provider login, live concurrent renewal
+and device acceptance remain unverified. Local PGlite tests do not establish them.
+
+SECURITY BOUNDARY
+Provider identity maps through the existing tenant/shop/provider/subject UUID; no
+email merge or parallel mobile customer identity is created. The mobile family
+references a new dedicated Shopify customer-only ns.sessions parent. Its raw bearer
+is AES-GCM sealed under a family-specific AAD and never sent to the app. Resolution
+checks the parent hash, tenant/customer/provider/no-staff/expiry/revocation, current
+origin+variant allowlist, and unchanged ns.context/RLS. Escrow is wiped on revocation.
+DB+encryption-key compromise can expose the dedicated parent, just as existing
+provider-token escrow can be decrypted with that key; keep restricted roles and key
+storage separate. Maximum parent lifetime is eight hours without extension.
+Renewal replay returns a sentinel so revocation commits before the API error is
+thrown. Logout may use a spent renewal to revoke a concurrently rotated family.
+
+Order history is fetched from Shopify Customer Account API through the current
+server-held provider token and existing customerAccount query, then immutable
+bindCustomer mapping, then a narrow schema projection. No Admin order feed,
+operational ledger, email filter or invented fallback is presented as real history.
+Customer-service reads use unchanged customer-only withSession and owner/tenant RLS,
+with only id/kind/title/status fields projected. Staff notes, addresses, photos,
+provider tokens, costs, pooled totals and staff authority are not exposed.
+
+OPERATIONS BEFORE PUBLIC STAGING
+The durable global intent cap is120/minute. Configure reviewed trusted-ingress
+per-source/rate/abuse protection before exposure; never trust arbitrary forwarded-IP
+headers. The cap alone can be exhausted by one source and is not a complete WAF.
+Redact authorization, JSON credentials and OAuth/callback queries from all platform,
+proxy, APM and application logs. Do not embed Vercel protection bypass credentials
+in a native build. An SSO-protected pilot URL is not a usable native API origin.
+Coordinate a separately approved staging deployment policy for the selected origin.
+
+Tests use synthetic provider tokens and isolated local PGlite. Live Shopify OAuth,
+provider refresh, two-account device switching and real owned-order retrieval are
+pending. Do not advance another package until those acceptance results pass.

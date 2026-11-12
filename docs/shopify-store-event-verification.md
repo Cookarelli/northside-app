@@ -1,5 +1,11 @@
 # Northside store-specific webhook verification
 
+> October 29 update: external polling is stopped at the user's request. Current
+> receipt status and deployed Customer/Mission Control Vercel authentication are
+> **UNVERIFIED**, neither passed nor failed. The earlier evidence below is historical.
+> Do not resume the network inspection without a new user instruction.
+
+
 Prepared October 20, 2026. This plan does not enable purchases, collection, POS,
 commerce processors or real workers. Both existing apps retain authentication.
 No new order, payment, inventory, subscription, scope or credential change is

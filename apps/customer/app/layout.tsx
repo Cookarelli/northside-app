@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { getData } from "@/lib/services";
 import { Shell } from "@/components/preview";
 import "./globals.css";
+import "./home.css";
+import "./shopping.css";
+import "./secondary.css";
 import { Suspense } from "react";
 import { MeasurementBridge } from "@/components/engagement-workspace";
 import { fixturesAllowed } from "@/lib/policy.mjs";
@@ -23,7 +26,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#123d55",
+  themeColor: "#071526",
+  viewportFit: "cover",
 };
 export default async function Layout({
   children,

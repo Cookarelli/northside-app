@@ -11,6 +11,7 @@ export default function Page() {
         </p>
       </div>
       <section className="panel">
+        <Link className="button" prefetch={false} href="/services/request">Start a service request or inquiry</Link>
         <h2>Already dropped off cards?</h2>
         <p>
           Open My Cards to review the cards linked to your Northside Shopify
