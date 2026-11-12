@@ -99,7 +99,10 @@ export function barcodeCandidates(code: string, format?: string) {
         : format === "upc_a"
           ? 12
           : null;
-  if (length && (code.length !== length || !validGtin(code)))
+  // expo-camera on iOS also emits the already-normalized 12-digit UPC while
+  // retaining type ean13. Both forms still require a valid GTIN checksum.
+  const normalizedIosUpc = format === "ean13" && code.length === 12;
+  if (length && ((!normalizedIosUpc && code.length !== length) || !validGtin(code)))
     throw Error("invalid_request");
   const codes = [code];
   // iOS commonly reports UPC-A as EAN-13. Alias only with decoder/checksum proof.

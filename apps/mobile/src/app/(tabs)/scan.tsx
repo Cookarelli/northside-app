@@ -62,6 +62,7 @@ export default function ScanScreen() {
   const navigation = useNavigation<ScanNavigation>();
   const { height } = useWindowDimensions();
   const [view, setView] = useState<"scan" | "cart">("scan");
+  const [scanMode, setScanMode] = useState<"shelf" | "box">("shelf");
   const [camera, setCamera] = useState<CameraState>(
     Platform.OS === "web" ? "web" : active ? "checking" : "paused",
   );
@@ -331,7 +332,12 @@ export default function ScanScreen() {
     }
   }
   function scanned(event: BarcodeScanningResult) {
-    if (generation.current === cameraEpoch)
+    // A shelf's hardware barcode and merchandise QR can be visible together.
+    // Filter in JS too so a queued event cannot bypass the native format choice.
+    if (
+      generation.current === cameraEpoch &&
+      (scanMode === "shelf" ? event.type === "qr" : event.type !== "qr")
+    )
       void lookup(event.data, event.type, true);
   }
   function nextItem() {
@@ -469,6 +475,31 @@ export default function ScanScreen() {
         />
       ) : (
         <>
+          {Platform.OS !== "web" && (
+            <View accessibilityRole="tablist" style={ui.row}>
+              {([
+                ["shelf", "Shelf QR"],
+                ["box", "Box barcode"],
+              ] as const).map(([mode, label]) => (
+                <Pressable
+                  key={mode}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: scanMode === mode }}
+                  style={[ui.chip, scanMode === mode && ui.selected]}
+                  onPress={() => {
+                    if (scanMode !== mode) {
+                      setScanMode(mode);
+                      nextItem();
+                    }
+                  }}
+                >
+                  <Text style={[ui.label, scanMode === mode && ui.selectedLabel]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
           {!result && (
             <View
               style={[
@@ -493,14 +524,13 @@ export default function ScanScreen() {
                     facing="back"
                     mode="picture"
                     barcodeScannerSettings={{
-                      barcodeTypes: [
+                      barcodeTypes: scanMode === "shelf" ? ["qr"] : [
                         "ean13",
                         "ean8",
                         "upc_a",
                         "upc_e",
                         "code128",
                         "code39",
-                        "qr",
                       ],
                     }}
                     onCameraReady={() => {
@@ -517,7 +547,9 @@ export default function ScanScreen() {
                   />
                   <View pointerEvents="none" style={styles.viewfinder} />
                   <Text style={styles.cameraHint}>
-                    Align the barcode or Northside QR
+                    {scanMode === "shelf"
+                      ? "Aim at the square QR on the shelf label"
+                      : "Aim at the barcode printed on the product box"}
                   </Text>
                 </>
               ) : (
@@ -546,6 +578,7 @@ export default function ScanScreen() {
                     camera !== "checking" && (
                       <Button
                         appearance="storefront"
+                        disabled={pending}
                         label={
                           camera === "denied"
                             ? permission?.canAskAgain === false

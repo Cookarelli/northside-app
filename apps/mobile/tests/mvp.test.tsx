@@ -593,6 +593,7 @@ describe("native scan to unpaid counter shopping UI (simulated backend)", () => 
   it("automatically opens granted camera, fences repeated A/B/A frames and preserves exact format/leading zeroes", async () => {
     const h = harness();
     await renderApp(h, "/scan");
+    await fireEvent.press(screen.getByRole("tab", { name: "Box barcode" }));
     await waitFor(() =>
       expect(screen.getByTestId("product-camera")).toBeVisible(),
     );
@@ -996,6 +997,7 @@ describe("customer mobile MVP with simulated services", () => {
   it("camera scans once and unmounts after a result; manual unknown codes stay safe", async () => {
     const h = harness();
     await renderApp(h, "/scan");
+    await fireEvent.press(screen.getByRole("tab", { name: "Box barcode" }));
     await waitFor(() =>
       expect(screen.getByTestId("product-camera")).toBeVisible(),
     );
@@ -1019,6 +1021,48 @@ describe("customer mobile MVP with simulated services", () => {
     await waitFor(() =>
       expect(screen.getByText(/find an approved item/)).toBeVisible(),
     );
+  });
+  it("defaults to shelf QR and ignores co-visible hardware stripes before accepting the product QR once", async () => {
+    const h = harness();
+    await renderApp(h, "/scan");
+    await waitFor(() => expect(screen.getByTestId("product-camera")).toBeVisible());
+    const camera = screen.getByTestId("product-camera");
+    expect(camera.props.barcodeScannerSettings.barcodeTypes).toEqual(["qr"]);
+    await fireEvent(camera, "cameraReady");
+    const qr = "https://9i3hnb-jw.myshopify.com/m";
+    await act(async () => {
+      camera.props.onBarcodeScanned({data:"8003147344",type:"code128"});
+      camera.props.onBarcodeScanned({data:qr,type:"qr"});
+      camera.props.onBarcodeScanned({data:qr,type:"qr"});
+    });
+    await waitFor(() => expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible());
+    expect(h.scans).toEqual([qr]);
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("switches scan modes with a fresh camera epoch and preserves a normalized iOS UPC for review", async () => {
+    const h = harness();
+    await renderApp(h, "/scan");
+    await waitFor(() => expect(screen.getByTestId("product-camera")).toBeVisible());
+    const oldCamera = screen.getByTestId("product-camera");
+    await fireEvent(oldCamera, "cameraReady");
+    await fireEvent.press(screen.getByRole("tab", {name:"Box barcode"}));
+    await waitFor(() => expect(screen.getByTestId("product-camera")).toBeVisible());
+    const camera = screen.getByTestId("product-camera");
+    expect(camera.props.barcodeScannerSettings.barcodeTypes).toContain("code128");
+    expect(camera.props.barcodeScannerSettings.barcodeTypes).not.toContain("qr");
+    await fireEvent(camera, "cameraReady");
+    await act(async () => {
+      oldCamera.props.onBarcodeScanned({data:"https://9i3hnb-jw.myshopify.com/m",type:"qr"});
+      camera.props.onBarcodeScanned({data:"https://9i3hnb-jw.myshopify.com/m",type:"qr"});
+      camera.props.onBarcodeScanned({data:"036000291452",type:"ean13"});
+    });
+    await waitFor(() => expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible());
+    expect(h.scans).toEqual(["036000291452"]);
+    expect(h.shoppingActions).toEqual([]);
+    await fireEvent.press(screen.getByRole("tab", {name:"Shelf QR"}));
+    await waitFor(() => expect(screen.getByTestId("product-camera")).toBeVisible());
+    expect(screen.queryByText("REVIEW YOUR ITEM")).toBeNull();
+    expect(screen.getByTestId("product-camera").props.barcodeScannerSettings.barcodeTypes).toEqual(["qr"]);
   });
   it("switching tabs stops the camera and ignores a late permission grant", async () => {
     const h = harness();

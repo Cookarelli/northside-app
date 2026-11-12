@@ -148,6 +148,7 @@ describe("native live scanning", () => {
       expect((await api.scan(p.barcode)).product.selectedVariantId).toBe(
         p.variantId,
       );
+      expect((await api.scan(p.barcode, undefined, "ean13")).product.selectedVariantId).toBe(p.variantId);
       expect(
         (await api.scan(`SYNTHETIC-${i}`, undefined, "code128")).product
           .selectedVariantId,

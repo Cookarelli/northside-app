@@ -95,6 +95,16 @@ describe("real-label scanner identity boundary", () => {
       "invalid_request",
     );
   });
+  it.each(NORTHSIDE_NATIVE_SELECTION)("accepts the installed iOS decoder's normalized UPC for $barcode", (selection) => {
+    const p = product(selection);
+    expect(matchCatalogScan([p], selection.barcode, "ean13").selectedVariantId).toBe(selection.variantId);
+    expect(matchCatalogScan([p], "0" + selection.barcode, "ean13").selectedVariantId).toBe(selection.variantId);
+  });
+  it("retains checksum and exact-identity checks for normalized iOS UPCs", () => {
+    expect(() => matchCatalogScan([product()], "746134150969", "ean13")).toThrow("invalid_request");
+    expect(() => matchCatalogScan([product()], "195166245478", "ean13")).toThrow("not_found");
+    expect(() => barcodeCandidates("74613415096", "ean13")).toThrow("invalid_request");
+  });
   it("maps approved product QR and exact variant without navigating to the URL", () => {
     const p = product(),
       url = `https://9i3hnb-jw.myshopify.com/products/${p.handle}`;
