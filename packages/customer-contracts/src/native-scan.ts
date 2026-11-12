@@ -123,7 +123,27 @@ export function matchCatalogScan(
   if (format && !(NATIVE_SCAN_FORMATS as readonly string[]).includes(format))
     throw Error("invalid_request");
   let matched: { product: CatalogProductV1; variantId: string }[] = [];
-  if (/^https?:/i.test(code) || format === "qr") {
+  // Existing November 10 Monopoly ESL label. Resolve locally against fresh
+  // approved data; never follow a scanned URL or guess a redirect destination.
+  if (code === "https://9i3hnb-jw.myshopify.com/m") {
+    const expected = NORTHSIDE_NATIVE_SELECTION.find(
+      (p) => p.variantId === "gid://shopify/ProductVariant/64521956655473",
+    );
+    if (!expected) throw Error("not_found");
+    for (const product of products)
+      if (
+        product.id === expected.id &&
+        product.handle === expected.handle &&
+        product.publication === "published"
+      )
+        for (const v of product.variants.nodes)
+          if (
+            v.id === expected.variantId &&
+            v.productId === expected.id &&
+            v.identifiers.barcode === expected.barcode
+          )
+            matched.push({ product, variantId: v.id });
+  } else if (/^https?:/i.test(code) || format === "qr") {
     let url: URL;
     try {
       url = new URL(code);

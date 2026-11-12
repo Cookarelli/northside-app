@@ -8,8 +8,7 @@ import {
 } from "./native-scan";
 import type { CatalogProductV1 } from "./catalog";
 
-function product(): CatalogProductV1 {
-  const p = NORTHSIDE_NATIVE_SELECTION[0];
+function product(p = NORTHSIDE_NATIVE_SELECTION[0]): CatalogProductV1 {
   return {
     id: p.id,
     handle: p.handle,
@@ -108,6 +107,42 @@ describe("real-label scanner identity boundary", () => {
     expect(() => matchCatalogScan([p], url + "?variant=999")).toThrow(
       "not_found",
     );
+  });
+  it("resolves the existing Monopoly ESL short QR only against its fresh approved identity", () => {
+    const p = product(NORTHSIDE_NATIVE_SELECTION[4]);
+    const url = "https://9i3hnb-jw.myshopify.com/m";
+    expect(matchCatalogScan([p], url, "qr").selectedVariantId).toBe(
+      p.variants.nodes[0].id,
+    );
+    expect(matchCatalogScan([p], url).selectedVariantId).toBe(
+      p.variants.nodes[0].id,
+    );
+    expect(() => matchCatalogScan([], url, "qr")).toThrow("not_found");
+    for (const change of ["product", "handle", "variant", "barcode", "publication"]) {
+      const changed = structuredClone(p);
+      if (change === "product") changed.id = "gid://shopify/Product/999";
+      if (change === "handle") changed.handle = "another-product";
+      if (change === "variant") changed.variants.nodes[0].id = "gid://shopify/ProductVariant/999";
+      if (change === "barcode") changed.variants.nodes[0].identifiers.barcode = "746134150968";
+      // Deliberately malformed provider data at this runtime boundary.
+      if (change === "publication") Object.assign(changed, { publication: "unknown" });
+      expect(() => matchCatalogScan([changed], url, "qr")).toThrow("not_found");
+    }
+  });
+  it.each([
+    "https://9i3hnb-jw.myshopify.com/m/",
+    "https://9i3hnb-jw.myshopify.com/m?variant=64521956655473",
+    "https://9i3hnb-jw.myshopify.com/m?redirect=https://evil.example",
+    "https://9i3hnb-jw.myshopify.com/m#fragment",
+    "https://user@9i3hnb-jw.myshopify.com/m",
+    "http://9i3hnb-jw.myshopify.com/m",
+    "https://evil.example/m",
+    "https://9i3hnb-jw.myshopify.com/M",
+  ])("does not broaden the exact ESL short QR alias: %s", (url) => {
+    expect(() => matchCatalogScan([product(NORTHSIDE_NATIVE_SELECTION[4])], url, "qr")).toThrow("unsupported_qr");
+  });
+  it("does not treat the ESL hardware barcode as merchandise", () => {
+    expect(() => matchCatalogScan([product(NORTHSIDE_NATIVE_SELECTION[4])], "8003147344", "code128")).toThrow("not_found");
   });
   it.each([
     "https://evil.example/products/x",
