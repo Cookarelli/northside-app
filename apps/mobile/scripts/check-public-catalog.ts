@@ -1,6 +1,7 @@
 import {
   PublicCatalogApi,
   PUBLIC_CATALOG_ENDPOINT,
+  PREVIEW_CATALOG_SELECTION,
 } from "../src/api/public-catalog";
 
 // Read-only live integration check. No credentials, inventory writes or fixtures.
@@ -33,8 +34,8 @@ async function main() {
         2,
       ),
     );
-    if (page.products.length !== 6)
-      throw new Error("Expected six publicly visible approved products.");
+    if (page.products.length !== PREVIEW_CATALOG_SELECTION.length)
+      throw new Error("Expected every approved pilot product to be publicly visible.");
   } catch {
     console.error(
       "Live catalog validation failed. No fixture fallback or store changes were made.",

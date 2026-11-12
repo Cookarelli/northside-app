@@ -63,12 +63,12 @@ afterEach(() => {
 });
 
 describe("public Shopify preview catalog", () => {
-  it("uses only the exact six approved identities and tokenless pinned public reads", async () => {
+  it("uses only the seven approved identities and tokenless pinned public reads", async () => {
     const request = jest.fn<typeof fetch>(async () =>
       response(PREVIEW_CATALOG_SELECTION.map((_, i) => product(i))),
     );
     const result = await new PublicCatalogApi(request).catalog();
-    expect(result.products).toHaveLength(6);
+    expect(result.products).toHaveLength(7);
     expect(result.products[0]).toMatchObject({
       title: "Live Shopify title 0",
       minVariantPrice: { amountCents: 1729 },
@@ -137,7 +137,7 @@ describe("public Shopify preview catalog", () => {
   });
   it("filters only the current approved scope and does not substitute missing products", async () => {
     const api = new PublicCatalogApi(async () =>
-      response([product(), null, null, null, null, null]),
+      response(PREVIEW_CATALOG_SELECTION.map((_, index) => index === 0 ? product() : null)),
     );
     expect(
       (await api.catalog({ q: "LIVE-SKU", category: "Basketball" })).products,

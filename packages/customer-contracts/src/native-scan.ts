@@ -1,6 +1,6 @@
 import type { CatalogProductV1 } from "./catalog";
 
-/** November 10/11 approved public merchandise identities; no prices or stock. */
+/** Approved pilot identities, including the November 12 Allure expansion; no prices or stock. */
 export const NORTHSIDE_NATIVE_SELECTION = Object.freeze(
   [
     [
@@ -38,6 +38,12 @@ export const NORTHSIDE_NATIVE_SELECTION = Object.freeze(
       "68224325419377",
       "746134151026",
       "2023-24-panini-nba-prizm-mega-box-square-nsk7kic6",
+    ],
+    [
+      "15993268240753",
+      "64522039460209",
+      "92840090001065",
+      "2026-upper-deck-allure-golf-hobby-box-regular",
     ],
   ].map(([product, variant, barcode, handle]) =>
     Object.freeze({

@@ -48,12 +48,12 @@ function product(p = NORTHSIDE_NATIVE_SELECTION[0]): CatalogProductV1 {
   };
 }
 describe("real-label scanner identity boundary", () => {
-  it("keeps all six exact unique product/variant/UPC identities and excludes Optic", () => {
-    expect(NORTHSIDE_NATIVE_SELECTION).toHaveLength(6);
-    expect(new Set(NORTHSIDE_NATIVE_SELECTION.map((p) => p.id)).size).toBe(6);
+  it("keeps the seven approved unique product/variant/barcode identities and excludes Optic", () => {
+    expect(NORTHSIDE_NATIVE_SELECTION).toHaveLength(7);
+    expect(new Set(NORTHSIDE_NATIVE_SELECTION.map((p) => p.id)).size).toBe(7);
     expect(
       new Set(NORTHSIDE_NATIVE_SELECTION.map((p) => p.variantId)).size,
-    ).toBe(6);
+    ).toBe(7);
     expect(NORTHSIDE_NATIVE_SELECTION.every((p) => validGtin(p.barcode))).toBe(
       true,
     );
@@ -95,10 +95,28 @@ describe("real-label scanner identity boundary", () => {
       "invalid_request",
     );
   });
-  it.each(NORTHSIDE_NATIVE_SELECTION)("accepts the installed iOS decoder's normalized UPC for $barcode", (selection) => {
+  it.each(NORTHSIDE_NATIVE_SELECTION.filter(p => p.barcode.length === 12))("accepts the installed iOS decoder's normalized UPC for $barcode", (selection) => {
     const p = product(selection);
     expect(matchCatalogScan([p], selection.barcode, "ean13").selectedVariantId).toBe(selection.variantId);
     expect(matchCatalogScan([p], "0" + selection.barcode, "ean13").selectedVariantId).toBe(selection.variantId);
+  });
+  it("resolves the approved Allure public QR and exact 14-digit identifier without coercing it to UPC/EAN", () => {
+    const selection = NORTHSIDE_NATIVE_SELECTION[6];
+    expect(selection).toMatchObject({
+      id: "gid://shopify/Product/15993268240753",
+      variantId: "gid://shopify/ProductVariant/64522039460209",
+      barcode: "92840090001065",
+    });
+    const p = product(selection);
+    const url = `https://9i3hnb-jw.myshopify.com/products/${selection.handle}`;
+    expect(matchCatalogScan([p], url, "qr").selectedVariantId).toBe(selection.variantId);
+    expect(matchCatalogScan([p], selection.barcode, "code128").selectedVariantId).toBe(selection.variantId);
+    expect(matchCatalogScan([p], selection.barcode).selectedVariantId).toBe(selection.variantId);
+    expect(() => matchCatalogScan([p], selection.barcode, "ean13")).toThrow("invalid_request");
+    expect(() => matchCatalogScan([p], selection.barcode, "upc_a")).toThrow("invalid_request");
+    expect(() => matchCatalogScan([p], selection.barcode, "qr")).toThrow("invalid_request");
+    expect(() => matchCatalogScan([p], url + "?variant=64522039525745", "qr")).toThrow("not_found");
+    expect(() => matchCatalogScan([], url, "qr")).toThrow("not_found");
   });
   it("retains checksum and exact-identity checks for normalized iOS UPCs", () => {
     expect(() => matchCatalogScan([product()], "746134150969", "ean13")).toThrow("invalid_request");

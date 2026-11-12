@@ -127,7 +127,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 describe("native live scanning", () => {
-  it("uses the existing live adapter for all six exact barcodes/SKUs and current product QR labels", async () => {
+  it("uses the existing live adapter for all seven exact barcodes/SKUs and current product QR labels", async () => {
     const request = jest.fn<typeof fetch>(
       async () =>
         new Response(
@@ -143,12 +143,12 @@ describe("native live scanning", () => {
         ),
     );
     const api = new PublicCatalogApi(request);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < PREVIEW_CATALOG_SELECTION.length; i++) {
       const p = PREVIEW_CATALOG_SELECTION[i];
       expect((await api.scan(p.barcode)).product.selectedVariantId).toBe(
         p.variantId,
       );
-      expect((await api.scan(p.barcode, undefined, "ean13")).product.selectedVariantId).toBe(p.variantId);
+      expect((await api.scan(p.barcode, undefined, p.barcode.length === 12 ? "ean13" : "code128")).product.selectedVariantId).toBe(p.variantId);
       expect(
         (await api.scan(`SYNTHETIC-${i}`, undefined, "code128")).product
           .selectedVariantId,

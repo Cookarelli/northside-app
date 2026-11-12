@@ -1,4 +1,33 @@
-# iOS live catalog preview — November 11, 2026
+# iOS live catalog preview — updated November 12, 2026
+
+## Current scan/cart pilot
+
+The owner approved **2026 Upper Deck Allure Golf Hobby Box** as the seventh native
+pilot product on November 12. The original six basketball products stay in scope;
+the out-of-stock Donruss Optic is not substituted or published. Allure product
+`15993268240753`, variant `64522039460209`, SKU/barcode `92840090001065` and handle
+`2026-upper-deck-allure-golf-hobby-box-regular` are verified against Shopify.
+Live prices, stock and images remain Shopify data. Allure currently has no image;
+the existing unavailable-image placeholder is intentional.
+
+Allure is published to Online Store, POS and the named Northside Headless channel.
+The stable public product URL is the approved shelf QR; the same URL is a secondary
+POS barcode, preserving the original numeric barcode first. Numeric QR codes and
+temporary preview/admin URLs remain outside the permanent Northside QR contract.
+The 14-digit Allure identifier is exact manual/Code128 lookup data, not UPC/EAN-13;
+physical box barcode format has not been verified.
+
+Build **0.1.0 (5)** is prepared for this expansion. Existing scan/cart API staging,
+checkout-disabled behavior and approved build 4 camera/UI remain in place. The
+small-label zoom experiment is excluded. The live checker now requires all seven
+products. Retail Floor was read at 3 available / 3 on hand / 0 committed for Allure;
+online availability alone never proves that location's stock. Phone and POS
+acceptance of the updated shared shelf QR remain owner tests.
+
+The following section records the original catalog-only build 2 implementation;
+its six-product count and disconnected services describe that historical build.
+
+## Original catalog-only implementation (November 11)
 
 The existing Expo app supports tokenless public Shopify catalog reads in the
 approved iOS preview. Existing cards, detail routes, loading/error states,
