@@ -203,7 +203,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
       supportsTablet: false,
       ...(iosId ? { bundleIdentifier: iosId } : {}),
       ...(appleTeamId ? { appleTeamId } : {}),
-      buildNumber: scanCart ? "5" : publicCatalogPreview ? "2" : "1",
+      buildNumber: scanCart ? "6" : publicCatalogPreview ? "2" : "1",
     },
     android: {
       ...(androidId ? { package: androidId } : {}),

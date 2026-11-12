@@ -60,7 +60,7 @@ function money(value: unknown) {
 function project(
   value: unknown,
   expected: (typeof PREVIEW_CATALOG_SELECTION)[number],
-): CatalogProductV1 {
+): { product: CatalogProductV1; verified: boolean } {
   const p = object(value),
     variants = object(p.variants),
     page = object(variants.pageInfo);
@@ -78,7 +78,6 @@ function project(
   const v = object(variants.nodes[0]);
   if (
     v.id !== expected.variantId ||
-    v.barcode !== expected.barcode ||
     typeof v.availableForSale !== "boolean" ||
     typeof v.currentlyNotInStock !== "boolean"
   )
@@ -120,7 +119,7 @@ function project(
     onlineStoreUrl: null,
   });
   if (!parsed.success) throw new MobileFailure("invalid_response");
-  return parsed.data;
+  return { product: parsed.data, verified: v.barcode === expected.barcode };
 }
 
 /** Tokenless public product reads; no accounts, scan lookup, cart or checkout. */
@@ -203,7 +202,9 @@ export class PublicCatalogApi implements BrowseApi {
     if (!parsed.success || input.after)
       throw new MobileFailure("invalid_request");
     if (input.feed) throw new MobileFailure("not_configured");
-    const products = await this.read(PREVIEW_CATALOG_SELECTION, signal);
+    const products = (await this.read(PREVIEW_CATALOG_SELECTION, signal))
+      .filter((record) => record.verified)
+      .map((record) => record.product);
     const terms = (input.q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
     const filtered = products.filter(
       (p) =>
@@ -237,24 +238,37 @@ export class PublicCatalogApi implements BrowseApi {
   async product(handle: string, after?: string, signal?: AbortSignal) {
     const selected = PREVIEW_CATALOG_SELECTION.find((p) => p.handle === handle);
     if (!selected || after) throw new MobileFailure("not_found");
-    const products = await this.read([selected], signal);
-    if (!products.length) throw new MobileFailure("not_found");
+    const records = await this.read([selected], signal);
+    if (!records.length) throw new MobileFailure("not_found");
+    if (!records[0].verified) throw new MobileFailure("invalid_response");
     return mobileProductSchema.parse({
       contractVersion: MOBILE_CONTRACT_VERSION,
       kind: "product-detail",
-      product: products[0],
+      product: records[0].product,
       ...this.observation(),
     });
   }
   scan: BrowseApi["scan"] = async (code, signal, format) => {
-    const page = await this.catalog({}, signal);
+    const records = await this.read(PREVIEW_CATALOG_SELECTION, signal);
     try {
+      // Keep drifted records' claims in the index: filtering first could hide
+      // a barcode/SKU collision and select the wrong otherwise-verified item.
+      const product = matchCatalogScan(
+        records.map((record) => record.product),
+        code,
+        format,
+      );
+      if (
+        !records.some(
+          (record) => record.verified && record.product.id === product.id,
+        )
+      )
+        throw new MobileFailure("invalid_response");
       return mobileProductSchema.parse({
         contractVersion: MOBILE_CONTRACT_VERSION,
         kind: "product-detail",
-        product: matchCatalogScan(page.products, code, format),
-        observedAt: page.observedAt,
-        expiresAt: page.expiresAt,
+        product,
+        ...this.observation(),
       });
     } catch (error) {
       if (

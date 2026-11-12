@@ -63,6 +63,68 @@ afterEach(() => {
 });
 
 describe("public Shopify preview catalog", () => {
+  it("keeps Prizm scannable when unrelated Golf barcode drifts and quarantines Golf", async () => {
+    const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));
+    nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
+    nodes[6].variants.nodes[0].sku = "92840090001065";
+    const fallback = { scan: jest.fn<MobileApi["scan"]>() };
+    const api = new PublicCatalogApi(
+      async (_url, init) => {
+        const ids = JSON.parse(String(init?.body)).variables.ids as string[];
+        return response(ids.map((id) => nodes.find((p) => p.id === id)));
+      },
+      undefined,
+      fallback,
+    );
+    expect(
+      (await api.scan("746134151026", undefined, "code128")).product
+        .selectedVariantId,
+    ).toBe(PREVIEW_CATALOG_SELECTION[5].variantId);
+    expect((await api.catalog()).products.map((p) => p.id)).not.toContain(
+      nodes[6].id,
+    );
+    await expect(api.product(nodes[6].handle)).rejects.toThrow(
+      "invalid_response",
+    );
+    for (const code of [
+      "CHANGED-GOLF",
+      "92840090001065",
+      `https://9i3hnb-jw.myshopify.com/products/${nodes[6].handle}`,
+    ])
+      await expect(api.scan(code)).rejects.toThrow("invalid_response");
+    expect(fallback.scan).not.toHaveBeenCalled();
+  });
+  it.each(["barcode", "sku"] as const)(
+    "retains ambiguous %s claims from a quarantined record",
+    async (field) => {
+      const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));
+      nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
+      nodes[6].variants.nodes[0][field] = "746134151026";
+      const api = new PublicCatalogApi(async () => response(nodes));
+      await expect(api.scan("746134151026")).rejects.toThrow("ambiguous_scan");
+    },
+  );
+  it("scans corrected Golf UPC, internal SKU and legacy QR without title identity", async () => {
+    const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));
+    nodes[6].title = "2026 Upper Deck Golf Hobby Box";
+    nodes[6].variants.nodes[0].sku = "92840090001065";
+    const api = new PublicCatalogApi(async () => response(nodes));
+    for (const code of [
+      "053334437622",
+      "92840090001065",
+      `https://9i3hnb-jw.myshopify.com/products/${nodes[6].handle}`,
+    ]) {
+      const result = await api.scan(code);
+      expect(result.product.selectedVariantId).toBe(
+        PREVIEW_CATALOG_SELECTION[6].variantId,
+      );
+      expect(result.product.variants.nodes[0].identifiers.barcode).toBe(
+        "053334437622",
+      );
+    }
+    await expect(api.scan("53334437622")).rejects.toThrow("not_found");
+    await expect(api.scan("8003147387")).rejects.toThrow("not_found");
+  });
   it("uses only the seven approved identities and tokenless pinned public reads", async () => {
     const request = jest.fn<typeof fetch>(async () =>
       response(PREVIEW_CATALOG_SELECTION.map((_, i) => product(i))),
@@ -137,7 +199,11 @@ describe("public Shopify preview catalog", () => {
   });
   it("filters only the current approved scope and does not substitute missing products", async () => {
     const api = new PublicCatalogApi(async () =>
-      response(PREVIEW_CATALOG_SELECTION.map((_, index) => index === 0 ? product() : null)),
+      response(
+        PREVIEW_CATALOG_SELECTION.map((_, index) =>
+          index === 0 ? product() : null,
+        ),
+      ),
     );
     expect(
       (await api.catalog({ q: "LIVE-SKU", category: "Basketball" })).products,

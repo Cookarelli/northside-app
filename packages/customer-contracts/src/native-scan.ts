@@ -1,6 +1,6 @@
 import type { CatalogProductV1 } from "./catalog";
 
-/** Approved pilot identities, including the November 12 Allure expansion; no prices or stock. */
+/** Approved pilot identities, including Golf's manufacturer UPC; no prices or stock. */
 export const NORTHSIDE_NATIVE_SELECTION = Object.freeze(
   [
     [
@@ -42,7 +42,7 @@ export const NORTHSIDE_NATIVE_SELECTION = Object.freeze(
     [
       "15993268240753",
       "64522039460209",
-      "92840090001065",
+      "053334437622",
       "2026-upper-deck-allure-golf-hobby-box-regular",
     ],
   ].map(([product, variant, barcode, handle]) =>
@@ -108,7 +108,10 @@ export function barcodeCandidates(code: string, format?: string) {
   // expo-camera on iOS also emits the already-normalized 12-digit UPC while
   // retaining type ean13. Both forms still require a valid GTIN checksum.
   const normalizedIosUpc = format === "ean13" && code.length === 12;
-  if (length && ((!normalizedIosUpc && code.length !== length) || !validGtin(code)))
+  if (
+    length &&
+    ((!normalizedIosUpc && code.length !== length) || !validGtin(code))
+  )
     throw Error("invalid_request");
   const codes = [code];
   // iOS commonly reports UPC-A as EAN-13. Alias only with decoder/checksum proof.

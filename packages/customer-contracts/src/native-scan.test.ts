@@ -95,33 +95,76 @@ describe("real-label scanner identity boundary", () => {
       "invalid_request",
     );
   });
-  it.each(NORTHSIDE_NATIVE_SELECTION.filter(p => p.barcode.length === 12))("accepts the installed iOS decoder's normalized UPC for $barcode", (selection) => {
-    const p = product(selection);
-    expect(matchCatalogScan([p], selection.barcode, "ean13").selectedVariantId).toBe(selection.variantId);
-    expect(matchCatalogScan([p], "0" + selection.barcode, "ean13").selectedVariantId).toBe(selection.variantId);
-  });
-  it("resolves the approved Allure public QR and exact 14-digit identifier without coercing it to UPC/EAN", () => {
+  it.each(NORTHSIDE_NATIVE_SELECTION.filter((p) => p.barcode.length === 12))(
+    "accepts the installed iOS decoder's normalized UPC for $barcode",
+    (selection) => {
+      const p = product(selection);
+      expect(
+        matchCatalogScan([p], selection.barcode, "ean13").selectedVariantId,
+      ).toBe(selection.variantId);
+      expect(
+        matchCatalogScan([p], "0" + selection.barcode, "ean13")
+          .selectedVariantId,
+      ).toBe(selection.variantId);
+    },
+  );
+  it("resolves Golf's leading-zero manufacturer UPC, retained SKU and legacy QR by stable IDs", () => {
     const selection = NORTHSIDE_NATIVE_SELECTION[6];
     expect(selection).toMatchObject({
       id: "gid://shopify/Product/15993268240753",
       variantId: "gid://shopify/ProductVariant/64522039460209",
-      barcode: "92840090001065",
+      barcode: "053334437622",
+      handle: "2026-upper-deck-allure-golf-hobby-box-regular",
     });
     const p = product(selection);
+    p.title = "2026 Upper Deck Golf Hobby Box";
+    p.variants.nodes[0].identifiers.sku = "92840090001065";
     const url = `https://9i3hnb-jw.myshopify.com/products/${selection.handle}`;
-    expect(matchCatalogScan([p], url, "qr").selectedVariantId).toBe(selection.variantId);
-    expect(matchCatalogScan([p], selection.barcode, "code128").selectedVariantId).toBe(selection.variantId);
-    expect(matchCatalogScan([p], selection.barcode).selectedVariantId).toBe(selection.variantId);
-    expect(() => matchCatalogScan([p], selection.barcode, "ean13")).toThrow("invalid_request");
-    expect(() => matchCatalogScan([p], selection.barcode, "upc_a")).toThrow("invalid_request");
-    expect(() => matchCatalogScan([p], selection.barcode, "qr")).toThrow("invalid_request");
-    expect(() => matchCatalogScan([p], url + "?variant=64522039525745", "qr")).toThrow("not_found");
+    expect(matchCatalogScan([p], url, "qr").selectedVariantId).toBe(
+      selection.variantId,
+    );
+    expect(
+      matchCatalogScan([p], selection.barcode, "code128").selectedVariantId,
+    ).toBe(selection.variantId);
+    expect(matchCatalogScan([p], selection.barcode).selectedVariantId).toBe(
+      selection.variantId,
+    );
+    expect(
+      matchCatalogScan([p], "053334437622", "upc_a").selectedVariantId,
+    ).toBe(selection.variantId);
+    expect(
+      matchCatalogScan([p], "0053334437622", "ean13").selectedVariantId,
+    ).toBe(selection.variantId);
+    expect(
+      matchCatalogScan([p], "92840090001065", "code128").selectedVariantId,
+    ).toBe(selection.variantId);
+    expect(() => matchCatalogScan([p], "53334437622", "code128")).toThrow(
+      "not_found",
+    );
+    expect(() => matchCatalogScan([p], "92840090001065", "ean13")).toThrow(
+      "invalid_request",
+    );
+    expect(() => matchCatalogScan([p], "92840090001065", "upc_a")).toThrow(
+      "invalid_request",
+    );
+    expect(() => matchCatalogScan([p], selection.barcode, "qr")).toThrow(
+      "invalid_request",
+    );
+    expect(() =>
+      matchCatalogScan([p], url + "?variant=64522039525745", "qr"),
+    ).toThrow("not_found");
     expect(() => matchCatalogScan([], url, "qr")).toThrow("not_found");
   });
   it("retains checksum and exact-identity checks for normalized iOS UPCs", () => {
-    expect(() => matchCatalogScan([product()], "746134150969", "ean13")).toThrow("invalid_request");
-    expect(() => matchCatalogScan([product()], "195166245478", "ean13")).toThrow("not_found");
-    expect(() => barcodeCandidates("74613415096", "ean13")).toThrow("invalid_request");
+    expect(() =>
+      matchCatalogScan([product()], "746134150969", "ean13"),
+    ).toThrow("invalid_request");
+    expect(() =>
+      matchCatalogScan([product()], "195166245478", "ean13"),
+    ).toThrow("not_found");
+    expect(() => barcodeCandidates("74613415096", "ean13")).toThrow(
+      "invalid_request",
+    );
   });
   it("maps approved product QR and exact variant without navigating to the URL", () => {
     const p = product(),
@@ -146,14 +189,23 @@ describe("real-label scanner identity boundary", () => {
       p.variants.nodes[0].id,
     );
     expect(() => matchCatalogScan([], url, "qr")).toThrow("not_found");
-    for (const change of ["product", "handle", "variant", "barcode", "publication"]) {
+    for (const change of [
+      "product",
+      "handle",
+      "variant",
+      "barcode",
+      "publication",
+    ]) {
       const changed = structuredClone(p);
       if (change === "product") changed.id = "gid://shopify/Product/999";
       if (change === "handle") changed.handle = "another-product";
-      if (change === "variant") changed.variants.nodes[0].id = "gid://shopify/ProductVariant/999";
-      if (change === "barcode") changed.variants.nodes[0].identifiers.barcode = "746134150968";
+      if (change === "variant")
+        changed.variants.nodes[0].id = "gid://shopify/ProductVariant/999";
+      if (change === "barcode")
+        changed.variants.nodes[0].identifiers.barcode = "746134150968";
       // Deliberately malformed provider data at this runtime boundary.
-      if (change === "publication") Object.assign(changed, { publication: "unknown" });
+      if (change === "publication")
+        Object.assign(changed, { publication: "unknown" });
       expect(() => matchCatalogScan([changed], url, "qr")).toThrow("not_found");
     }
   });
@@ -167,10 +219,18 @@ describe("real-label scanner identity boundary", () => {
     "https://evil.example/m",
     "https://9i3hnb-jw.myshopify.com/M",
   ])("does not broaden the exact ESL short QR alias: %s", (url) => {
-    expect(() => matchCatalogScan([product(NORTHSIDE_NATIVE_SELECTION[4])], url, "qr")).toThrow("unsupported_qr");
+    expect(() =>
+      matchCatalogScan([product(NORTHSIDE_NATIVE_SELECTION[4])], url, "qr"),
+    ).toThrow("unsupported_qr");
   });
   it("does not treat the ESL hardware barcode as merchandise", () => {
-    expect(() => matchCatalogScan([product(NORTHSIDE_NATIVE_SELECTION[4])], "8003147344", "code128")).toThrow("not_found");
+    expect(() =>
+      matchCatalogScan(
+        [product(NORTHSIDE_NATIVE_SELECTION[4])],
+        "8003147344",
+        "code128",
+      ),
+    ).toThrow("not_found");
   });
   it.each([
     "https://evil.example/products/x",

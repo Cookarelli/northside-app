@@ -17,7 +17,7 @@ export const NATIVE_PRODUCTS_QUERY = `query NativeApprovedScanProducts($ids:[ID!
     variants(first:2) {nodes {id title sku barcode availableForSale currentlyNotInStock price {amount currencyCode}} pageInfo {hasNextPage endCursor}}
   } }
 }`;
-export async function approvedNativeProducts(query: Query = storefront()) {
+async function nativeCatalogRecords(query: Query = storefront()) {
   type Raw = Parameters<typeof projectCatalogProduct>[0];
   const result = await query<{ nodes: (Raw | null)[] }>(NATIVE_PRODUCTS_QUERY, {
     ids: NORTHSIDE_NATIVE_SELECTION.map((p) => p.id),
@@ -35,22 +35,37 @@ export async function approvedNativeProducts(query: Query = storefront()) {
       p.handle !== expected.handle ||
       p.variants?.pageInfo?.hasNextPage !== false ||
       p.variants.nodes.length !== 1 ||
-      p.variants.nodes[0].id !== expected.variantId ||
-      p.variants.nodes[0].barcode !== expected.barcode
+      p.variants.nodes[0].id !== expected.variantId
     )
       throw new AccessError(503, "invalid_provider_data");
-    return [projectCatalogProduct(p)];
+    return [
+      {
+        product: projectCatalogProduct(p),
+        verified: p.variants.nodes[0].barcode === expected.barcode,
+      },
+    ];
   });
+}
+export async function approvedNativeProducts(query?: Query) {
+  return (await nativeCatalogRecords(query))
+    .filter((record) => record.verified)
+    .map((record) => record.product);
 }
 export async function approvedNativeScan(
   code: string,
   format?: string,
   query?: Query,
 ) {
-  const products = await approvedNativeProducts(query);
+  const records = await nativeCatalogRecords(query);
   let product;
   try {
-    product = matchCatalogScan(products, code, format);
+    // Include quarantined records in matching so their live SKU/barcode claims
+    // still reject collisions. Only the uniquely matched, verified record is usable.
+    product = matchCatalogScan(
+      records.map((record) => record.product),
+      code,
+      format,
+    );
   } catch (error) {
     const code =
       error instanceof Error &&
@@ -64,6 +79,12 @@ export async function approvedNativeScan(
         : "invalid_provider_data";
     throw new AccessError(code === "not_found" ? 404 : 400, code);
   }
+  if (
+    !records.some(
+      (record) => record.verified && record.product.id === product.id,
+    )
+  )
+    throw new AccessError(503, "invalid_provider_data");
   const now = Date.now();
   return mobileProductSchema.parse({
     contractVersion: MOBILE_CONTRACT_VERSION,

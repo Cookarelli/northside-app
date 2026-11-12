@@ -1261,3 +1261,34 @@ then verify browse/search/variant/cart on that candidate and prepare a stable pu
 route. Native checkout remains disabled; payment/order/inventory and physical handheld/device
 acceptance are separate, still-unverified boundaries. No release readiness is inferred from
 passing local tests or the owner's build-number confirmation.
+
+## November 12, 2026 — native scan barcode-regression repair
+
+Reproduced the existing native API's Prizm Mega POST returning HTTP503
+`invalid_provider_data` (request117313ac-6949-4ddf-8dce-da45785b6050). A captured live
+Storefront response reproduces the same backend error and the client's
+`invalid_response`. Of the existing identity assertions across all seven approved
+records, only Golf's canonical-barcode comparison fails: live `053334437622`
+versus embedded `92840090001065`. Golf's stable product/variant IDs and intentionally
+retained legacy handle match; title is display data, not identity.
+
+Corrected only the shared canonical UPC. The live internal SKU92840090001065 and
+legacy QR handle remain usable. Both catalog adapters quarantine barcode-drifted
+records while retaining their current claims during exact scan matching, so an
+unrelated stale mapping cannot poison Prizm or hide an ambiguous collision. Strict
+identity, publication, complete-variant, DTO/price and availability validation,
+Retail Floor proof and cart protections remain. Unverifiable targets stay unavailable.
+
+Build5's actual signed IPA embeds the old Golf mapping, uses PublicCatalogApi
+before the API fallback, and disables OTA; backend repair alone is insufficient.
+The client adapter is repaired and internal preview build number advances to6.
+Navigation/colors/camera controls/cart flows/API origin/signing profile are unchanged.
+
+Independent source review passed. Checks: full native263/19suites, full customer431,
+focused backend59 (a subset of431), shared scan contract35, root/customer/native
+TypeScript, affected lint, preview configuration and isolated Next16.4.1 webpack
+backend build all pass. pnpm's automatic dependency preflight was blocked by sandbox
+network; checks used the existing pinned tool binaries without dependency changes.
+Deployment and build6 artifact evidence will be appended after completion. Physical
+phone scans, camera-to-result/cart acceptance and current Victa acceptance remain
+unverified by these software checks. No Shopify/Shelva/inventory/publication change.
