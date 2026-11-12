@@ -1288,7 +1288,34 @@ Independent source review passed. Checks: full native263/19suites, full customer
 focused backend59 (a subset of431), shared scan contract35, root/customer/native
 TypeScript, affected lint, preview configuration and isolated Next16.4.1 webpack
 backend build all pass. pnpm's automatic dependency preflight was blocked by sandbox
-network; checks used the existing pinned tool binaries without dependency changes.
+network; checks used the existing pinned tool binaries; dependency declarations/lockfiles are unchanged.
 Deployment and build6 artifact evidence will be appended after completion. Physical
 phone scans, camera-to-result/cart acceptance and current Victa acceptance remain
 unverified by these software checks. No Shopify/Shelva/inventory/publication change.
+
+### Scan repair release and build6 verification completed
+
+Native Preview dpl_J8tqAu1df3c7NFF6FvAFUeHcuCKJ was independently source-verified:
+all612 uploaded hashes match the reviewed615-file snapshot, with the3 expected
+ignore omissions. Protected candidate scans passed11 successes/6 rejections before
+assigning the existing native API alias. The exact alias then passed the same11/6;
+all11 guarded website/auth/assets/method/query checks remain404. Project SSO and
+existing alias protection are unchanged; shared branch and production aliases remain
+on their previous deployments. No public website, DNS, Shopify or Shelva mutation.
+
+Internal iOS0.1.0(6), build9888bcdf-e1bd-4e52-a73f-fded9d7e2ff5, FINISHED from
+reviewed repair commit8e08e383877277b690f5a219b70e9cc0d3d14edf. Exact downloaded
+IPA SHA2563f792a0411176eaa566c0b072833287416e65157612d4736fcad426f9456f452.
+Signature, signed entitlements, same approved certificate/profile and registered
+iPhone inclusion verified. Fresh Hermes tuple verification preserves the original
+six identities and correct Golf053334437622 plus legacy handle. API origin retained,
+OTA disabled, camera-only permission, no private credential-header references.
+Install: https://expo.dev/accounts/northside-collectibles/projects/northside-customer/builds/9888bcdf-e1bd-4e52-a73f-fded9d7e2ff5
+
+All12 preexisting changed/untracked entries were hash/link-target verified unchanged.
+No remote push or production release performed. Physical iPhone scan-to-product/cart
+acceptance still requires Steve to install6 over5, scan all six Minis and Golf UPC/QR
+plus Prizm QR, then explicitly Add and check quantities/persistence/removal. Owner's
+new iPad POS label passes are recorded as owner evidence; no Victa success inferred.
+Detailed sanitized evidence is in the November12 chat outputs/scan-regression-*.json
+and NORTHSIDE-IPHONE-SCAN-REPAIR-2026-11-12.txt.
