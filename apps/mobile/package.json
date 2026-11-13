@@ -21,7 +21,8 @@
     "check:catalog:live": "node --import tsx scripts/check-public-catalog.ts",
     "check:scan:live": "node --import tsx scripts/check-native-scan.ts",
     "bundle:ios": "expo export --platform ios --output-dir dist/ios",
-    "bundle:android": "expo export --platform android --output-dir dist/android"
+    "bundle:android": "expo export --platform android --output-dir dist/android",
+    "test:camera-native": "node --test scripts/camera-native-plugin.test.cjs"
   },
   "dependencies": {
     "@babel/runtime": "7.29.10",
@@ -61,5 +62,14 @@
     "test-renderer": "1.3.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3"
+  },
+  "expo": {
+    "autolinking": {
+      "ios": {
+        "buildFromSource": [
+          "expo-camera"
+        ]
+      }
+    }
   }
 }

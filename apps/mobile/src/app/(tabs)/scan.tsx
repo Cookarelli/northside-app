@@ -7,11 +7,7 @@ import {
   type ComponentRef,
 } from "react";
 import { useFocusEffect, useNavigation } from "expo-router";
-import {
-  CameraView,
-  useCameraPermissions,
-  type BarcodeScanningResult,
-} from "expo-camera";
+import { useCameraPermissions, type BarcodeScanningResult } from "expo-camera";
 import {
   AppState,
   Platform,
@@ -43,16 +39,17 @@ import { useShopping } from "../../shopping/Provider";
 import { CartView } from "../../shopping/CartView";
 import { ScanProduct } from "../../shopping/ScanProduct";
 import { shoppingMessage } from "../../shopping/messages";
+import { BarcodeCamera } from "../../shopping/BarcodeCamera";
 import { storefront } from "../../theme";
 import { barcodeCandidates } from "../../../../../packages/customer-contracts/src/native-scan";
 import {
-  RETAIL_BARCODE_FORMATS,
   isRetailBarcodeFormat,
   barcodePreviewHeight,
 } from "../../shopping/barcode-scanner";
 
-const barcodeSettings = { barcodeTypes: [...RETAIL_BARCODE_FORMATS] };
 function scanMessage(error: string) {
+  if (error === "camera_setup_unavailable")
+    return "Camera controls could not initialize. Retry the camera or install the updated preview. You can enter the barcode manually.";
   if (error === "invalid_request" || error === "unsupported_qr")
     return "Enter a product barcode, up to 64 characters.";
   if (error === "not_found")
@@ -83,7 +80,6 @@ export default function ScanScreen() {
     Platform.OS === "web" ? "web" : active ? "checking" : "paused",
   );
   const [cameraEpoch, setCameraEpoch] = useState(0);
-  const [cameraReady, setCameraReady] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [cameraTop, setCameraTop] = useState(0);
   const [focused, setFocused] = useState(false);
@@ -147,7 +143,6 @@ export default function ScanScreen() {
     generation.current++;
     busy.current = false;
     ready.current = false;
-    setCameraReady(false);
     wanted.current = false;
     restartPermission.current = null;
     abort.current?.abort();
@@ -283,23 +278,6 @@ export default function ScanScreen() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       pause("denied");
   }, [permission, camera, pause]);
-  useEffect(() => {
-    if (camera !== "running" || cameraReady) return;
-    const epoch = cameraEpoch;
-    const timer = setTimeout(() => {
-      if (
-        generation.current === epoch &&
-        focusRef.current &&
-        wanted.current &&
-        !ready.current
-      ) {
-        resumeOnActive.current = false;
-        pause("unavailable");
-        setError("camera_unavailable");
-      }
-    }, 10000);
-    return () => clearTimeout(timer);
-  }, [camera, cameraEpoch, cameraReady, pause]);
   useEffect(() => {
     if (!result) return;
     const timer = setTimeout(
@@ -553,66 +531,59 @@ export default function ScanScreen() {
         />
       ) : (
         <>
-          {!result && (
-            <View
-              testID="barcode-camera-frame"
-              onLayout={(event) => setCameraTop(event.nativeEvent.layout.y)}
-              style={[
-                styles.camera,
-                {
-                  height:
-                    Platform.OS === "web"
-                      ? 220
-                      : viewportHeight > 0
+          {!result &&
+            (Platform.OS !== "web" &&
+            focused &&
+            active &&
+            camera === "running" ? (
+              <BarcodeCamera
+                key={cameraEpoch}
+                frameStyle={[
+                  styles.camera,
+                  {
+                    height:
+                      viewportHeight > 0
                         ? barcodePreviewHeight(viewportHeight, cameraTop)
                         : Math.min(
                             360,
                             Math.max(220, Math.round(height * 0.34)),
                           ),
-                },
-              ]}
-            >
-              {Platform.OS !== "web" &&
-              focused &&
-              active &&
-              camera === "running" ? (
-                <>
-                  <CameraView
-                    key={cameraEpoch}
-                    testID="product-camera"
-                    style={StyleSheet.absoluteFill}
-                    facing="back"
-                    mode="picture"
-                    autofocus="on"
-                    barcodeScannerSettings={barcodeSettings}
-                    onCameraReady={() => {
-                      if (valid(mountedEpoch) && wanted.current) {
-                        ready.current = true;
-                        setCameraReady(true);
-                      }
-                    }}
-                    onMountError={() => {
-                      if (valid(mountedEpoch)) {
-                        resumeOnActive.current = false;
-                        pause("unavailable");
-                        setError("camera_unavailable");
-                      }
-                    }}
-                    onBarcodeScanned={scanned}
-                  />
-                  <View pointerEvents="none" style={styles.viewfinder} />
-                  <View pointerEvents="none" style={styles.cameraHint}>
-                    <Text
-                      accessibilityLiveRegion="polite"
-                      style={styles.hintText}
-                    >
-                      {cameraReady
-                        ? "Ready · Aim at the product barcode"
-                        : "Opening camera…"}
-                    </Text>
-                  </View>
-                </>
-              ) : (
+                  },
+                ]}
+
+                onLayout={(event) => setCameraTop(event.nativeEvent.layout.y)}
+                onReady={() => {
+                  if (valid(mountedEpoch) && wanted.current)
+                    ready.current = true;
+                }}
+                onError={(code) => {
+                  if (valid(mountedEpoch)) {
+                    resumeOnActive.current = false;
+                    pause("unavailable");
+                    setError(code);
+                  }
+                }}
+                onBarcodeScanned={scanned}
+              />
+            ) : (
+              <View
+                testID="barcode-camera-frame"
+                onLayout={(event) => setCameraTop(event.nativeEvent.layout.y)}
+                style={[
+                  styles.camera,
+                  {
+                    height:
+                      Platform.OS === "web"
+                        ? 220
+                        : viewportHeight > 0
+                          ? barcodePreviewHeight(viewportHeight, cameraTop)
+                          : Math.min(
+                              360,
+                              Math.max(220, Math.round(height * 0.34)),
+                            ),
+                  },
+                ]}
+              >
                 <View style={styles.cameraState}>
                   <Icon
                     name="scan"
@@ -662,9 +633,8 @@ export default function ScanScreen() {
                     )
                   )}
                 </View>
-              )}
-            </View>
-          )}
+              </View>
+            ))}
           {pending && (
             <Text accessibilityLiveRegion="polite" style={ui.copy}>
               Barcode detected. Finding your item…
@@ -845,29 +815,6 @@ const styles = StyleSheet.create({
     ...storefront.type.eyebrow,
     color: storefront.colors.inverseAccent,
     textAlign: "center",
-  },
-  viewfinder: {
-    position: "absolute",
-    top: "22%",
-    bottom: "22%",
-    left: "12%",
-    right: "12%",
-    borderWidth: 2,
-    borderColor: storefront.colors.electricBlue,
-    borderRadius: 12,
-  },
-  cameraHint: {
-    position: "absolute",
-    bottom: 18,
-    left: 12,
-    right: 12,
-    backgroundColor: "#071526CC",
-    padding: 10,
-  },
-  hintText: {
-    color: storefront.colors.white,
-    textAlign: "center",
-    fontSize: 14,
   },
   rehearsal: { ...storefront.type.eyebrow, color: storefront.colors.accent },
   secondary: { gap: 8 },

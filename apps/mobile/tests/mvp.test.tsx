@@ -41,6 +41,32 @@ let mockPermission = {
   status: "granted",
   expires: "never",
 };
+const mockLenses = jest.fn<
+  () => Promise<{ deviceType: string; localizedName: string }[]>
+>(async () => []);
+const cameraCaps = {
+  visibleRegion: { x: 0, y: 0.2, width: 1, height: 0.6 },
+  minZoomFactor: 1,
+  maxZoomFactor: 16,
+  maxAvailableZoomFactor: 16,
+  currentZoomFactor: 1,
+  actualFormatWidth: 1920,
+  actualFormatHeight: 1080,
+  deviceType: "AVCaptureDeviceTypeBuiltInWideAngleCamera",
+  hasTorch: true,
+  isTorchAvailable: true,
+  continuousAutoFocusSupported: true,
+  continuousAutoExposureSupported: true,
+};
+const mockPrepareCamera = jest.fn<() => Promise<typeof cameraCaps>>(
+  async () => cameraCaps,
+);
+jest.mock("../src/shopping/camera-capabilities", () => ({
+  ...jest.requireActual<typeof import("../src/shopping/camera-capabilities")>(
+    "../src/shopping/camera-capabilities",
+  ),
+  prepareBarcodeCamera: () => mockPrepareCamera(),
+}));
 const mockRequest = jest.fn<() => Promise<typeof mockPermission>>(
   async () => mockPermission,
 );
@@ -56,7 +82,12 @@ jest.mock("expo-camera", () => {
       mockRequest,
       mockGetPermission,
     ],
-    CameraView: (props: object) => React.createElement(RN.View, props),
+    CameraView: React.forwardRef(function MockCameraView(props: object, ref) {
+      React.useImperativeHandle(ref, () => ({
+        getAvailableLensesAsync: mockLenses,
+      }));
+      return React.createElement(RN.View, props);
+    }),
   };
 });
 const customerId = "11111111-1111-4111-8111-111111111111";
@@ -524,6 +555,8 @@ async function renderApp(
   );
 }
 beforeEach(() => {
+  mockLenses.mockImplementation(async () => []);
+  mockPrepareCamera.mockImplementation(async () => cameraCaps);
   mockPermission = {
     granted: true,
     canAskAgain: true,
@@ -704,8 +737,13 @@ describe("native scan to unpaid counter shopping UI (simulated backend)", () => 
         screen.getByRole("button", { name: "Retry camera" }),
       );
       const camera = screen.getByTestId("product-camera");
+      await fireEvent(camera, "cameraReady");
+      await waitFor(() =>
+        expect(
+          screen.getByText(/Ready · Aim at the product barcode/),
+        ).toBeVisible(),
+      );
       await act(async () => {
-        camera.props.onCameraReady();
         jest.advanceTimersByTime(10001);
       });
       expect(
@@ -715,6 +753,190 @@ describe("native scan to unpaid counter shopping UI (simulated backend)", () => 
     } finally {
       jest.useRealTimers();
     }
+  });
+  it("uses continuous focus, capture preset, calibrated zoom and an optional torch", async () => {
+    const h = harness();
+    await renderApp(h, "/scan");
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+    expect(screen.getByRole("button", { name: "Zoom 2×" })).toBeDisabled();
+    await fireEvent(screen.getByTestId("product-camera"), "cameraReady");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Zoom 2×" }),
+      ).not.toBeDisabled(),
+    );
+    expect(screen.getByTestId("product-camera").props).toMatchObject({
+      autofocus: "off",
+      pictureSize: "1920x1080",
+      zoom: 0,
+      enableTorch: false,
+    });
+    await fireEvent.press(screen.getByRole("button", { name: "Zoom 1.5×" }));
+    expect(screen.getByTestId("product-camera").props.zoom).toBeCloseTo(
+      Math.log(1.5) / Math.log(16),
+    );
+    expect(
+      screen.getByRole("button", { name: "Zoom 1.5×", selected: true }),
+    ).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Zoom 2×" }));
+    expect(screen.getByTestId("product-camera").props.zoom).toBeCloseTo(0.25);
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Turn torch on" }),
+    );
+    expect(screen.getByTestId("product-camera").props.enableTorch).toBe(true);
+    await fireEvent.press(screen.getByRole("button", { name: "Pause camera" }));
+    expect(screen.queryByTestId("product-camera")).toBeNull();
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Resume camera" }),
+    );
+    await fireEvent(screen.getByTestId("product-camera"), "cameraReady");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Turn torch on" }),
+      ).not.toBeDisabled(),
+    );
+    expect(screen.getByTestId("product-camera").props.enableTorch).toBe(false);
+    expect(screen.getByTestId("product-camera").props.zoom).toBe(0);
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("selects only an available main rear lens and fences the old camera callback", async () => {
+    mockLenses.mockResolvedValue([
+      {
+        deviceType: "AVCaptureDeviceTypeBuiltInWideAngleCamera",
+        localizedName: "Back Camera",
+      },
+    ]);
+    const h = harness();
+    await renderApp(h, "/scan");
+    const old = await screen.findByTestId("product-camera");
+    await fireEvent(old, "cameraReady");
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera").props.selectedLens).toBe(
+        cameraCaps.deviceType,
+      ),
+    );
+    await fireEvent(old, "barcodeScanned", {
+      data: "036000291452",
+      type: "upc_a",
+    });
+    expect(h.scans).toEqual([]);
+    await fireEvent(screen.getByTestId("product-camera"), "cameraReady");
+    await fireEvent(screen.getByTestId("product-camera"), "barcodeScanned", {
+      data: "036000291452",
+      type: "upc_a",
+    });
+    await waitFor(() =>
+      expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible(),
+    );
+    expect(h.scans).toEqual(["036000291452"]);
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("does not mislabel unsupported zoom or torch and uses default lens fallback", async () => {
+    mockPrepareCamera.mockResolvedValue({
+      ...cameraCaps,
+      maxAvailableZoomFactor: 1.6,
+      hasTorch: false,
+      isTorchAvailable: false,
+    });
+    await renderApp(harness(), "/scan");
+    await fireEvent(await screen.findByTestId("product-camera"), "cameraReady");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Zoom 1.5×" }),
+      ).not.toBeDisabled(),
+    );
+    expect(screen.getByRole("button", { name: "Zoom 2×" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Turn torch on" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId("product-camera").props.selectedLens,
+    ).toBeUndefined();
+  });
+  it("stops setup failure safely and offers camera retry/manual entry", async () => {
+    mockPrepareCamera.mockRejectedValue(
+      Error("SYNTHETIC native bridge unavailable"),
+    );
+    const h = harness();
+    await renderApp(h, "/scan");
+    await fireEvent(await screen.findByTestId("product-camera"), "cameraReady");
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Camera controls could not initialize/),
+      ).toBeVisible(),
+    );
+    expect(screen.queryByTestId("product-camera")).toBeNull();
+    mockPrepareCamera.mockResolvedValue(cameraCaps);
+    await fireEvent.press(screen.getByRole("button", { name: "Retry camera" }));
+    await fireEvent(screen.getByTestId("product-camera"), "cameraReady");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Zoom 2×" }),
+      ).not.toBeDisabled(),
+    );
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("pauses frame acceptance until the newest layout preparation finishes", async () => {
+    const h = harness();
+    await renderApp(h, "/scan");
+    const camera = await screen.findByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    const resolve: ((value: typeof cameraCaps) => void)[] = [];
+    mockPrepareCamera.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve.push(done);
+        }),
+    );
+    await fireEvent(camera, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 340, height: 240 } },
+    });
+    await fireEvent(camera, "barcodeScanned", {
+      data: "036000291452",
+      type: "upc_a",
+    });
+    expect(h.scans).toEqual([]);
+    await fireEvent(camera, "responsiveOrientationChanged", {
+      orientation: "landscapeLeft",
+    });
+    expect(resolve).toHaveLength(2);
+    await act(async () => resolve[0](cameraCaps));
+    await fireEvent(camera, "barcodeScanned", {
+      data: "036000291452",
+      type: "upc_a",
+    });
+    expect(h.scans).toEqual([]);
+    await act(async () => resolve[1](cameraCaps));
+    await fireEvent(camera, "barcodeScanned", {
+      data: "036000291452",
+      type: "upc_a",
+    });
+    await waitFor(() => expect(h.scans).toEqual(["036000291452"]));
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("ignores delayed preparation after leaving the Scan tab", async () => {
+    let resolve!: (value: typeof cameraCaps) => void;
+    mockPrepareCamera.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    const h = harness();
+    await renderApp(h, "/scan");
+    const camera = await screen.findByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    await fireEvent.press(screen.getByLabelText(/^Home, tab,/));
+    await act(async () => resolve(cameraCaps));
+    await fireEvent(camera, "barcodeScanned", {
+      data: "036000291452",
+      type: "upc_a",
+    });
+    expect(screen.queryByTestId("product-camera")).toBeNull();
+    expect(h.scans).toEqual([]);
+    expect(h.shoppingActions).toEqual([]);
   });
   it("requests undetermined camera permission once and opens immediately after grant", async () => {
     mockPermission = {

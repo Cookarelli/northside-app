@@ -203,7 +203,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
       supportsTablet: false,
       ...(iosId ? { bundleIdentifier: iosId } : {}),
       ...(appleTeamId ? { appleTeamId } : {}),
-      buildNumber: scanCart ? "7" : publicCatalogPreview ? "2" : "1",
+      buildNumber: scanCart ? "8" : publicCatalogPreview ? "2" : "1",
     },
     android: {
       ...(androidId ? { package: androidId } : {}),
@@ -230,6 +230,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
       favicon: "./assets/icon.png",
     },
     plugins: [
+      "./plugins/withNorthsideBarcodeCamera.cjs",
       "expo-router",
       [
         "expo-camera",

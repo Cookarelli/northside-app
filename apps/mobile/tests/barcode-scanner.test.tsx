@@ -20,6 +20,11 @@ describe("camera viewport and format policy", () => {
       expect(top + height + 16).toBeLessThanOrEqual(viewport);
     },
   );
+  it.each([[601, 340], [601, 390], [497, 340]])("reserves controls and guidance above a short camera at %s/%s", (viewport, top) => {
+    const height = barcodePreviewHeight(viewport, top);
+    expect(height).toBeGreaterThan(100);
+    expect(top + height + 16).toBeLessThanOrEqual(viewport);
+  });
   it.each([
     [300, 190],
     [150, 180],
