@@ -48,14 +48,18 @@ let mockPermission = {
 const originalExpoConfig = Constants.expoConfig;
 jest.mock("expo-constants", () => ({
   __esModule: true,
-  default: { expoConfig: null },
+  default: {
+    expoConfig: null,
+    platform: { ios: { buildNumber: "10" } },
+    executionEnvironment: "standalone",
+  },
 }));
 function enableScanQa(variant = "preview") {
   Constants.expoConfig = {
     name: "Synthetic QA app",
     slug: "synthetic-qa",
     version: "0.1.0",
-    ios: { buildNumber: "9" },
+    ios: { buildNumber: "10" },
     extra: { mobile: { variant, scanDiagnostics: true } },
   };
 }
@@ -599,6 +603,87 @@ async function qaReport() {
 }
 
 describe("internal scan diagnostic screen", () => {
+  it.each(["camera", "manual"])(
+    "resolves a valid padded GTIN from %s and sends only the verified canonical barcode on explicit Add",
+    async (source) => {
+      enableScanQa();
+      const h = harness();
+      await renderApp(h, "/scan");
+      if (source === "manual") {
+        await fireEvent.changeText(await manualInput(), "0036000291452");
+        await fireEvent.press(
+          screen.getByRole("button", { name: "Look up code" }),
+        );
+      } else {
+        await waitFor(() =>
+          expect(screen.getByTestId("product-camera")).toBeVisible(),
+        );
+        const camera = screen.getByTestId("product-camera");
+        await fireEvent(camera, "cameraReady");
+        await fireEvent(camera, "barcodeScanned", {
+          data: "0036000291452",
+          type: "code128",
+        });
+      }
+      await waitFor(() =>
+        expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible(),
+      );
+      expect(h.shoppingActions).toHaveLength(0);
+      const report = await qaReport();
+      expect(report).toMatchObject({
+        rawValue: "0036000291452",
+        format: source === "camera" ? "code128" : null,
+        candidates: ["0036000291452", "036000291452"],
+        canonicalAddInput: { code: "036000291452", format: "code128" },
+      });
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Close diagnostics" }),
+      );
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Add to items" }),
+      );
+      await waitFor(() => expect(h.shoppingActions).toHaveLength(2));
+      expect(h.shoppingActions[1]).toMatchObject({
+        action: "add",
+        code: "036000291452",
+        format: "code128",
+        variantId: "gid://shopify/ProductVariant/11",
+      });
+    },
+  );
+  it("keeps a recorded failure across background/foreground so copying does not erase it", async () => {
+    enableScanQa();
+    const listeners: ((state: AppStateStatus) => void)[] = [];
+    jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_event, listener) => {
+        listeners.push(listener);
+        return { remove() {} };
+      });
+    const h = harness();
+    h.setUnknown();
+    await renderApp(h, "/scan");
+    await fireEvent.changeText(await manualInput(), "UNKNOWN-BOX");
+    await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Retry barcode lookup" }),
+      ).toBeVisible(),
+    );
+    const before = await qaReport();
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Close diagnostics" }),
+    );
+    await act(async () => listeners.forEach((fn) => fn("background")));
+    await act(async () => listeners.forEach((fn) => fn("active")));
+    expect(await qaReport()).toMatchObject({
+      rawValue: "UNKNOWN-BOX",
+      recordedAt: before.recordedAt,
+      outcome: "product_not_found",
+      lookup: { httpStatus: 404, path: "backend-registry" },
+    });
+    expect(h.shoppingActions).toHaveLength(0);
+  });
   it("does not let an already forwarded old camera callback repopulate a cleared attempt", async () => {
     enableScanQa();
     const actualCamera = barcodeCamera.BarcodeCamera;
@@ -619,6 +704,10 @@ describe("internal scan diagnostic screen", () => {
     await lookupSample();
     await fireEvent.press(
       screen.getByRole("button", { name: "Scan next item" }),
+    );
+    await qaReport();
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Clear scan diagnostics" }),
     );
     await act(async () => {
       forwarded({
@@ -685,7 +774,13 @@ describe("internal scan diagnostic screen", () => {
         variantBarcode: "036000291452",
         appEligible: true,
       },
-      app: { version: "0.1.0", build: "9" },
+      app: {
+        configuredVersion: "0.1.0",
+        configuredBundleBuild: "10",
+        nativeIosBuild: "10",
+        nativeAndConfiguredBuildAgree: true,
+      },
+      canonicalAddInput: { code: "036000291452", format: "code128" },
     });
     expect(h.scans).toEqual(["0036000291452"]);
     expect(h.shoppingActions).toEqual([]);
@@ -705,11 +800,11 @@ describe("internal scan diagnostic screen", () => {
     await waitFor(() => expect(h.shoppingActions).toHaveLength(2));
     expect(h.shoppingActions[1]).toMatchObject({
       action: "add",
-      code: "0036000291452",
-      format: "ean13",
+      code: "036000291452",
+      format: "code128",
     });
   });
-  it("shows no forwarded event honestly, and clears its last attempt when leaving the tab", async () => {
+  it("shows no forwarded event honestly and retains the last report when leaving and reopening Scan", async () => {
     enableScanQa();
     const h = harness();
     await renderApp(h, "/scan");
@@ -728,15 +823,18 @@ describe("internal scan diagnostic screen", () => {
     await fireEvent.press(screen.getByRole("button", { name: /^Shop, tab/ }));
     await fireEvent.press(screen.getByRole("button", { name: /^Scan, tab/ }));
     expect(await qaReport()).toMatchObject({
-      outcome: "no_forwarded_barcode",
-      rawValue: null,
-      matched: null,
+      outcome: "product_found",
+      rawValue: "036000291452",
+      matched: { variantBarcode: "036000291452" },
     });
   });
   it.each([
     ["not_found", "product_not_found"],
     ["ambiguous_scan", "ambiguous_barcode"],
     ["offline", "network_error"],
+    ["server_error", "server_error"],
+    ["scan_access_denied", "access_error"],
+    ["product_unavailable", "product_unavailable"],
   ])("distinguishes %s after a detected barcode", async (failure, outcome) => {
     enableScanQa();
     const h = harness();
@@ -753,11 +851,6 @@ describe("internal scan diagnostic screen", () => {
       rawValue: "8003148023",
       outcome,
       failureReason: failure,
-      esl: {
-        status: "assignment_feed_not_connected",
-        identifier: null,
-        assignment: null,
-      },
     });
     expect(h.shoppingActions).toEqual([]);
   });
@@ -1222,8 +1315,8 @@ describe("native scan to unpaid counter shopping UI (simulated backend)", () => 
     );
     expect(h.shoppingActions[1]).toMatchObject({
       action: "add",
-      code: "0036000291452",
-      format: "ean13",
+      code: "036000291452",
+      format: "code128",
       variantId: "gid://shopify/ProductVariant/11",
       reviewedPriceCents: 1234,
     });
@@ -1624,7 +1717,7 @@ describe("customer mobile MVP with simulated services", () => {
     await fireEvent.changeText(await manualInput(), "unregistered");
     await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
     await waitFor(() =>
-      expect(screen.getByText(/find an approved item/)).toBeVisible(),
+      expect(screen.getByText(/No approved product matches/)).toBeVisible(),
     );
   });
   it("ignores QR and unsupported formats and fences callbacks from an old camera epoch", async () => {

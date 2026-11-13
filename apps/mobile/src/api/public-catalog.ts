@@ -20,7 +20,7 @@ import {
   matchCatalogScan,
   barcodeCandidates,
 } from "../../../../packages/customer-contracts/src/native-scan";
-import { emitScanTrace } from "./scan-trace";
+import { emitScanTrace, type ScanTraceListener } from "./scan-trace";
 
 export const PUBLIC_CATALOG_ENDPOINT = `https://${CATALOG_SHOP}/api/${CATALOG_SHOPIFY_API_VERSION}/graphql.json`;
 export const PUBLIC_CATALOG_QUERY = `query NorthsidePreviewCatalog($ids: [ID!]!) {
@@ -135,6 +135,7 @@ export class PublicCatalogApi implements BrowseApi {
   private async read(
     selection: readonly (typeof PREVIEW_CATALOG_SELECTION)[number][],
     signal?: AbortSignal,
+    scan?: { trace?: ScanTraceListener },
   ) {
     if (signal?.aborted) throw new MobileFailure("cancelled");
     const controller = new AbortController();
@@ -161,8 +162,32 @@ export class PublicCatalogApi implements BrowseApi {
         }),
         signal: controller.signal,
       });
+      if (scan)
+        emitScanTrace(scan.trace, {
+          path: "public-shopify-variant-barcode",
+          stage: "catalog-read",
+          endpoint: PUBLIC_CATALOG_ENDPOINT,
+          httpStatus: response.status,
+          requestCache: "no-store",
+          apiVersion: /^\d{4}-\d{2}$/.test(
+            response.headers.get("x-shopify-api-version") ?? "",
+          )
+            ? response.headers.get("x-shopify-api-version")
+            : null,
+        });
       if (controller.signal.aborted) throw new MobileFailure("cancelled");
-      if (!response.ok) throw new MobileFailure("service_unavailable");
+      if (!response.ok)
+        throw new MobileFailure(
+          !scan
+            ? "service_unavailable"
+            : response.status === 429
+              ? "rate_limited"
+              : response.status >= 500
+                ? "server_error"
+                : [401, 403].includes(response.status)
+                  ? "scan_access_denied"
+                  : "scan_endpoint_unavailable",
+        );
       if (
         response.headers.get("x-shopify-api-version") !==
           CATALOG_SHOPIFY_API_VERSION ||
@@ -172,7 +197,7 @@ export class PublicCatalogApi implements BrowseApi {
       const payload = object(JSON.parse(await boundedText(response)));
       if (controller.signal.aborted) throw new MobileFailure("cancelled");
       if (payload.errors !== undefined)
-        throw new MobileFailure("service_unavailable");
+        throw new MobileFailure(scan ? "server_error" : "service_unavailable");
       const nodes = object(payload.data).nodes;
       if (!Array.isArray(nodes) || nodes.length !== selection.length)
         throw new MobileFailure("invalid_response");
@@ -252,8 +277,16 @@ export class PublicCatalogApi implements BrowseApi {
   }
   scan: BrowseApi["scan"] = async (code, signal, format, trace) => {
     const path = "public-shopify-variant-barcode" as const;
-    emitScanTrace(trace, { path, stage: "catalog-read" });
-    const records = await this.read(PREVIEW_CATALOG_SELECTION, signal);
+    emitScanTrace(trace, {
+      path,
+      stage: "catalog-read",
+      endpoint: PUBLIC_CATALOG_ENDPOINT,
+      httpStatus: null,
+      requestCache: "no-store",
+    });
+    const records = await this.read(PREVIEW_CATALOG_SELECTION, signal, {
+      trace,
+    });
     // QA metadata observes the same fresh records; it never supplies a match.
     // QR workflows retain their own resolver and are not barcode-index claims.
     if (format !== "qr" && !/^https?:/i.test(code)) {
@@ -315,6 +348,28 @@ export class PublicCatalogApi implements BrowseApi {
         ...this.observation(),
       });
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "not_found" &&
+        format !== "qr" &&
+        !/^https?:/i.test(code)
+      ) {
+        const candidates = barcodeCandidates(code, format);
+        if (
+          PREVIEW_CATALOG_SELECTION.some(
+            (p) =>
+              candidates.includes(p.barcode) &&
+              !records.some((r) => r.product.id === p.id),
+          )
+        ) {
+          emitScanTrace(trace, {
+            path,
+            stage: "eligibility-check",
+            matchingVariants: 0,
+          });
+          throw new MobileFailure("product_unavailable");
+        }
+      }
       if (
         error instanceof Error &&
         error.message === "unsupported_qr" &&

@@ -114,9 +114,16 @@ export function barcodeCandidates(code: string, format?: string) {
   )
     throw Error("invalid_request");
   const codes = [code];
-  // iOS commonly reports UPC-A as EAN-13. Alias only with decoder/checksum proof.
-  if (format === "ean13" && /^0\d{12}$/.test(code)) codes.push(code.slice(1));
-  if ((format === "upc_a" || normalizedIosUpc) && /^\d{12}$/.test(code))
+  // A Code 128 ESL can carry a GTIN as text rather than an EAN symbology.
+  // Infer only the checksum-valid UPC-A / leading-zero EAN-13 pair.
+  // Literal/alphanumeric codes and other leading zeros remain exact.
+  const textualGtin = (!format || format === "code128") && validGtin(code);
+  if ((format === "ean13" || textualGtin) && /^0\d{12}$/.test(code))
+    codes.push(code.slice(1));
+  if (
+    (format === "upc_a" || normalizedIosUpc || textualGtin) &&
+    /^\d{12}$/.test(code)
+  )
     codes.push("0" + code);
   return codes;
 }

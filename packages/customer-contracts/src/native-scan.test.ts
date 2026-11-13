@@ -79,9 +79,9 @@ describe("real-label scanner identity boundary", () => {
     expect(
       matchCatalogScan([p], "0746134150968", "ean13").selectedVariantId,
     ).toBe(p.variants.nodes[0].id);
-    expect(() => matchCatalogScan([p], "0746134150968", "code128")).toThrow(
-      "not_found",
-    );
+    expect(
+      matchCatalogScan([p], "0746134150968", "code128").selectedVariantId,
+    ).toBe(p.variants.nodes[0].id);
     expect(() => matchCatalogScan([p], "sku-one")).toThrow("not_found");
   });
   it("ignores another variant's SKU and rejects equivalent UPC/EAN barcode collisions", () => {
@@ -96,9 +96,46 @@ describe("real-label scanner identity boundary", () => {
     expect(() => matchCatalogScan([p, other], "746134150968", "upc_a")).toThrow(
       "ambiguous_scan",
     );
+    for (const format of ["code128", undefined])
+      expect(() =>
+        matchCatalogScan([p, other], "0746134150968", format),
+      ).toThrow("ambiguous_scan");
     expect(
       matchCatalogScan([other], "746134150968", "ean13").selectedVariantId,
     ).toBe(other.variants.nodes[0].id);
+  });
+  it.each(NORTHSIDE_NATIVE_SELECTION.slice(0, 6))(
+    "resolves checksum-valid Code128/manual GTIN equivalents for $barcode",
+    (selection) => {
+      const p = product(selection);
+      for (const format of ["code128", undefined]) {
+        expect(
+          matchCatalogScan([p], "0" + selection.barcode, format)
+            .selectedVariantId,
+        ).toBe(selection.variantId);
+        expect(
+          matchCatalogScan([p], selection.barcode, format).selectedVariantId,
+        ).toBe(selection.variantId);
+        expect(barcodeCandidates("0" + selection.barcode, format)).toEqual([
+          "0" + selection.barcode,
+          selection.barcode,
+        ]);
+      }
+    },
+  );
+  it("never strips arbitrary zeros, fixes a bad checksum, or infers UPC-E from an unknown format", () => {
+    for (const code of [
+      "00746134150968",
+      "0746134150969",
+      "8003148023",
+      "04252614",
+      "000BOX-001",
+    ])
+      expect(barcodeCandidates(code, "code128")).toEqual([code]);
+    expect(barcodeCandidates("0053334437622", "code128")).toEqual([
+      "0053334437622",
+      "053334437622",
+    ]);
   });
   it("matches a literal Code128 barcode independently of its SKU", () => {
     const p = product();

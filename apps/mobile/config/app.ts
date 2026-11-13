@@ -43,6 +43,12 @@ export function createAppConfig(env: Environment): ExpoConfig {
   if (!variants.includes(variant as AppVariant))
     throw new Error("Unknown mobile app variant.");
   const selected = variant as AppVariant;
+  const sourceCommit = env.EAS_BUILD_GIT_COMMIT_HASH;
+  const easBuildId = env.EAS_BUILD_ID;
+  if (sourceCommit && !/^[a-f0-9]{40}$/.test(sourceCommit))
+    throw new Error("Invalid source revision.");
+  if (easBuildId && !uuid.test(easBuildId))
+    throw new Error("Invalid build identity.");
   const scanDiagnostics = env.MOBILE_SCAN_DIAGNOSTICS === "true";
   const prefix = `MOBILE_${selected.toUpperCase()}`;
   const origin = apiOrigin(env[`${prefix}_API_ORIGIN`], selected);
@@ -208,7 +214,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
       supportsTablet: false,
       ...(iosId ? { bundleIdentifier: iosId } : {}),
       ...(appleTeamId ? { appleTeamId } : {}),
-      buildNumber: scanCart ? "9" : publicCatalogPreview ? "2" : "1",
+      buildNumber: scanCart ? "10" : publicCatalogPreview ? "2" : "1",
     },
     android: {
       ...(androidId ? { package: androidId } : {}),
@@ -275,6 +281,10 @@ export function createAppConfig(env: Environment): ExpoConfig {
     extra: {
       mobile: {
         variant: selected,
+        buildIdentity: {
+          sourceCommit: sourceCommit ?? null,
+          easBuildId: easBuildId ?? null,
+        },
         ...(origin ? { apiOrigin: origin } : {}),
         ...(scheme ? { authReturnUri: `${scheme}://auth/return` } : {}),
         apiBasePath: "/api/mobile/v1",

@@ -57,7 +57,9 @@ import {
   diagnosticMatch,
   formatScanDiagnostic,
   type ScanDiagnostic,
+  scanAppIdentity,
 } from "../../shopping/scan-diagnostics";
+import { verifiedScanAddInput } from "../../shopping/verified-scan";
 
 function scanMessage(error: string) {
   if (error === "camera_setup_unavailable")
@@ -65,7 +67,15 @@ function scanMessage(error: string) {
   if (error === "invalid_request" || error === "unsupported_qr")
     return "Enter a product barcode, up to 64 characters.";
   if (error === "not_found")
-    return "Product not found. We couldn’t find an approved item for this barcode. Try again or ask an associate.";
+    return "Product not found. No approved product matches this barcode. Check the product barcode on the ESL display or original box, or ask an associate.";
+  if (error === "server_error" || error === "scan_endpoint_unavailable")
+    return "The store lookup service returned an error. Retry the barcode lookup or ask an associate.";
+  if (error === "rate_limited")
+    return "The store is receiving too many requests. Wait a moment, then retry the barcode lookup.";
+  if (error === "product_unavailable")
+    return "This approved item is currently unavailable in the app. Retry or ask an associate.";
+  if (error === "scan_access_denied")
+    return "The app could not access the store lookup service. Retry or ask an associate.";
   if (["offline", "timeout", "service_unavailable"].includes(error))
     return "Connection unavailable. Check your connection and retry the barcode lookup.";
   return shoppingMessage(error);
@@ -104,6 +114,7 @@ export default function ScanScreen() {
   const [selected, setSelected] = useState<string>();
   const [added, setAdded] = useState(false);
   const qaEnabled = scanDiagnosticsEnabled(Constants.expoConfig?.extra?.mobile);
+  const appIdentity = scanAppIdentity(Constants);
   const [qaOpen, setQaOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [diagnostic, setDiagnostic] = useState(emptyScanDiagnostic);
@@ -185,6 +196,14 @@ export default function ScanScreen() {
     activeRef.current &&
     viewRef.current === "scan";
   const pause = useCallback((state: CameraState = "paused") => {
+    if (diagnosticRef.current.outcome === "looking_up") {
+      diagnosticRef.current = {
+        ...diagnosticRef.current,
+        outcome: "cancelled",
+        failureReason: "lookup_interrupted_by_navigation_or_app_state",
+      };
+      setDiagnostic(diagnosticRef.current);
+    }
     generation.current++;
     busy.current = false;
     ready.current = false;
@@ -280,9 +299,9 @@ export default function ScanScreen() {
         resumeOnActive.current = false;
         setFocused(false);
         pause();
-        clearDiagnostic();
+        setQaOpen(false);
       };
-    }, [pause, clearDiagnostic]),
+    }, [pause]),
   );
   useEffect(
     () =>
@@ -302,11 +321,10 @@ export default function ScanScreen() {
       activeRef.current = state === "active";
       if (state !== "active") {
         pause();
-        clearDiagnostic();
       } else if (resumeOnActive.current) void startRef.current(true);
     });
     return () => sub.remove();
-  }, [pause, clearDiagnostic]);
+  }, [pause]);
   useEffect(() => {
     if (
       boundary.current.api !== api ||
@@ -324,7 +342,6 @@ export default function ScanScreen() {
   useEffect(() => {
     if (permission && !permission.granted && camera === "running")
       // Synchronize a revoked native camera permission; this effect stops the device resource.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       pause("denied");
   }, [permission, camera, pause]);
   useEffect(() => {
@@ -360,6 +377,7 @@ export default function ScanScreen() {
     if (qaEnabled) {
       diagnosticRef.current = emptyScanDiagnostic();
       observe({
+        recordedAt: new Date().toISOString(),
         source: frame ? "camera" : "manual",
         rawValue: diagnosticValue(raw, format),
         rawLength: raw.length,
@@ -455,8 +473,14 @@ export default function ScanScreen() {
       }
       const selection = matches[0].id;
       const matched = diagnosticMatch(data, selection);
+      const canonicalAddInput = verifiedScanAddInput(
+        input.data.code,
+        input.data.format,
+        matches[0].identifiers.barcode,
+      );
       observe({
         matched,
+        canonicalAddInput,
         outcome: matched.appEligible ? "product_found" : "product_unavailable",
         failureReason: null,
       });
@@ -515,7 +539,6 @@ export default function ScanScreen() {
     void lookup(event.data, event.type, true);
   }
   function nextItem() {
-    clearDiagnostic();
     resumeOnActive.current = true;
     setManual(Platform.OS === "web");
     setLastLookup(null);
@@ -572,10 +595,14 @@ export default function ScanScreen() {
     }
     try {
       const confirmed = await shopping.add(
-        result.code,
+        verifiedScanAddInput(
+          result.code,
+          result.format,
+          variant.identifiers.barcode,
+        ).code,
         selected,
         variant.price.amountCents,
-        result.format,
+        "code128",
       );
       if (confirmed && valid(g)) setAdded(true);
     } catch (e) {
@@ -617,44 +644,46 @@ export default function ScanScreen() {
         setViewportHeight(event.nativeEvent.layout.height)
       }
     >
-      <View accessibilityRole="tablist" style={styles.tabs}>
-        <Pressable
-          accessibilityRole="tab"
-          accessibilityState={{ selected: view === "scan" }}
-          style={[ui.chip, styles.tab, view === "scan" && ui.selected]}
-          onPress={() => {
-            viewRef.current = "scan";
-            setView("scan");
-            nextItem();
-          }}
-          onLongPress={
-            qaEnabled
-              ? () => {
-                  setCopied(false);
-                  setQaOpen(true);
-                }
-              : undefined
-          }
-          accessibilityHint={
-            qaEnabled
-              ? "Internal QA: touch and hold to open scan diagnostics"
-              : undefined
-          }
-        >
-          <Text style={[ui.label, view === "scan" && ui.selectedLabel]}>
-            Scan
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="tab"
-          accessibilityState={{ selected: view === "cart" }}
-          style={[ui.chip, styles.tab, view === "cart" && ui.selected]}
-          onPress={openCart}
-        >
-          <Text style={[ui.label, view === "cart" && ui.selectedLabel]}>
-            Cart{count ? ` (${count})` : ""}
-          </Text>
-        </Pressable>
+      <View style={styles.tabs}>
+        <View accessibilityRole="tablist" style={[styles.tabs, styles.tab]}>
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected: view === "scan" }}
+            style={[ui.chip, styles.tab, view === "scan" && ui.selected]}
+            onPress={() => {
+              viewRef.current = "scan";
+              setView("scan");
+              nextItem();
+            }}
+          >
+            <Text style={[ui.label, view === "scan" && ui.selectedLabel]}>
+              Scan
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected: view === "cart" }}
+            style={[ui.chip, styles.tab, view === "cart" && ui.selected]}
+            onPress={openCart}
+          >
+            <Text style={[ui.label, view === "cart" && ui.selectedLabel]}>
+              Cart{count ? ` (${count})` : ""}
+            </Text>
+          </Pressable>
+        </View>
+        {qaEnabled && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Internal QA diagnostics"
+            style={[ui.chip, styles.qaButton]}
+            onPress={() => {
+              setCopied(false);
+              setQaOpen(true);
+            }}
+          >
+            <Text style={ui.label}>QA</Text>
+          </Pressable>
+        )}
       </View>
       {Constants.expoConfig?.extra?.mobile?.scanRehearsal === true && (
         <Text style={styles.rehearsal}>
@@ -672,17 +701,23 @@ export default function ScanScreen() {
             <Text accessibilityRole="header" style={ui.heading}>
               Internal scan diagnostics
             </Text>
+            <Text style={ui.label}>
+              Native iOS build {appIdentity.nativeIosBuild ?? "unknown"} ·
+              Bundle build {appIdentity.configuredBundleBuild ?? "unknown"}
+            </Text>
+            <Text selectable style={ui.copy}>
+              Source {appIdentity.sourceCommit ?? "unknown"} · OTA{" "}
+              {appIdentity.otaConfigured === false ? "disabled" : "unverified"}
+            </Text>
             <Text style={ui.copy}>
-              Last attempt only. No forwarded barcode event means the Scan
-              screen has not received one; it does not prove the native decoder
-              detected nothing. Shelva housing assignments are not connected.
+              Last recorded attempt. Reports survive tab changes and
+              backgrounding until the next lookup or Clear. No forwarded event
+              means this screen has not received one; it does not prove the
+              native decoder detected nothing.
             </Text>
             <ScrollView style={styles.qaReport}>
               <Text selectable testID="scan-diagnostic-report" style={ui.copy}>
-                {formatScanDiagnostic(diagnostic, eventCounts, {
-                  version: Constants.expoConfig?.version ?? "unknown",
-                  build: Constants.expoConfig?.ios?.buildNumber ?? "unknown",
-                })}
+                {formatScanDiagnostic(diagnostic, eventCounts, appIdentity)}
               </Text>
             </ScrollView>
             <Button
@@ -690,13 +725,17 @@ export default function ScanScreen() {
               label={copied ? "Diagnostics copied" : "Copy scan diagnostics"}
               onPress={() => {
                 Clipboard.setString(
-                  formatScanDiagnostic(diagnostic, eventCounts, {
-                    version: Constants.expoConfig?.version ?? "unknown",
-                    build: Constants.expoConfig?.ios?.buildNumber ?? "unknown",
-                  }),
+                  formatScanDiagnostic(diagnostic, eventCounts, appIdentity),
                 );
                 setCopied(true);
               }}
+            />
+            <Button
+              appearance="storefront"
+              secondary
+              label="Clear scan diagnostics"
+              disabled={pending}
+              onPress={clearDiagnostic}
             />
             <Button
               appearance="storefront"
@@ -847,7 +886,9 @@ export default function ScanScreen() {
             )}
           {result && (
             <Text accessibilityLiveRegion="polite" style={ui.label}>
-              Product found · Review before adding
+              {selected && !diagnosticMatch(result.data, selected).appEligible
+                ? "Product found · Unavailable in the app"
+                : "Product found · Review before adding"}
             </Text>
           )}
           {result && (
@@ -966,17 +1007,6 @@ export default function ScanScreen() {
               />
             </Card>
           )}
-          {qaEnabled && (
-            <Button
-              appearance="storefront"
-              secondary
-              label="Internal QA diagnostics"
-              onPress={() => {
-                setCopied(false);
-                setQaOpen(true);
-              }}
-            />
-          )}
         </>
       )}
     </Screen>
@@ -1022,4 +1052,5 @@ const styles = StyleSheet.create({
     backgroundColor: storefront.colors.white,
   },
   qaReport: { flex: 1 },
+  qaButton: { minWidth: 48, alignItems: "center", justifyContent: "center" },
 });

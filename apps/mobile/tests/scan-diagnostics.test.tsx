@@ -5,9 +5,12 @@ import {
   emptyScanDiagnostic,
   diagnosticOutcome,
   formatScanDiagnostic,
+  scanAppIdentity,
 } from "../src/shopping/scan-diagnostics";
 import { emitScanTrace } from "../src/api/scan-trace";
 import { createAppConfig } from "../config/app";
+import { verifiedScanAddInput } from "../src/shopping/verified-scan";
+import { PREVIEW_CATALOG_SELECTION } from "../src/api/public-catalog";
 
 describe("internal scan diagnostics boundary", () => {
   it("requires explicit nonproduction configuration at build time and runtime", () => {
@@ -66,17 +69,13 @@ describe("internal scan diagnostics boundary", () => {
     const text = formatScanDiagnostic(
       report,
       { forwarded: 1, ignoredFormat: 0, suppressed: 0 },
-      { version: "0.1.0", build: "9" },
+      scanAppIdentity({}),
     );
     expect(text).not.toContain("PRIVATE");
     expect(JSON.parse(text)).toMatchObject({
       rawValue: "8003148023",
-      esl: {
-        status: "assignment_feed_not_connected",
-        identifier: null,
-        assignment: null,
-      },
     });
+    expect(text).not.toContain('"esl"');
     expect(emptyScanDiagnostic().outcome).toBe("no_forwarded_barcode");
   });
   it.each([
@@ -87,6 +86,10 @@ describe("internal scan diagnostics boundary", () => {
     ["service_unavailable", "network_error"],
     ["invalid_request", "invalid_barcode"],
     ["invalid_response", "verification_error"],
+    ["server_error", "server_error"],
+    ["rate_limited", "server_error"],
+    ["scan_access_denied", "access_error"],
+    ["product_unavailable", "product_unavailable"],
   ])("distinguishes %s from camera failure", (code, outcome) =>
     expect(diagnosticOutcome(code)).toBe(outcome),
   );
@@ -101,5 +104,67 @@ describe("internal scan diagnostics boundary", () => {
       }),
     ).not.toThrow();
     expect(observer).toHaveBeenCalledTimes(1);
+  });
+  it("reports real native build separately from JS build and never fabricates a source/update identity", () => {
+    expect(
+      scanAppIdentity({
+        platform: { ios: { buildNumber: "9" } },
+        expoConfig: { ios: { buildNumber: "10" } },
+      }),
+    ).toMatchObject({
+      nativeIosBuild: "9",
+      configuredBundleBuild: "10",
+      nativeAndConfiguredBuildAgree: false,
+      sourceCommit: null,
+      easBuildId: null,
+      otaUpdateId: null,
+      otaConfigured: null,
+    });
+    expect(scanAppIdentity({})).toMatchObject({
+      nativeIosBuild: null,
+      configuredBundleBuild: null,
+      nativeAndConfiguredBuildAgree: null,
+    });
+    const config = createAppConfig({
+      EAS_BUILD_GIT_COMMIT_HASH: "a".repeat(40),
+      EAS_BUILD_ID: "11111111-1111-4111-8111-111111111111",
+    });
+    expect(scanAppIdentity({ expoConfig: config })).toMatchObject({
+      sourceCommit: "a".repeat(40),
+      easBuildId: "11111111-1111-4111-8111-111111111111",
+      otaConfigured: false,
+    });
+    expect(() =>
+      createAppConfig({ EAS_BUILD_GIT_COMMIT_HASH: "PRIVATE" }),
+    ).toThrow();
+  });
+  it.each(PREVIEW_CATALOG_SELECTION.slice(0, 6))(
+    "sends verified canonical Shopify barcode for Add without old-backend alias inference: $barcode",
+    (p) => {
+      expect(
+        verifiedScanAddInput("0" + p.barcode, "code128", p.barcode),
+      ).toEqual({ code: p.barcode, format: "code128" });
+      expect(
+        verifiedScanAddInput("0" + p.barcode, undefined, p.barcode),
+      ).toEqual({ code: p.barcode, format: "code128" });
+      expect(() =>
+        verifiedScanAddInput("SKU-ONE", "code128", p.barcode),
+      ).toThrow();
+    },
+  );
+  it("canonicalizes UPC-E correctly and preserves literal leading-zero codes without SKU/partial aliases", () => {
+    expect(verifiedScanAddInput("04252614", "upc_e", "042100005264")).toEqual({
+      code: "042100005264",
+      format: "code128",
+    });
+    expect(
+      verifiedScanAddInput("000BOX-001", "code128", "000BOX-001").code,
+    ).toBe("000BOX-001");
+    expect(() =>
+      verifiedScanAddInput("BOX-001", "code128", "000BOX-001"),
+    ).toThrow();
+    expect(() =>
+      verifiedScanAddInput("0746134150969", "code128", "746134150968"),
+    ).toThrow();
   });
 });

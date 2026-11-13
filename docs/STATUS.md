@@ -1,3 +1,22 @@
+# November 13, 2026 — product-barcode repair for internal preview10
+
+User confirmed only product barcodes on ESL screens and boxes; permanent housing
+lookup is out of scope and no resolver was implemented. Signed8/9 have identical
+camera/matcher/API/store behavior. Supplied9diagnostics contained no retained
+decode/request, so broad physical failure causality remains unverified.
+Reproduced all-six Code128/manual checksum-valid padded13 GTIN not_found; repaired
+the narrowly valid UPC/EAN equivalence while preserving raw strings/ambiguity.
+Explicit Add now sends the freshly verified canonical Shopify barcode with a
+compatible literal format; current backend accepts that representation and keeps
+all identity/price/availability/RetailFloor checks. No backend deployment needed.
+QA now shows native versus configured build, embedded EAS source/job identity,
+actual lookup endpoint/HTTP/stage, and retained timestamped reports via visibleQA.
+Housing fields removed. Mobile374/374,shared44/44,localbackend35/35,TypeScript,
+lintzero-warnings,nativeplugin10+4Swift checks pass independently. Four camera
+files remain byte-identicalccb2139. Signed10 delivery pending; physical six-ESL
+three-in-a-row/box/Scan-reentry/unknown/offline acceptance still required.
+See docs/qa/NORTHSIDE-SCANNER-REGRESSION-2026-11-13.md for evidence and capture steps.
+
 # November 13, 2026 — scanner diagnostics and Shelva assignment investigation
 
 Prepared internal iPhone preview9 with an explicit nonproduction-only scan QA

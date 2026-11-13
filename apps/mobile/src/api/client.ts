@@ -121,6 +121,7 @@ export class MobileApi {
       signal?: AbortSignal;
       shoppingToken?: string;
       errorSchema?: Schema<{ error: { code: string } }>;
+      scan?: { trace?: ScanTraceListener };
     } = {},
   ): Promise<T> {
     const retries = options.body === undefined ? 1 : 0;
@@ -155,6 +156,26 @@ export class MobileApi {
           cache: "no-store",
           redirect: "error",
         });
+        if (options.scan) {
+          emitScanTrace(options.scan.trace, {
+            path: "backend-registry",
+            stage: "backend-request",
+            endpoint: this.base + path,
+            httpStatus: response.status,
+            requestCache: "no-store",
+          });
+          if (response.status === 429) throw new MobileFailure("rate_limited");
+          if (response.status >= 500) throw new MobileFailure("server_error");
+          if ([401, 403].includes(response.status))
+            throw new MobileFailure("scan_access_denied");
+          if (
+            response.status === 404 &&
+            !/application\/json/i.test(
+              response.headers.get("content-type") ?? "",
+            )
+          )
+            throw new MobileFailure("scan_endpoint_unavailable");
+        }
         if (
           !/application\/json/i.test(response.headers.get("content-type") ?? "")
         )
@@ -171,16 +192,27 @@ export class MobileApi {
           const parsed = (options.errorSchema ?? mobileErrorSchema).safeParse(
             value,
           );
+          if (
+            options.scan &&
+            parsed.success &&
+            parsed.data.error.code === "not_found" &&
+            response.status !== 404
+          )
+            throw new MobileFailure("invalid_response");
           if (attempt < retries && [502, 503, 504].includes(response.status)) {
             await this.pause(250);
             continue;
           }
           throw new MobileFailure(
-            parsed.success
-              ? parsed.data.error.code
-              : response.status === 401
-                ? "session_expired"
-                : "service_unavailable",
+            options.scan &&
+              response.status === 404 &&
+              (!parsed.success || parsed.data.error.code !== "not_found")
+              ? "scan_endpoint_unavailable"
+              : parsed.success
+                ? parsed.data.error.code
+                : response.status === 401
+                  ? "session_expired"
+                  : "service_unavailable",
           );
         }
         const parsed = schema.safeParse(value);
@@ -434,10 +466,14 @@ export class MobileApi {
     emitScanTrace(trace, {
       path: "backend-registry",
       stage: "backend-request",
+      endpoint: this.base + "/scan",
+      httpStatus: null,
+      requestCache: "no-store",
     });
     const result = await this.send("/scan", mobileProductSchema, {
       body: { code, ...(format ? { format } : {}) },
       signal,
+      scan: { trace },
     });
     emitScanTrace(trace, { path: "backend-registry", stage: "complete" });
     return result;

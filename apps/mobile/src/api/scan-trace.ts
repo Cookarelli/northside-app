@@ -5,8 +5,13 @@ export type ScanLookupTrace = {
     | "catalog-read"
     | "barcode-match"
     | "identity-verification"
+    | "eligibility-check"
     | "backend-request"
     | "complete";
+  endpoint?: string;
+  httpStatus?: number | null;
+  apiVersion?: string | null;
+  requestCache?: "no-store";
   catalogProducts?: number;
   unreturnedProducts?: number;
   matchingVariants?: number;
