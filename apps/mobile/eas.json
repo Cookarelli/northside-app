@@ -48,6 +48,7 @@
           "MOBILE_EXPO_OWNER": "northside-collectibles",
           "MOBILE_EAS_PROJECT_ID": "ecfde92e-a01e-4158-b0ce-13908afa39ab",
           "MOBILE_NATIVE_SCAN_CART": "true",
+          "MOBILE_SCAN_DIAGNOSTICS": "true",
           "MOBILE_PREVIEW_COMMERCE_API_ORIGIN": "https://northside-customer-pilot-native-api-steves-projects-e37a4ef4.vercel.app"
         }
       },

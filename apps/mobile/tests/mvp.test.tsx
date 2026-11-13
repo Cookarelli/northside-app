@@ -7,13 +7,15 @@ import {
   afterEach,
 } from "@jest/globals";
 import { act } from "@testing-library/react-native";
+import { createElement } from "react";
 import {
   renderRouter,
   screen,
   fireEvent,
   waitFor,
 } from "expo-router/testing-library";
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState, Clipboard, type AppStateStatus } from "react-native";
+import Constants from "expo-constants";
 import RootLayout from "../src/app/_layout";
 import TabLayout from "../src/app/(tabs)/_layout";
 import Home from "../src/app/(tabs)/index";
@@ -25,6 +27,7 @@ import Product from "../src/app/product/[handle]";
 import Privacy from "../src/app/privacy";
 import { MvpProvider } from "../src/mvp/Provider";
 import { MobileApi } from "../src/api/client";
+import { MobileFailure } from "../src/api/client";
 import { AuthController, type AuthPorts } from "../src/auth/controller";
 import * as native from "../src/auth/native";
 import * as controls from "../src/components/Controls";
@@ -34,6 +37,7 @@ import type {
   ShoppingCart,
 } from "@northside/customer-contracts/shopping";
 import type { MobileProduct } from "@northside/customer-contracts/mvp";
+import * as barcodeCamera from "../src/shopping/BarcodeCamera";
 
 let mockPermission = {
   granted: true,
@@ -41,6 +45,20 @@ let mockPermission = {
   status: "granted",
   expires: "never",
 };
+const originalExpoConfig = Constants.expoConfig;
+jest.mock("expo-constants", () => ({
+  __esModule: true,
+  default: { expoConfig: null },
+}));
+function enableScanQa(variant = "preview") {
+  Constants.expoConfig = {
+    name: "Synthetic QA app",
+    slug: "synthetic-qa",
+    version: "0.1.0",
+    ios: { buildNumber: "9" },
+    extra: { mobile: { variant, scanDiagnostics: true } },
+  };
+}
 const mockLenses = jest.fn<
   () => Promise<{ deviceType: string; localizedName: string }[]>
 >(async () => []);
@@ -568,6 +586,207 @@ beforeEach(() => {
 });
 afterEach(() => {
   jest.restoreAllMocks();
+  Constants.expoConfig = originalExpoConfig;
+});
+
+async function qaReport() {
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Internal QA diagnostics" }),
+  );
+  return JSON.parse(
+    screen.getByTestId("scan-diagnostic-report").props.children,
+  );
+}
+
+describe("internal scan diagnostic screen", () => {
+  it("does not let an already forwarded old camera callback repopulate a cleared attempt", async () => {
+    enableScanQa();
+    const actualCamera = barcodeCamera.BarcodeCamera;
+    let late:
+      Parameters<typeof actualCamera>[0]["onBarcodeScanned"] | undefined;
+    jest.spyOn(barcodeCamera, "BarcodeCamera").mockImplementation((props) => {
+      late ??= props.onBarcodeScanned;
+      return createElement(actualCamera, props);
+    });
+    await renderApp(harness(), "/scan");
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+    // Bypass the child's own native-event fence to exercise a callback already
+    // forwarded/queued at the parent boundary before the old camera unmounted.
+    expect(late).toBeDefined();
+    const forwarded = late!;
+    await lookupSample();
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Scan next item" }),
+    );
+    await act(async () => {
+      forwarded({
+        data: "OLD-UNSUPPORTED",
+        type: "code39",
+        cornerPoints: [],
+        bounds: { origin: { x: 0, y: 0 }, size: { width: 1, height: 1 } },
+      });
+      forwarded({
+        data: "036000291452",
+        type: "upc_a",
+        cornerPoints: [],
+        bounds: { origin: { x: 0, y: 0 }, size: { width: 1, height: 1 } },
+      });
+    });
+    expect(await qaReport()).toMatchObject({
+      outcome: "no_forwarded_barcode",
+      rawValue: null,
+      events: { forwarded: 0, ignoredFormat: 0, suppressed: 0 },
+    });
+  });
+  it.each(["off", "production"])(
+    "keeps technical diagnostics out of %s customer flows",
+    async (mode) => {
+      if (mode === "production") enableScanQa("production");
+      await renderApp(harness(), "/scan");
+      expect(
+        screen.queryByRole("button", { name: "Internal QA diagnostics" }),
+      ).toBeNull();
+      expect(screen.queryByText("Internal scan diagnostics")).toBeNull();
+    },
+  );
+  it("captures the accepted leading-zero scan, ignores queued A/B/A duplicates and copies only on explicit action", async () => {
+    enableScanQa();
+    const copy = jest
+      .spyOn(Clipboard, "setString")
+      .mockImplementation(() => {});
+    const h = harness();
+    await renderApp(h, "/scan");
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+    const camera = screen.getByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    await act(async () => {
+      camera.props.onBarcodeScanned({ data: "0036000291452", type: "ean13" });
+      camera.props.onBarcodeScanned({ data: "OTHER", type: "code128" });
+      camera.props.onBarcodeScanned({ data: "0036000291452", type: "ean13" });
+    });
+    await waitFor(() =>
+      expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible(),
+    );
+    const report = await qaReport();
+    expect(report).toMatchObject({
+      source: "camera",
+      rawValue: "0036000291452",
+      format: "ean13",
+      lookupValue: "0036000291452",
+      candidates: ["0036000291452", "036000291452"],
+      outcome: "product_found",
+      lookup: { path: "backend-registry", stage: "complete" },
+      matched: {
+        variantId: "gid://shopify/ProductVariant/11",
+        variantBarcode: "036000291452",
+        appEligible: true,
+      },
+      app: { version: "0.1.0", build: "9" },
+    });
+    expect(h.scans).toEqual(["0036000291452"]);
+    expect(h.shoppingActions).toEqual([]);
+    expect(copy).not.toHaveBeenCalled();
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Copy scan diagnostics" }),
+    );
+    expect(copy).toHaveBeenCalledTimes(1);
+    const copied = copy.mock.calls[0][0];
+    expect(JSON.parse(copied).rawValue).toBe("0036000291452");
+    expect(copied).not.toContain(opaque);
+    expect(copied).not.toContain(customerId);
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Close diagnostics" }),
+    );
+    await fireEvent.press(screen.getByRole("button", { name: "Add to items" }));
+    await waitFor(() => expect(h.shoppingActions).toHaveLength(2));
+    expect(h.shoppingActions[1]).toMatchObject({
+      action: "add",
+      code: "0036000291452",
+      format: "ean13",
+    });
+  });
+  it("shows no forwarded event honestly, and clears its last attempt when leaving the tab", async () => {
+    enableScanQa();
+    const h = harness();
+    await renderApp(h, "/scan");
+    expect(await qaReport()).toMatchObject({
+      outcome: "no_forwarded_barcode",
+      rawValue: null,
+    });
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Close diagnostics" }),
+    );
+    await lookupSample();
+    expect((await qaReport()).rawValue).toBe("036000291452");
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Close diagnostics" }),
+    );
+    await fireEvent.press(screen.getByRole("button", { name: /^Shop, tab/ }));
+    await fireEvent.press(screen.getByRole("button", { name: /^Scan, tab/ }));
+    expect(await qaReport()).toMatchObject({
+      outcome: "no_forwarded_barcode",
+      rawValue: null,
+      matched: null,
+    });
+  });
+  it.each([
+    ["not_found", "product_not_found"],
+    ["ambiguous_scan", "ambiguous_barcode"],
+    ["offline", "network_error"],
+  ])("distinguishes %s after a detected barcode", async (failure, outcome) => {
+    enableScanQa();
+    const h = harness();
+    jest.spyOn(h.api, "scan").mockRejectedValue(new MobileFailure(failure));
+    await renderApp(h, "/scan");
+    await fireEvent.changeText(await manualInput(), "8003148023");
+    await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Retry barcode lookup" }),
+      ).toBeVisible(),
+    );
+    expect(await qaReport()).toMatchObject({
+      rawValue: "8003148023",
+      outcome,
+      failureReason: failure,
+      esl: {
+        status: "assignment_feed_not_connected",
+        identifier: null,
+        assignment: null,
+      },
+    });
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("separates an unavailable verified product from a lookup failure", async () => {
+    enableScanQa();
+    const h = harness();
+    h.transformScan((p) => ({
+      ...p,
+      availableForSale: false,
+      variants: {
+        ...p.variants,
+        nodes: p.variants.nodes.map((v) => ({
+          ...v,
+          availability: {
+            ...v.availability,
+            availableForSale: false,
+            state: "unavailable" as const,
+          },
+        })),
+      },
+    }));
+    await renderApp(h, "/scan");
+    await lookupSample();
+    expect(screen.getByRole("button", { name: "Add to items" })).toBeDisabled();
+    expect(await qaReport()).toMatchObject({
+      outcome: "product_unavailable",
+      matched: { appEligible: false },
+    });
+  });
 });
 
 async function manualInput() {

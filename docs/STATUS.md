@@ -1,3 +1,29 @@
+# November 13, 2026 — scanner diagnostics and Shelva assignment investigation
+
+Prepared internal iPhone preview9 with an explicit nonproduction-only scan QA
+panel and Copy action. Last-attempt raw/format/candidates, actual lookup stage and
+match counts, verified public variant and eligibility are observable without
+changing barcode matching, Add or backend behavior. Diagnostics are bounded,
+redacted, memory-only and cleared on lifecycle/identity/next-scan boundaries.
+Independent review found and fixed stale callbacks repopulating cleared reports.
+Mobile341/341 tests across22 suites, TypeScript and scoped lint pass; the unchanged
+native camera plugin10 tests and4 Swift syntax checks pass. Four camera sources
+and the shared matcher remain byte-identical to ccb2139. Signed build acceptance
+and physical tests are recorded separately when available.
+
+All six Panini product UPCs resolve through fresh read-only Storefront tests;
+Admin confirms exact published variants, clean primary barcodes and positive
+Retail Floor quantities. Original failed-device raw values remain unverified.
+Shelva currently owns label pairings, but no supported assignment API/event feed
+or readable assignment metafield was available. Housing resolution is NOT
+CONNECTED. User-reported Select8003148023/Prizm8003147389 conflicts with inspected
+Shelva UI Prizm8003148023/Select8003147389. No pairing repair is justified yet.
+A vendor request was drafted, not sent. Keep generated ESL barcodes intact.
+See docs/qa/NORTHSIDE-ESL-HOUSING-SCAN-2026-11-13.md for exact six-variant evidence,
+missing integration contract, synchronization requirements and physical checklist.
+No production deployment, App Store submission, POS/layout change or Shopify
+product/inventory/pairing mutation was performed.
+
 # November 10, 2026 — Prompt 3 backend
 
 The designated nonproduction Supabase project `nrsuosydvjqovrevmych` now has the

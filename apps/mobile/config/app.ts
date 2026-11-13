@@ -43,6 +43,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
   if (!variants.includes(variant as AppVariant))
     throw new Error("Unknown mobile app variant.");
   const selected = variant as AppVariant;
+  const scanDiagnostics = env.MOBILE_SCAN_DIAGNOSTICS === "true";
   const prefix = `MOBILE_${selected.toUpperCase()}`;
   const origin = apiOrigin(env[`${prefix}_API_ORIGIN`], selected);
   const interfacePreview = env.MOBILE_IOS_INTERFACE_PREVIEW === "true";
@@ -76,6 +77,10 @@ export function createAppConfig(env: Environment): ExpoConfig {
       "Public catalog is an isolated preview with no customer API; EAS requires iOS.",
     );
   const scanRehearsal = env.MOBILE_SCAN_REHEARSAL === "true";
+  if (scanDiagnostics && selected === "production")
+    throw new Error(
+      "Scan diagnostics are restricted to development and internal preview builds.",
+    );
   if (
     scanRehearsal &&
     (selected !== "development" ||
@@ -203,7 +208,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
       supportsTablet: false,
       ...(iosId ? { bundleIdentifier: iosId } : {}),
       ...(appleTeamId ? { appleTeamId } : {}),
-      buildNumber: scanCart ? "8" : publicCatalogPreview ? "2" : "1",
+      buildNumber: scanCart ? "9" : publicCatalogPreview ? "2" : "1",
     },
     android: {
       ...(androidId ? { package: androidId } : {}),
@@ -282,6 +287,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
         ...(interfacePreview ? { interfacePreview: true } : {}),
         ...(privateCatalogPreview ? { privateCatalogPreview: true } : {}),
         ...(scanRehearsal ? { scanRehearsal: true } : {}),
+        ...(scanDiagnostics ? { scanDiagnostics: true } : {}),
       },
       ...(projectId ? { eas: { projectId } } : {}),
     },

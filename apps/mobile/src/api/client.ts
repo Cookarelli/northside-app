@@ -41,6 +41,7 @@ import {
   requestSchema,
   type ServiceRequestInput,
 } from "@northside/customer-contracts/service-requests";
+import { emitScanTrace, type ScanTraceListener } from "./scan-trace";
 
 export class MobileFailure extends Error {
   constructor(public readonly code: string) {
@@ -424,11 +425,22 @@ export class MobileApi {
       { signal },
     );
   }
-  scan(code: string, signal?: AbortSignal, format?: string) {
-    return this.send("/scan", mobileProductSchema, {
+  async scan(
+    code: string,
+    signal?: AbortSignal,
+    format?: string,
+    trace?: ScanTraceListener,
+  ) {
+    emitScanTrace(trace, {
+      path: "backend-registry",
+      stage: "backend-request",
+    });
+    const result = await this.send("/scan", mobileProductSchema, {
       body: { code, ...(format ? { format } : {}) },
       signal,
     });
+    emitScanTrace(trace, { path: "backend-registry", stage: "complete" });
+    return result;
   }
   shopping(
     action: ShoppingAction,
