@@ -8,8 +8,11 @@ redacted, memory-only and cleared on lifecycle/identity/next-scan boundaries.
 Independent review found and fixed stale callbacks repopulating cleared reports.
 Mobile341/341 tests across22 suites, TypeScript and scoped lint pass; the unchanged
 native camera plugin10 tests and4 Swift syntax checks pass. Four camera sources
-and the shared matcher remain byte-identical to ccb2139. Signed build acceptance
-and physical tests are recorded separately when available.
+and the shared matcher remain byte-identical to ccb2139. EAS internal build
+a481dbba-8499-4e00-a1a7-743a5f2a3af9 finished18:27:15UTC; downloaded0.1.0(9)
+passed signing/profile/registered-iPhone/native-camera/compiled-diagnostics checks.
+App source9fdaab65; IPA SHA256e439842849dfced574ab8914596b593a0e4f586e7e6a9fdc873a5a6725a9fcf2.
+Physical acceptance remains untested; no backend was deployed.
 
 All six Panini product UPCs resolve through fresh read-only Storefront tests;
 Admin confirms exact published variants, clean primary barcodes and positive

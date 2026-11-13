@@ -2,6 +2,8 @@
 
 ## Result
 
+Internal **0.1.0 (9)** finished November 13 at 18:27:15 UTC. [Install on the registered iPhone](https://expo.dev/accounts/northside-collectibles/projects/northside-customer/builds/a481dbba-8499-4e00-a1a7-743a5f2a3af9). App source commit: `9fdaab65aa789cf8f1d7c6fd5adc6cf23e139561`. The downloaded signed IPA passed signature/profile/device, native camera binding, compiled diagnostics/Copy and source identity verification. SHA-256: `e439842849dfced574ab8914596b593a0e4f586e7e6a9fdc873a5a6725a9fcf2` (13,831,077 bytes). Physical acceptance remains untested. No backend was deployed.
+
 **PARTIAL.** Internal iPhone build 9 adds scan diagnostics; it does **not** enable permanent ESL housing resolution. The source of current assignments is Shelva, but no supported assignment-read API, assignment-change feed or readable Shopify assignment field was available. The user confirmed that vendor documentation/access is not available and requested a vendor request. No guessed endpoint, browser-session credential reuse, static housing map or second manually maintained registry was introduced.
 
 The four camera implementation files and shared barcode matching source remain byte-identical to `ccb2139`. The existing product review, explicit Add, duplicate protection, Shopify identity proof and availability checks remain in place. Generated ESL-screen barcodes and independent QR workflows remain unchanged. There was no production deployment, App Store submission, pairing/unpairing, publishing or product/inventory edit.
