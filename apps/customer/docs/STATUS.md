@@ -1379,3 +1379,35 @@ All 13 pre-existing file/link entries remain unchanged. No production/backend
 deployment, DNS change, app-store submission, product/stock mutation or live cart
 write. Physical launch/scanning acceptance remains pending the owner's iPhone
 test. Sanitized evidence is in the November13 chat `outputs/iphone-preview-7`.
+
+### November 13 — small-label camera controls and internal preview 8
+
+Owner-observed small ESL/printed codes were tiny at distance and blurry close up.
+Confirmed source bug: the prior `autofocus="on"` means focus once/lock in installed
+Expo Camera 58.0.14. The scanner now uses continuous autofocus (`"off"` in this
+SDK), with supported native continuous exposure/focus preparation. Runtime main
+rear-lens selection, actual-range calibrated 1×/1.5×/2× digital zoom, optional torch,
+HD capture request, full-visible decoder region and required sharpness/glare guidance
+are implemented. No tap-focus prop or optical-zoom claim was invented. A narrow
+hash-pinned ExpoCamera source extension exposes the actual active-view capabilities
+and visible ROI; no library version update. Existing barcode/leading-zero/Shopify
+variant proof, duplicates, explicit Add, permissions and lifecycle remain protected.
+
+Source `ccb21395d59177b582fc5e775e28325d066e82dd`; independent checks passed:
+319 mobile tests/21 suites, TypeScript, clean lint, 10 native-plugin tests including
+four Swift syntax checks. Actual internal iOS build 0.1.0 (8),
+`e44cb84e-0e93-4a94-b8fa-b254e159ff8c`, FINISHED 17:11:34 UTC. Upload121 files were
+independently matched to committed mobile/shared source. Signed-IPA verification
+passed: native bridge implementation in ARM64 executable, same approved certificate/
+profile/registered iPhone, correct API/permissions/OTA-off config, compiled zoom/
+torch/status/math/bridge code and all seven catalog identities. IPA SHA256:
+`3b5e4fd9d582541d2e312f55d712e20bd337775835917b96912ccd347bcc7660`.
+
+Install: https://expo.dev/accounts/northside-collectibles/projects/northside-customer/builds/e44cb84e-0e93-4a94-b8fa-b254e159ff8c
+
+Physical runtime bridge, exact zoom/focus/exposure, ROI/torch behavior and small-label
+readability/latency remain NOT TESTED; owner must compare the same labels at8/12/16
+inches and1×/1.5×/2×. A successful binary does not establish that acceptance. See root
+`docs/qa/NORTHSIDE-SMALL-LABEL-CAMERA-2026-11-13.md` and current chat
+`outputs/iphone-preview-8`. No production/backend deployment, App Store submission,
+live commerce write, POS/ESL/QR/consignment/grading change.
