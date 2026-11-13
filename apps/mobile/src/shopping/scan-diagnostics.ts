@@ -4,6 +4,7 @@ import {
   CATALOG_SHOP,
   CATALOG_SHOPIFY_API_VERSION,
 } from "@northside/customer-contracts";
+import { NORTHSIDE_NATIVE_SELECTION } from "../../../../packages/customer-contracts/src/native-scan";
 
 export function scanDiagnosticsEnabled(config: unknown): boolean {
   if (!config || typeof config !== "object") return false;
@@ -242,7 +243,8 @@ export function formatScanDiagnostic(
       catalog: {
         shop: CATALOG_SHOP,
         apiVersion: CATALOG_SHOPIFY_API_VERSION,
-        scope: "seven-approved-preview-products",
+        scope: "approved-preview-products",
+        configuredProductCount: NORTHSIDE_NATIVE_SELECTION.length,
       },
       note: "Last recorded attempt retained in memory until another lookup, identity change, Clear or app restart. No camera frame is saved. Native build and configured JS build are separate. OTA runtime is not installed; no runtime update ID is available. Product barcodes only.",
     },

@@ -63,6 +63,69 @@ afterEach(() => {
 });
 
 describe("public Shopify preview catalog", () => {
+  it("requests and resolves only the verified helmet identity without using its SKU as an alias", async () => {
+    const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));
+    const h = PREVIEW_CATALOG_SELECTION[7];
+    const request = jest.fn<typeof fetch>(async () => response(nodes));
+    const api = new PublicCatalogApi(request);
+    const result = await api.scan("793397728021", undefined, "upc_a");
+    expect(result.product.id).toBe("gid://shopify/Product/16135959970161");
+    expect(result.product.selectedVariantId).toBe(
+      "gid://shopify/ProductVariant/68224353927537",
+    );
+    expect(
+      JSON.parse(String(request.mock.calls[0][1]?.body)).variables.ids,
+    ).toContain(h.id);
+    for (const [code, format] of [
+      [h.barcode, "ean13"],
+      ["0" + h.barcode, "ean13"],
+      ["0" + h.barcode, "code128"],
+      [h.barcode, undefined],
+    ] as const)
+      expect(
+        (await api.scan(code, undefined, format)).product.selectedVariantId,
+      ).toBe(h.variantId);
+    nodes[7].variants.nodes[0].sku = h.barcode;
+    nodes[7].variants.nodes[0].barcode = "DIFFERENT-HELMET";
+    await expect(api.scan(h.barcode, undefined, "code128")).rejects.toThrow(
+      "not_found",
+    );
+    await expect(
+      api.scan("DIFFERENT-HELMET", undefined, "code128"),
+    ).rejects.toThrow("invalid_response");
+  });
+  it("keeps helmet publication, exact variant and duplicate-barcode guards", async () => {
+    const h = PREVIEW_CATALOG_SELECTION[7];
+    const hidden: unknown[] = PREVIEW_CATALOG_SELECTION.map((_, i) =>
+      product(i),
+    );
+    hidden[7] = null;
+    await expect(
+      new PublicCatalogApi(async () => response(hidden)).scan(
+        h.barcode,
+        undefined,
+        "code128",
+      ),
+    ).rejects.toThrow("product_unavailable");
+    const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));
+    nodes[0].variants.nodes[0].barcode = h.barcode;
+    await expect(
+      new PublicCatalogApi(async () => response(nodes)).scan(
+        h.barcode,
+        undefined,
+        "code128",
+      ),
+    ).rejects.toThrow("ambiguous_scan");
+    nodes[0] = product(0);
+    nodes[7].variants.nodes[0].id = "gid://shopify/ProductVariant/999";
+    await expect(
+      new PublicCatalogApi(async () => response(nodes)).scan(
+        h.barcode,
+        undefined,
+        "code128",
+      ),
+    ).rejects.toThrow("invalid_response");
+  });
   it.each([429, 500, 503, 401, 403, 404])(
     "reports HTTP %s distinctly from an unknown product without leaking provider data",
     async (status) => {
@@ -118,7 +181,7 @@ describe("public Shopify preview catalog", () => {
       expect.objectContaining({
         stage: "barcode-match",
         matchingVariants: 1,
-        catalogProducts: 7,
+        catalogProducts: 8,
       }),
     );
     expect(trace).toHaveBeenLastCalledWith({
@@ -187,7 +250,7 @@ describe("public Shopify preview catalog", () => {
     expect(trace).toHaveBeenCalledWith(
       expect.objectContaining({
         unreturnedProducts: 1,
-        catalogProducts: 6,
+        catalogProducts: 7,
         matchingVariants: 0,
       }),
     );
@@ -277,12 +340,12 @@ describe("public Shopify preview catalog", () => {
     await expect(api.scan("53334437622")).rejects.toThrow("not_found");
     await expect(api.scan("8003147387")).rejects.toThrow("not_found");
   });
-  it("uses only the seven approved identities and tokenless pinned public reads", async () => {
+  it("uses only the eight approved identities and tokenless pinned public reads", async () => {
     const request = jest.fn<typeof fetch>(async () =>
       response(PREVIEW_CATALOG_SELECTION.map((_, i) => product(i))),
     );
     const result = await new PublicCatalogApi(request).catalog();
-    expect(result.products).toHaveLength(7);
+    expect(result.products).toHaveLength(8);
     expect(result.products[0]).toMatchObject({
       title: "Live Shopify title 0",
       minVariantPrice: { amountCents: 1729 },

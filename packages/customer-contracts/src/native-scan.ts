@@ -1,6 +1,6 @@
 import type { CatalogProductV1 } from "./catalog";
 
-/** Approved pilot identities, including Golf's manufacturer UPC; no prices or stock. */
+/** Explicit approved preview identities; variant barcodes verified in Shopify, never inferred from SKUs. */
 export const NORTHSIDE_NATIVE_SELECTION = Object.freeze(
   [
     [
@@ -44,6 +44,12 @@ export const NORTHSIDE_NATIVE_SELECTION = Object.freeze(
       "64522039460209",
       "053334437622",
       "2026-upper-deck-allure-golf-hobby-box-regular",
+    ],
+    [
+      "16135959970161",
+      "68224353927537",
+      "793397728021",
+      "2026-fanatics-under-wraps-replica-helmet-full-size-square-mghiqfcx",
     ],
   ].map(([product, variant, barcode, handle]) =>
     Object.freeze({

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   approvedNativeProducts,
   approvedNativeScan,
+  nativeRetailQuantity,
 } from "../lib/server/mobile/approved-native-catalog";
 import { NORTHSIDE_NATIVE_SELECTION } from "../../../packages/customer-contracts/src/native-scan";
 import type { Query } from "../lib/server/storefront";
@@ -42,6 +43,97 @@ function payload() {
 function query(data: ReturnType<typeof payload>): Query {
   return async <T>() => structuredClone(data) as T;
 }
+test("verified helmet and six Panini identities resolve through the unchanged approved backend contract", async () => {
+  const data = payload(),
+    q = query(data),
+    h = NORTHSIDE_NATIVE_SELECTION[7];
+  assert.equal(h.id, "gid://shopify/Product/16135959970161");
+  for (const p of [...NORTHSIDE_NATIVE_SELECTION.slice(0, 6), h])
+    for (const [code, format] of [
+      [p.barcode, "upc_a"],
+      [p.barcode, "ean13"],
+      ["0" + p.barcode, "ean13"],
+      ["0" + p.barcode, "code128"],
+      [p.barcode, undefined],
+    ] as const) {
+      const r = await approvedNativeScan(code, format, q);
+      assert.equal(r.product.id, p.id);
+      assert.equal(r.product.selectedVariantId, p.variantId);
+    }
+  data.nodes[7].variants.nodes[0].sku = h.barcode;
+  data.nodes[7].variants.nodes[0].barcode = "OTHER-HELMET-BARCODE";
+  await assert.rejects(approvedNativeScan(h.barcode, "code128", query(data)), {
+    code: "not_found",
+  });
+  await assert.rejects(
+    approvedNativeScan("OTHER-HELMET-BARCODE", "code128", query(data)),
+    { code: "invalid_provider_data" },
+  );
+});
+test("helmet approval does not weaken Retail Floor, SKU, tracked inventory or product identity checks", async () => {
+  const h = NORTHSIDE_NATIVE_SELECTION[7];
+  const state = () => ({
+    productVariant: {
+      id: h.variantId,
+      product: { id: h.id, status: "ACTIVE" },
+      inventoryItem: {
+        tracked: true,
+        sku: "793397728021",
+        inventoryLevels: {
+          nodes: [
+            {
+              location: {
+                id: "gid://shopify/Location/121087263089",
+                name: "Northside Retail Floor",
+                isActive: true,
+              },
+              quantities: [{ name: "available", quantity: 99 }],
+            },
+          ],
+          pageInfo: { hasNextPage: false },
+        },
+      },
+    },
+  });
+  const q =
+    (value: ReturnType<typeof state>): Query =>
+    async <T>() =>
+      structuredClone(value) as T;
+  assert.equal(
+    await nativeRetailQuantity(h.variantId, "793397728021", q(state())),
+    99,
+  );
+  for (const change of [
+    (s: ReturnType<typeof state>) => {
+      s.productVariant.product.id = "gid://shopify/Product/999";
+    },
+    (s: ReturnType<typeof state>) => {
+      s.productVariant.inventoryItem.tracked = false;
+    },
+    (s: ReturnType<typeof state>) => {
+      s.productVariant.inventoryItem.sku = "WRONG";
+    },
+    (s: ReturnType<typeof state>) => {
+      s.productVariant.inventoryItem.inventoryLevels.nodes[0].location.isActive = false;
+    },
+    (s: ReturnType<typeof state>) => {
+      s.productVariant.inventoryItem.inventoryLevels.pageInfo.hasNextPage = true;
+    },
+  ]) {
+    const s = state();
+    change(s);
+    await assert.rejects(
+      nativeRetailQuantity(h.variantId, "793397728021", q(s)),
+      { code: "invalid_provider_data" },
+    );
+  }
+  const zero = state();
+  zero.productVariant.inventoryItem.inventoryLevels.nodes[0].quantities[0].quantity = 0;
+  assert.equal(
+    await nativeRetailQuantity(h.variantId, "793397728021", q(zero)),
+    0,
+  );
+});
 test("a separate Golf barcode change cannot take down valid Prizm scans", async () => {
   const data = payload();
   data.nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
@@ -52,7 +144,7 @@ test("a separate Golf barcode change cannot take down valid Prizm scans", async 
     result.product.selectedVariantId,
     "gid://shopify/ProductVariant/68224325419377",
   );
-  assert.equal((await approvedNativeProducts(q)).length, 6);
+  assert.equal((await approvedNativeProducts(q)).length, 7);
   for (const code of [
     "CHANGED-GOLF",
     `https://9i3hnb-jw.myshopify.com/products/${data.nodes[6].handle}`,

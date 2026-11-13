@@ -127,7 +127,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 describe("native live scanning", () => {
-  it("uses the existing live adapter for all seven exact barcodes and current product QR labels", async () => {
+  it("uses the existing live adapter for all eight exact barcodes and current product QR labels", async () => {
     const request = jest.fn<typeof fetch>(
       async () =>
         new Response(

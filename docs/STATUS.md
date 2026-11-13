@@ -1,3 +1,22 @@
+# November 13, 2026 — helmet exclusion diagnosed; source-only fix
+
+Helmet16135959970161 is absent from signed10's seven-product test selection and
+the deployed API selection. Direct Shopify barcode793397728021, exactvariant
+68224353927537, ACTIVE/publication/availability, trackedactiveRetailFloor99 and
+unique barcode were verified independently of its equalSKU. Reproduced apprequest
+omitshelmetID, receivesHTTP200sevennodes, then0matches→not_found→Scanmessage.
+Backendscanhelmet404, sixPanini controls200. No cache/tag/location defect found.
+User reports noQAcontrol; actualphone raw/type/native identity remainUNVERIFIED.
+
+Source appends only the verifiedhelmet as8thidentity, retainingalloriginal7and
+normalization/visibility/price/variant/Floor gates; diagnosticscount isderived.
+Freshsource7products/42representations andshadowbackend42casesPASS; mobile376,
+shared46,backend39tests, mobile/customerTSandlint pass independently. Fourcamera
+files,dependenciesandappconfig/version10 unchanged. No build/deploy/Shopify/cart
+mutationperformed. Installed10 andlivebackend remain7; backend-only cannotfix
+client-embeddedIDs, andclient-only leavesAddexcluded. Bothlaterupdatesrequired.
+See docs/qa/NORTHSIDE-HELMET-SCAN-2026-11-13.md before another build decision.
+
 # November 13, 2026 — product-barcode repair for internal preview10
 
 User confirmed only product barcodes on ESL screens and boxes; permanent housing

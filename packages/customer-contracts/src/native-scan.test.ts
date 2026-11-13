@@ -48,12 +48,12 @@ function product(p = NORTHSIDE_NATIVE_SELECTION[0]): CatalogProductV1 {
   };
 }
 describe("real-label scanner identity boundary", () => {
-  it("keeps the seven approved unique product/variant/barcode identities and excludes Optic", () => {
-    expect(NORTHSIDE_NATIVE_SELECTION).toHaveLength(7);
-    expect(new Set(NORTHSIDE_NATIVE_SELECTION.map((p) => p.id)).size).toBe(7);
+  it("keeps eight explicitly approved unique identities and excludes Optic", () => {
+    expect(NORTHSIDE_NATIVE_SELECTION).toHaveLength(8);
+    expect(new Set(NORTHSIDE_NATIVE_SELECTION.map((p) => p.id)).size).toBe(8);
     expect(
       new Set(NORTHSIDE_NATIVE_SELECTION.map((p) => p.variantId)).size,
-    ).toBe(7);
+    ).toBe(8);
     expect(NORTHSIDE_NATIVE_SELECTION.every((p) => validGtin(p.barcode))).toBe(
       true,
     );
@@ -61,6 +61,43 @@ describe("real-label scanner identity boundary", () => {
       false,
     );
     expect(NORTHSIDE_NATIVE_SELECTION[3].barcode).toBe("746134158551");
+  });
+  it("adds only the verified helmet after the unchanged seven original identities", () => {
+    expect(NORTHSIDE_NATIVE_SELECTION.slice(0, 7).map((p) => p.id)).toEqual(
+      [
+        "15993233277297",
+        "15993233375601",
+        "15993233473905",
+        "15993234522481",
+        "15993234555249",
+        "16135959413105",
+        "15993268240753",
+      ].map((id) => `gid://shopify/Product/${id}`),
+    );
+    const h = NORTHSIDE_NATIVE_SELECTION[7];
+    expect(h).toEqual({
+      id: "gid://shopify/Product/16135959970161",
+      variantId: "gid://shopify/ProductVariant/68224353927537",
+      barcode: "793397728021",
+      handle:
+        "2026-fanatics-under-wraps-replica-helmet-full-size-square-mghiqfcx",
+    });
+    const p = product(h);
+    for (const [code, format] of [
+      [h.barcode, "upc_a"],
+      [h.barcode, "ean13"],
+      ["0" + h.barcode, "ean13"],
+      ["0" + h.barcode, "code128"],
+      [h.barcode, undefined],
+    ] as const)
+      expect(matchCatalogScan([p], code, format).selectedVariantId).toBe(
+        h.variantId,
+      );
+    p.variants.nodes[0].identifiers.sku = h.barcode;
+    p.variants.nodes[0].identifiers.barcode = "DIFFERENT-BARCODE";
+    expect(() => matchCatalogScan([p], h.barcode, "code128")).toThrow(
+      "not_found",
+    );
   });
   it.each([undefined, "upc_a", "code128", "code39"])(
     "matches an exact approved barcode with %s",
