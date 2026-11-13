@@ -1354,3 +1354,28 @@ number/artifact and physical iPhone acceptance are required. No new dependency,
 environment variable or SQL migration. Server-side SKU rejection requires a
 separately authorized backend release. Exact physical QA and files are recorded
 in `docs/qa/NORTHSIDE-BARCODE-SCANNER-2026-11-13.md` at the repository root.
+
+### November 13 — authorized internal iPhone preview 7 completed
+
+The owner authorized the internal iPhone build after the scanner implementation.
+Preview 0.1.0 (7), EAS build `1df57b56-f762-41ef-9f41-02b82f6af1ac`, FINISHED at
+16:22:00 UTC from source `a93ee610445cf725ca0043123dadc03c973fdd4d` (scanner fix
+`f502bac` plus the isolated build-number change). The actual 116-file EAS archive
+was independently compared byte-for-byte with that commit; only mobile/shared
+contract source was included. Configuration preflight and 51 focused tests passed.
+
+Downloaded IPA SHA256:
+`103c94a4ac5d7099fe8071f69d5a7c59815631d8b2d9c2f721bfbd38dee535d0`.
+Independent signed-artifact verification passed: existing team/bundle/profile/
+certificate and registered-iPhone eligibility, signature/entitlements, barcode-only
+camera permission with no microphone prompt, existing preview API, catalog/cart
+mode and OTA disabled. Actual compiled UPC-A/UPC-E/EAN-13/EAN-8/Code128 policy,
+barcode-only matching, stale-event guard, new lifecycle/retry code, absent old QR
+selector and all seven catalog identities were verified in the downloaded IPA.
+
+Install: https://expo.dev/accounts/northside-collectibles/projects/northside-customer/builds/1df57b56-f762-41ef-9f41-02b82f6af1ac
+
+All 13 pre-existing file/link entries remain unchanged. No production/backend
+deployment, DNS change, app-store submission, product/stock mutation or live cart
+write. Physical launch/scanning acceptance remains pending the owner's iPhone
+test. Sanitized evidence is in the November13 chat `outputs/iphone-preview-7`.

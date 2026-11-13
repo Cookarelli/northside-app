@@ -233,3 +233,24 @@ Use a preview test session for explicit cart checks; scanning itself is read-onl
 
 Physical results, signed native build acceptance and production deployment are
 **NOT TESTED / NOT PERFORMED** by this implementation session.
+
+## Subsequent authorized internal build — November 13
+
+The owner subsequently authorized a new internal iPhone preview. **Build 7 is
+FINISHED and independently signed-artifact verified**. This completes the internal
+build step above; physical iPhone acceptance remains NOT TESTED.
+
+- [Install Northside Preview 0.1.0 (7)](https://expo.dev/accounts/northside-collectibles/projects/northside-customer/builds/1df57b56-f762-41ef-9f41-02b82f6af1ac).
+- Build source: `a93ee610445cf725ca0043123dadc03c973fdd4d`, containing the scanner
+  fix plus build-number 6 → 7 only. Configuration preflight and 51 focused tests
+  passed; all 116 upload files match committed mobile/shared source exactly.
+- Signed IPA SHA256:
+  `103c94a4ac5d7099fe8071f69d5a7c59815631d8b2d9c2f721bfbd38dee535d0`.
+- Existing approved certificate/profile and registered iPhone coverage verified.
+  Actual compiled five-format scanner, barcode-only lookup, lifecycle/retry code,
+  removal of the QR selector and seven catalog identities verified. Existing
+  preview API and disabled OTA configuration retained.
+- No production/backend deployment or App Store submission. No live commerce writes.
+
+Open the install link on the registered iPhone, install over the current preview,
+and execute the physical checklist above with manufacturer product-box barcodes.
