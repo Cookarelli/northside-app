@@ -59,7 +59,7 @@ export async function approvedNativeScan(
   const records = await nativeCatalogRecords(query);
   let product;
   try {
-    // Include quarantined records in matching so their live SKU/barcode claims
+    // Include quarantined records in matching so their live barcode claims
     // still reject collisions. Only the uniquely matched, verified record is usable.
     product = matchCatalogScan(
       records.map((record) => record.product),

@@ -235,7 +235,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
         "expo-camera",
         {
           cameraPermission:
-            "Allow Northside to scan product barcodes and QR codes. No photos or audio are recorded.",
+            "Allow Northside to scan product barcodes. No photos or audio are recorded.",
           recordAudioAndroid: false,
           microphonePermission: false,
         },

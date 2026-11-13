@@ -7,6 +7,9 @@ import {
   StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import { Image } from "expo-image";
 import Constants from "expo-constants";
@@ -26,6 +29,8 @@ export function Screen({
   titleContent,
   headerAccessory,
   scrollRef,
+  onViewportLayout,
+  contentStyle,
   introSize = "hero",
 }: PropsWithChildren<{
   title: string;
@@ -38,6 +43,8 @@ export function Screen({
   titleContent?: ReactNode;
   headerAccessory?: ReactNode;
   scrollRef?: Ref<ComponentRef<typeof ScrollView>>;
+  onViewportLayout?: (event: LayoutChangeEvent) => void;
+  contentStyle?: StyleProp<ViewStyle>;
   introSize?: "hero" | "compact" | "minimal";
 }>) {
   const { bottom } = useSafeAreaInsets();
@@ -69,7 +76,8 @@ export function Screen({
       >
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={[styles.content, branded && styles.storefrontContent, branded && introSize !== "hero" && styles.compactContent, { paddingBottom: 24 + bottom }]}
+          onLayout={onViewportLayout}
+          contentContainerStyle={[styles.content, branded && styles.storefrontContent, branded && introSize !== "hero" && styles.compactContent, { paddingBottom: 24 + bottom }, contentStyle]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}

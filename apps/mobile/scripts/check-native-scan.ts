@@ -7,21 +7,17 @@ async function main() {
   const api = new PublicCatalogApi();
   const results = [];
   for (const p of PREVIEW_CATALOG_SELECTION) {
-    const detail = await api.scan(p.barcode, undefined, p.barcode.length === 12 ? "upc_a" : "code128");
+    const detail = await api.scan(
+      p.barcode,
+      undefined,
+      p.barcode.length === 12 ? "upc_a" : "code128",
+    );
     if (detail.product.selectedVariantId !== p.variantId)
       throw Error("scan_mismatch");
-    const sku = detail.product.variants.nodes[0].identifiers.sku;
-    if (
-      !sku ||
-      (await api.scan(sku, undefined, "code128")).product.selectedVariantId !==
-        p.variantId
-    )
-      throw Error("sku_mismatch");
     results.push({
       productId: p.id,
       variantId: p.variantId,
       barcodeMatched: true,
-      skuMatched: true,
       image: !!detail.product.featuredImage,
     });
   }

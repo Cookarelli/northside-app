@@ -88,7 +88,6 @@ describe("public Shopify preview catalog", () => {
     );
     for (const code of [
       "CHANGED-GOLF",
-      "92840090001065",
       `https://9i3hnb-jw.myshopify.com/products/${nodes[6].handle}`,
     ])
       await expect(api.scan(code)).rejects.toThrow("invalid_response");
@@ -101,17 +100,23 @@ describe("public Shopify preview catalog", () => {
       nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
       nodes[6].variants.nodes[0][field] = "746134151026";
       const api = new PublicCatalogApi(async () => response(nodes));
-      await expect(api.scan("746134151026")).rejects.toThrow("ambiguous_scan");
+      if (field === "barcode")
+        await expect(api.scan("746134151026")).rejects.toThrow(
+          "ambiguous_scan",
+        );
+      else
+        expect((await api.scan("746134151026")).product.selectedVariantId).toBe(
+          PREVIEW_CATALOG_SELECTION[5].variantId,
+        );
     },
   );
-  it("scans corrected Golf UPC, internal SKU and legacy QR without title identity", async () => {
+  it("scans corrected Golf UPC and legacy QR without title identity", async () => {
     const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));
     nodes[6].title = "2026 Upper Deck Golf Hobby Box";
     nodes[6].variants.nodes[0].sku = "92840090001065";
     const api = new PublicCatalogApi(async () => response(nodes));
     for (const code of [
       "053334437622",
-      "92840090001065",
       `https://9i3hnb-jw.myshopify.com/products/${nodes[6].handle}`,
     ]) {
       const result = await api.scan(code);
@@ -122,6 +127,9 @@ describe("public Shopify preview catalog", () => {
         "053334437622",
       );
     }
+    await expect(
+      api.scan("92840090001065", undefined, "code128"),
+    ).rejects.toThrow("not_found");
     await expect(api.scan("53334437622")).rejects.toThrow("not_found");
     await expect(api.scan("8003147387")).rejects.toThrow("not_found");
   });

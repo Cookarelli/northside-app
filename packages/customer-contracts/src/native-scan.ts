@@ -95,7 +95,7 @@ export function barcodeCandidates(code: string, format?: string) {
   if (format === "upc_e") {
     const expanded = expandUpce(code);
     if (!expanded) throw Error("invalid_request");
-    return [...new Set([code, expanded])];
+    return [...new Set([code, expanded, "0" + expanded])];
   }
   const length =
     format === "ean13"
@@ -116,6 +116,8 @@ export function barcodeCandidates(code: string, format?: string) {
   const codes = [code];
   // iOS commonly reports UPC-A as EAN-13. Alias only with decoder/checksum proof.
   if (format === "ean13" && /^0\d{12}$/.test(code)) codes.push(code.slice(1));
+  if ((format === "upc_a" || normalizedIosUpc) && /^\d{12}$/.test(code))
+    codes.push("0" + code);
   return codes;
 }
 
@@ -190,11 +192,8 @@ export function matchCatalogScan(
     const index = new Map<string, typeof matched>();
     for (const product of products)
       for (const v of product.variants.nodes) {
-        for (const key of new Set(
-          [v.identifiers.barcode, v.identifiers.sku].filter(
-            (x): x is string => !!x,
-          ),
-        ))
+        // A SKU is inventory metadata, never an implicit barcode alias.
+        for (const key of v.identifiers.barcode ? [v.identifiers.barcode] : [])
           index.set(key, [
             ...(index.get(key) ?? []),
             { product, variantId: v.id },

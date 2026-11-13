@@ -1319,3 +1319,38 @@ plus Prizm QR, then explicitly Add and check quantities/persistence/removal. Own
 new iPad POS label passes are recorded as owner evidence; no Victa success inferred.
 Detailed sanitized evidence is in the November12 chat outputs/scan-regression-*.json
 and NORTHSIDE-IPHONE-SCAN-REPAIR-2026-11-12.txt.
+
+### November 13 — customer barcode-only scanner repair (local, not deployed)
+
+The user authorized a focused implementation after the read-only launch audit.
+On branch `codex/barcode-scanner-20261113`, the Scan tab now opens the camera for
+UPC-A/UPC-E/EAN-13/EAN-8/Code128 without a QR mode selector. Commit 77e135a had
+defaulted the decoder and JS event filter to QR-only; vertically stacked controls
+also pushed the preview down. The camera now uses measured available space and
+horizontal Scan/Cart controls, autofocus, clear readiness/permission/error states
+and accessible retry. Focus/foreground automatically restart an intended active
+scanner, while manual entry, explicit pause, cart and review remain paused.
+Stale permission/camera callbacks, a readiness-timeout race and repeated frames
+are fenced. No automatic Add or checkout change.
+
+Shared native lookup now matches the actual Shopify variant barcode only, with
+checksummed UPC/EAN aliases; SKU is not an implicit barcode mapping. The screen
+independently verifies the returned matching variant. Independent QR matching,
+app download links, product labels, POS, consignment and grading are unchanged.
+
+Independent mobile verification: 294 tests / 20 suites passed. Mobile/root/customer
+TypeScript passed; mobile/customer lint clean, root lint has one existing unused
+underscore warning. Root Vitest 299/300 initially passed; its sandbox loopback
+failure passed in an approved 8/8 focused rerun. Customer 431/431 plus 21 script tests
+passed; an initial V8/WASM concurrency crash passed focused and serial reruns
+without code changes. Local iOS/Android Hermes exports and iOS preview configuration
+preflight passed. Secret-free snapshot customer production build passed; original
+dirty next-env hash preserved. Fresh public reads resolved all 7 approved barcodes,
+one EAN alias and an independent QR; no cart/stock/product writes.
+
+No push, deployment, cloud build or submission. Current source still carries
+preview build 6 and OTA remains disabled; an authorized fresh internal native build
+number/artifact and physical iPhone acceptance are required. No new dependency,
+environment variable or SQL migration. Server-side SKU rejection requires a
+separately authorized backend release. Exact physical QA and files are recorded
+in `docs/qa/NORTHSIDE-BARCODE-SCANNER-2026-11-13.md` at the repository root.

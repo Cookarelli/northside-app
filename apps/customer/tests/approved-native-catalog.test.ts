@@ -55,25 +55,31 @@ test("a separate Golf barcode change cannot take down valid Prizm scans", async 
   assert.equal((await approvedNativeProducts(q)).length, 6);
   for (const code of [
     "CHANGED-GOLF",
-    "92840090001065",
     `https://9i3hnb-jw.myshopify.com/products/${data.nodes[6].handle}`,
   ])
     await assert.rejects(approvedNativeScan(code, undefined, q), {
       code: "invalid_provider_data",
     });
 });
-test("quarantined live barcode/SKU collisions still reject ambiguity", async () => {
+test("quarantined live barcode collisions reject ambiguity and SKUs are not aliases", async () => {
   for (const field of ["barcode", "sku"] as const) {
     const data = payload();
     data.nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
     data.nodes[6].variants.nodes[0][field] = "746134151026";
-    await assert.rejects(
-      approvedNativeScan("746134151026", undefined, query(data)),
-      { code: "ambiguous_scan" },
-    );
+    if (field === "barcode")
+      await assert.rejects(
+        approvedNativeScan("746134151026", undefined, query(data)),
+        { code: "ambiguous_scan" },
+      );
+    else
+      assert.equal(
+        (await approvedNativeScan("746134151026", undefined, query(data)))
+          .product.selectedVariantId,
+        NORTHSIDE_NATIVE_SELECTION[5].variantId,
+      );
   }
 });
-test("all approved UPCs, retained Golf SKU and exact shelf QRs resolve stable variant IDs", async () => {
+test("all approved UPCs and exact shelf QRs resolve stable variant IDs", async () => {
   const q = query(payload());
   for (const p of NORTHSIDE_NATIVE_SELECTION) {
     const result = await approvedNativeScan(p.barcode, "upc_a", q);
@@ -82,7 +88,6 @@ test("all approved UPCs, retained Golf SKU and exact shelf QRs resolve stable va
   }
   const golf = NORTHSIDE_NATIVE_SELECTION[6];
   for (const code of [
-    "92840090001065",
     `https://9i3hnb-jw.myshopify.com/products/${golf.handle}`,
     `https://9i3hnb-jw.myshopify.com/products/${NORTHSIDE_NATIVE_SELECTION[5].handle}`,
   ]) {
@@ -94,6 +99,9 @@ test("all approved UPCs, retained Golf SKU and exact shelf QRs resolve stable va
         : golf.variantId,
     );
   }
+  await assert.rejects(approvedNativeScan("92840090001065", "code128", q), {
+    code: "not_found",
+  });
   const normalized = await approvedNativeScan("0053334437622", "ean13", q);
   assert.equal(
     normalized.product.variants.nodes[0].identifiers.barcode,

@@ -540,7 +540,7 @@ afterEach(() => {
 async function manualInput() {
   const open = screen.queryByRole("button", { name: "Enter code manually" });
   if (open) await fireEvent.press(open);
-  return screen.getByLabelText("Barcode or Northside QR code");
+  return screen.getByLabelText("Product barcode");
 }
 
 async function lookupSample() {
@@ -552,6 +552,170 @@ async function lookupSample() {
 }
 
 describe("native scan to unpaid counter shopping UI (simulated backend)", () => {
+  it("opens retail barcodes immediately without a mode selector", async () => {
+    const h = harness();
+    await renderApp(h, "/scan");
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+    expect(screen.queryByRole("tab", { name: "Shelf QR" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Box barcode" })).toBeNull();
+    expect(
+      screen.getByTestId("product-camera").props.barcodeScannerSettings
+        .barcodeTypes,
+    ).toEqual(["upc_a", "upc_e", "ean13", "ean8", "code128"]);
+    const camera = screen.getByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    await fireEvent(camera, "barcodeScanned", {
+      data: "036000291452",
+      type: "upc_a",
+    });
+    await waitFor(() =>
+      expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible(),
+    );
+    expect(h.scans).toEqual(["036000291452"]);
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("returns to camera automatically after backgrounding an active scanner", async () => {
+    const listeners: ((value: AppStateStatus) => void)[] = [];
+    jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_event, listener) => {
+        listeners.push(listener);
+        return { remove() {} };
+      });
+    await renderApp(harness(), "/scan");
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+    await act(async () => listeners.forEach((fn) => fn("background")));
+    expect(screen.queryByTestId("product-camera")).toBeNull();
+    await act(async () => listeners.forEach((fn) => fn("active")));
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+  });
+  it("recovers a camera permission grant after the system dialog backgrounds the app", async () => {
+    const listeners: ((value: AppStateStatus) => void)[] = [];
+    jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_event, listener) => {
+        listeners.push(listener);
+        return { remove() {} };
+      });
+    mockPermission = {
+      ...mockPermission,
+      granted: false,
+      status: "undetermined",
+    };
+    let grant!: (value: typeof mockPermission) => void;
+    mockRequest.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          grant = resolve;
+        }),
+    );
+    await renderApp(harness(), "/scan");
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledTimes(1));
+    await act(async () => listeners.forEach((fn) => fn("inactive")));
+    mockPermission = { ...mockPermission, granted: true, status: "granted" };
+    await act(async () => {
+      listeners.forEach((fn) => fn("active"));
+      grant(mockPermission);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+  it("automatically starts an initially inactive focused scanner when the app becomes active", async () => {
+    const listeners: ((value: AppStateStatus) => void)[] = [];
+    jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_event, listener) => {
+        listeners.push(listener);
+        return { remove() {} };
+      });
+    (AppState as { currentState: AppStateStatus }).currentState = "inactive";
+    await renderApp(harness(), "/scan");
+    expect(screen.queryByTestId("product-camera")).toBeNull();
+    await act(async () => listeners.forEach((fn) => fn("active")));
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+  });
+  it.each(["pause", "manual", "cart"])(
+    "does not override explicit %s when returning to the foreground",
+    async (intent) => {
+      const listeners: ((value: AppStateStatus) => void)[] = [];
+      jest
+        .spyOn(AppState, "addEventListener")
+        .mockImplementation((_event, listener) => {
+          listeners.push(listener);
+          return { remove() {} };
+        });
+      await renderApp(harness(), "/scan");
+      await waitFor(() =>
+        expect(screen.getByTestId("product-camera")).toBeVisible(),
+      );
+      await fireEvent.press(
+        screen.getByRole(intent === "cart" ? "tab" : "button", {
+          name:
+            intent === "pause"
+              ? "Pause camera"
+              : intent === "manual"
+                ? "Enter code manually"
+                : "Cart",
+        }),
+      );
+      await act(async () => listeners.forEach((fn) => fn("background")));
+      await act(async () => listeners.forEach((fn) => fn("active")));
+      expect(screen.queryByTestId("product-camera")).toBeNull();
+      if (intent === "manual") {
+        await fireEvent.press(
+          screen.getByRole("button", { name: "Hide manual entry" }),
+        );
+        await waitFor(() =>
+          expect(screen.getByTestId("product-camera")).toBeVisible(),
+        );
+      }
+    },
+  );
+  it("shows initialization until ready and lets a timed-out camera retry", async () => {
+    await renderApp(harness(), "/scan");
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
+    expect(screen.getByText("Opening camera…")).toBeVisible();
+    jest.useFakeTimers();
+    try {
+      // Restart under the fake clock so the readiness timer is deterministic.
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Pause camera" }),
+      );
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Resume camera" }),
+      );
+      await act(async () => {
+        jest.advanceTimersByTime(10001);
+      });
+      expect(screen.queryByTestId("product-camera")).toBeNull();
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Retry camera" }),
+      );
+      const camera = screen.getByTestId("product-camera");
+      await act(async () => {
+        camera.props.onCameraReady();
+        jest.advanceTimersByTime(10001);
+      });
+      expect(
+        screen.getByText(/Ready · Aim at the product barcode/),
+      ).toBeVisible();
+      expect(screen.getByTestId("product-camera")).toBeVisible();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
   it("requests undetermined camera permission once and opens immediately after grant", async () => {
     mockPermission = {
       ...mockPermission,
@@ -593,7 +757,6 @@ describe("native scan to unpaid counter shopping UI (simulated backend)", () => 
   it("automatically opens granted camera, fences repeated A/B/A frames and preserves exact format/leading zeroes", async () => {
     const h = harness();
     await renderApp(h, "/scan");
-    await fireEvent.press(screen.getByRole("tab", { name: "Box barcode" }));
     await waitFor(() =>
       expect(screen.getByTestId("product-camera")).toBeVisible(),
     );
@@ -677,16 +840,16 @@ describe("native scan to unpaid counter shopping UI (simulated backend)", () => 
       expect(screen.getByTestId("product-camera")).toBeVisible(),
     );
   });
-  it("requires variant choice for product QR and blocks an unavailable variant", async () => {
+  it("selects only the unique barcode variant even when the backend omits its selection", async () => {
     const h = harness();
     h.transformScan((p) => ({ ...p, selectedVariantId: null }));
     await renderApp(h, "/scan");
     await lookupSample();
-    expect(screen.getByRole("button", { name: "Add to items" })).toBeDisabled();
-    await fireEvent.press(screen.getByRole("radio", { name: "Parallel" }));
-    expect(screen.getByText("Currently unavailable")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Add to items" })).toBeDisabled();
-    await fireEvent.press(screen.getByRole("radio", { name: "Base" }));
+    expect(screen.queryByRole("radio", { name: "Parallel" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Add to items" }),
+    ).not.toBeDisabled();
+    expect(h.shoppingActions).toEqual([]);
     await fireEvent.press(screen.getByRole("button", { name: "Add to items" }));
     await waitFor(() =>
       expect(h.shoppingCart().lines[0].variantId).toBe(
@@ -904,7 +1067,9 @@ describe("customer mobile MVP with simulated services", () => {
       expect(screen.getByText("Synthetic Approved Card")).toBeVisible(),
     );
     expect(screen.getByText("Synthetic verified event")).toBeVisible();
-    expect(screen.getByText("6800 Forest Hills Road, Unit 3, Loves Park, IL.")).toBeVisible();
+    expect(
+      screen.getByText("6800 Forest Hills Road, Unit 3, Loves Park, IL."),
+    ).toBeVisible();
     expect(screen.queryByText(/Checkout now/)).toBeNull();
   });
   it("Shop filters/searches/paginates and opens real native product variant detail", async () => {
@@ -997,7 +1162,6 @@ describe("customer mobile MVP with simulated services", () => {
   it("camera scans once and unmounts after a result; manual unknown codes stay safe", async () => {
     const h = harness();
     await renderApp(h, "/scan");
-    await fireEvent.press(screen.getByRole("tab", { name: "Box barcode" }));
     await waitFor(() =>
       expect(screen.getByTestId("product-camera")).toBeVisible(),
     );
@@ -1022,47 +1186,166 @@ describe("customer mobile MVP with simulated services", () => {
       expect(screen.getByText(/find an approved item/)).toBeVisible(),
     );
   });
-  it("defaults to shelf QR and ignores co-visible hardware stripes before accepting the product QR once", async () => {
+  it("ignores QR and unsupported formats and fences callbacks from an old camera epoch", async () => {
     const h = harness();
     await renderApp(h, "/scan");
-    await waitFor(() => expect(screen.getByTestId("product-camera")).toBeVisible());
-    const camera = screen.getByTestId("product-camera");
-    expect(camera.props.barcodeScannerSettings.barcodeTypes).toEqual(["qr"]);
-    await fireEvent(camera, "cameraReady");
-    const qr = "https://9i3hnb-jw.myshopify.com/m";
-    await act(async () => {
-      camera.props.onBarcodeScanned({data:"8003147344",type:"code128"});
-      camera.props.onBarcodeScanned({data:qr,type:"qr"});
-      camera.props.onBarcodeScanned({data:qr,type:"qr"});
-    });
-    await waitFor(() => expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible());
-    expect(h.scans).toEqual([qr]);
-    expect(h.shoppingActions).toEqual([]);
-  });
-  it("switches scan modes with a fresh camera epoch and preserves a normalized iOS UPC for review", async () => {
-    const h = harness();
-    await renderApp(h, "/scan");
-    await waitFor(() => expect(screen.getByTestId("product-camera")).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
     const oldCamera = screen.getByTestId("product-camera");
     await fireEvent(oldCamera, "cameraReady");
-    await fireEvent.press(screen.getByRole("tab", {name:"Box barcode"}));
-    await waitFor(() => expect(screen.getByTestId("product-camera")).toBeVisible());
+    await act(async () => {
+      oldCamera.props.onBarcodeScanned({
+        data: "https://9i3hnb-jw.myshopify.com/m",
+        type: "qr",
+      });
+      oldCamera.props.onBarcodeScanned({
+        data: "036000291452",
+        type: "code39",
+      });
+    });
+    expect(h.scans).toEqual([]);
+    await fireEvent.press(screen.getByRole("button", { name: "Pause camera" }));
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Resume camera" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("product-camera")).toBeVisible(),
+    );
     const camera = screen.getByTestId("product-camera");
-    expect(camera.props.barcodeScannerSettings.barcodeTypes).toContain("code128");
-    expect(camera.props.barcodeScannerSettings.barcodeTypes).not.toContain("qr");
     await fireEvent(camera, "cameraReady");
     await act(async () => {
-      oldCamera.props.onBarcodeScanned({data:"https://9i3hnb-jw.myshopify.com/m",type:"qr"});
-      camera.props.onBarcodeScanned({data:"https://9i3hnb-jw.myshopify.com/m",type:"qr"});
-      camera.props.onBarcodeScanned({data:"036000291452",type:"ean13"});
+      oldCamera.props.onBarcodeScanned({ data: "OLD-CAMERA", type: "code128" });
+      camera.props.onBarcodeScanned({ data: "036000291452", type: "ean13" });
     });
-    await waitFor(() => expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible(),
+    );
     expect(h.scans).toEqual(["036000291452"]);
     expect(h.shoppingActions).toEqual([]);
-    await fireEvent.press(screen.getByRole("tab", {name:"Shelf QR"}));
-    await waitFor(() => expect(screen.getByTestId("product-camera")).toBeVisible());
+  });
+  it.each([
+    ["upc_a", "036000291452", "036000291452"],
+    ["upc_e", "04252614", "042100005264"],
+    ["ean13", "0036000291452", "036000291452"],
+    ["ean8", "96385074", "96385074"],
+    ["code128", "BOX-001", "BOX-001"],
+  ])(
+    "decodes %s and confirms the actual Shopify variant barcode",
+    async (type, code, stored) => {
+      const h = harness();
+      h.transformScan((p) => ({
+        ...p,
+        variants: {
+          ...p.variants,
+          nodes: p.variants.nodes.map((v, i) =>
+            i
+              ? v
+              : {
+                  ...v,
+                  identifiers: {
+                    state: "observed" as const,
+                    sku: v.identifiers.sku,
+                    barcode: stored,
+                  },
+                },
+          ),
+        },
+      }));
+      await renderApp(h, "/scan");
+      await waitFor(() =>
+        expect(screen.getByTestId("product-camera")).toBeVisible(),
+      );
+      const camera = screen.getByTestId("product-camera");
+      await fireEvent(camera, "cameraReady");
+      await fireEvent(camera, "barcodeScanned", { data: code, type });
+      await waitFor(() =>
+        expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible(),
+      );
+      expect(h.scans).toEqual([code]);
+      expect(screen.getByText("Barcode: " + stored)).toBeVisible();
+      expect(h.shoppingActions).toEqual([]);
+    },
+  );
+  it("refuses a SKU-only backend match and duplicate returned barcodes", async () => {
+    const h = harness();
+    h.transformScan((p) => ({
+      ...p,
+      variants: {
+        ...p.variants,
+        nodes: p.variants.nodes.map((v, i) =>
+          i
+            ? v
+            : {
+                ...v,
+                identifiers: {
+                  state: "observed" as const,
+                  sku: "036000291452",
+                  barcode: "OTHER-BARCODE",
+                },
+              },
+        ),
+      },
+    }));
+    await renderApp(h, "/scan");
+    await fireEvent.changeText(await manualInput(), "036000291452");
+    await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
+    await waitFor(() =>
+      expect(screen.getByText(/could not be verified safely/)).toBeVisible(),
+    );
     expect(screen.queryByText("REVIEW YOUR ITEM")).toBeNull();
-    expect(screen.getByTestId("product-camera").props.barcodeScannerSettings.barcodeTypes).toEqual(["qr"]);
+    expect(h.shoppingActions).toEqual([]);
+    h.transformScan((p) => ({
+      ...p,
+      variants: {
+        ...p.variants,
+        nodes: p.variants.nodes.map((v) => ({
+          ...v,
+          identifiers: {
+            state: "observed" as const,
+            sku: v.identifiers.sku,
+            barcode: "036000291452",
+          },
+        })),
+      },
+    }));
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Retry barcode lookup" }),
+    );
+    await waitFor(() => expect(h.scans).toHaveLength(2));
+    expect(screen.queryByText("REVIEW YOUR ITEM")).toBeNull();
+  });
+  it("retries a temporary lookup failure without adding or opening a cart", async () => {
+    const h = harness();
+    await renderApp(h, "/scan");
+    h.setOffline(true);
+    await fireEvent.changeText(await manualInput(), "036000291452");
+    await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
+    await waitFor(() =>
+      expect(screen.getByText(/Connection unavailable/)).toBeVisible(),
+    );
+    h.setOffline(false);
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Retry barcode lookup" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible(),
+    );
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("rejects manual QR URLs before a lookup request", async () => {
+    const h = harness();
+    await renderApp(h, "/scan");
+    await fireEvent.changeText(
+      await manualInput(),
+      "https://9i3hnb-jw.myshopify.com/m",
+    );
+    await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Enter a product barcode, up to 64 characters.",
+    );
+    expect(h.scans).toEqual([]);
+    expect(h.shoppingActions).toEqual([]);
   });
   it("switching tabs stops the camera and ignores a late permission grant", async () => {
     const h = harness();
@@ -1147,7 +1430,7 @@ describe("customer mobile MVP with simulated services", () => {
 });
 
 describe("MVP lifecycle and private-account regression cases", () => {
-  it("initial inactive launch makes no device requests and offers camera recovery on foreground", async () => {
+  it("initial background launch makes no device requests until foregrounded", async () => {
     (AppState as { currentState: AppStateStatus }).currentState = "background";
     const listeners: ((value: AppStateStatus) => void)[] = [];
     jest
@@ -1165,9 +1448,7 @@ describe("MVP lifecycle and private-account regression cases", () => {
       (AppState as { currentState: AppStateStatus }).currentState = "active";
       listeners.forEach((fn) => fn("active"));
     });
-    expect(screen.queryByText("Opening camera…")).toBeNull();
-    const resume = screen.queryByRole("button", { name: "Resume camera" });
-    if (resume) await fireEvent.press(resume);
+    expect(mockGetPermission).toHaveBeenCalled();
     await waitFor(() =>
       expect(screen.getByTestId("product-camera")).toBeVisible(),
     );
@@ -1193,7 +1474,7 @@ describe("MVP lifecycle and private-account regression cases", () => {
       jest.useRealTimers();
     }
   });
-  it("backgrounding clears scan results and never restarts camera automatically", async () => {
+  it("backgrounding clears a review result without silently resuming or adding", async () => {
     const listeners: ((value: AppStateStatus) => void)[] = [];
     jest
       .spyOn(AppState, "addEventListener")

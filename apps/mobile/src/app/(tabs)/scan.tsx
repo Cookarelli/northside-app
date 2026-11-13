@@ -44,6 +44,23 @@ import { CartView } from "../../shopping/CartView";
 import { ScanProduct } from "../../shopping/ScanProduct";
 import { shoppingMessage } from "../../shopping/messages";
 import { storefront } from "../../theme";
+import { barcodeCandidates } from "../../../../../packages/customer-contracts/src/native-scan";
+import {
+  RETAIL_BARCODE_FORMATS,
+  isRetailBarcodeFormat,
+  barcodePreviewHeight,
+} from "../../shopping/barcode-scanner";
+
+const barcodeSettings = { barcodeTypes: [...RETAIL_BARCODE_FORMATS] };
+function scanMessage(error: string) {
+  if (error === "invalid_request" || error === "unsupported_qr")
+    return "Enter a product barcode, up to 64 characters.";
+  if (error === "not_found")
+    return "Product not found. We couldn’t find an approved item for this barcode. Try again or ask an associate.";
+  if (["offline", "timeout", "service_unavailable"].includes(error))
+    return "Connection unavailable. Check your connection and retry the barcode lookup.";
+  return shoppingMessage(error);
+}
 
 type ScanFormat = Extract<ShoppingAction, { action: "add" }>["format"];
 type Observation = { data: MobileProduct; code: string; format?: ScanFormat };
@@ -62,11 +79,13 @@ export default function ScanScreen() {
   const navigation = useNavigation<ScanNavigation>();
   const { height } = useWindowDimensions();
   const [view, setView] = useState<"scan" | "cart">("scan");
-  const [scanMode, setScanMode] = useState<"shelf" | "box">("shelf");
   const [camera, setCamera] = useState<CameraState>(
     Platform.OS === "web" ? "web" : active ? "checking" : "paused",
   );
   const [cameraEpoch, setCameraEpoch] = useState(0);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [cameraTop, setCameraTop] = useState(0);
   const [focused, setFocused] = useState(false);
   const [pending, setPending] = useState(false);
   const [code, setCode] = useState("");
@@ -79,7 +98,7 @@ export default function ScanScreen() {
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, [result, view]);
+  }, [result, view, focused]);
   const generation = useRef(0),
     busy = useRef(false),
     permissionBusy = useRef(false),
@@ -88,11 +107,16 @@ export default function ScanScreen() {
   const focusRef = useRef(false),
     activeRef = useRef(active),
     wanted = useRef(false),
+    resumeOnActive = useRef(false),
     viewRef = useRef(view);
   const permissionRef = useRef(permission),
     requestRef = useRef(requestPermission),
     getRef = useRef(getPermission);
   const resultRef = useRef(result);
+  const [lastLookup, setLastLookup] = useState<{
+    code: string;
+    format?: ScanFormat;
+  } | null>(null);
   const boundary = useRef({ api, identity });
   const liveBoundary = useRef({ api, identity });
   const restartPermission = useRef<boolean | null>(null);
@@ -123,6 +147,7 @@ export default function ScanScreen() {
     generation.current++;
     busy.current = false;
     ready.current = false;
+    setCameraReady(false);
     wanted.current = false;
     restartPermission.current = null;
     abort.current?.abort();
@@ -134,8 +159,14 @@ export default function ScanScreen() {
     setAdded(false);
   }, []);
   async function startCamera(automatic = false) {
-    if (!focusRef.current || !activeRef.current || viewRef.current !== "scan")
+    if (
+      !focusRef.current ||
+      !activeRef.current ||
+      viewRef.current !== "scan" ||
+      (automatic && !resumeOnActive.current)
+    )
       return;
+    resumeOnActive.current = true;
     if (Platform.OS === "web") {
       setCamera("web");
       return;
@@ -198,12 +229,15 @@ export default function ScanScreen() {
   useFocusEffect(
     useCallback(() => {
       focusRef.current = true;
+      resumeOnActive.current = true;
+      setManual(Platform.OS === "web");
       setFocused(true);
       viewRef.current = "scan";
       setView("scan");
       void startRef.current(true);
       return () => {
         focusRef.current = false;
+        resumeOnActive.current = false;
         setFocused(false);
         pause();
       };
@@ -214,6 +248,8 @@ export default function ScanScreen() {
       navigation.addListener("tabPress", () => {
         if (focusRef.current && activeRef.current) {
           viewRef.current = "scan";
+          resumeOnActive.current = true;
+          setManual(Platform.OS === "web");
           setView("scan");
           void startRef.current(true);
         }
@@ -224,6 +260,7 @@ export default function ScanScreen() {
     const sub = AppState.addEventListener("change", (state) => {
       activeRef.current = state === "active";
       if (state !== "active") pause();
+      else if (resumeOnActive.current) void startRef.current(true);
     });
     return () => sub.remove();
   }, [pause]);
@@ -246,6 +283,23 @@ export default function ScanScreen() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       pause("denied");
   }, [permission, camera, pause]);
+  useEffect(() => {
+    if (camera !== "running" || cameraReady) return;
+    const epoch = cameraEpoch;
+    const timer = setTimeout(() => {
+      if (
+        generation.current === epoch &&
+        focusRef.current &&
+        wanted.current &&
+        !ready.current
+      ) {
+        resumeOnActive.current = false;
+        pause("unavailable");
+        setError("camera_unavailable");
+      }
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [camera, cameraEpoch, cameraReady, pause]);
   useEffect(() => {
     if (!result) return;
     const timer = setTimeout(
@@ -270,14 +324,29 @@ export default function ScanScreen() {
       return;
     if (frame && (!ready.current || !wanted.current || resultRef.current))
       return;
+    setLastLookup(null);
+    const value = frame ? raw : raw.trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9 ._$%+\/-]{0,63}$/.test(value)) {
+      setError("invalid_request");
+      return;
+    }
     const input = scanInputSchema.safeParse({
-      code: frame ? raw : raw.trim(),
+      code: value,
       ...(format ? { format } : {}),
     });
     if (!input.success) {
       setError("invalid_request");
       return;
     }
+    let candidates: string[];
+    try {
+      candidates = barcodeCandidates(input.data.code, input.data.format);
+    } catch {
+      setError("invalid_request");
+      return;
+    }
+    setLastLookup(input.data);
+    resumeOnActive.current = false;
     const g = ++generation.current;
     Keyboard.dismiss();
     busy.current = true;
@@ -302,19 +371,24 @@ export default function ScanScreen() {
         throw new MobileFailure("refresh_required");
       if (data.product.publication !== "published")
         throw new MobileFailure("invalid_response");
-      const requested = data.product.selectedVariantId;
+      // Verify the returned Shopify VARIANT BARCODE even against an older backend.
+      const matches = data.product.variants.nodes.filter(
+        (v) =>
+          v.identifiers.barcode !== null &&
+          candidates.includes(v.identifiers.barcode),
+      );
       if (
-        requested &&
-        !data.product.variants.nodes.some((v) => v.id === requested)
+        matches.length !== 1 ||
+        (data.product.selectedVariantId &&
+          data.product.selectedVariantId !== matches[0].id)
       )
         throw new MobileFailure("invalid_response");
-      const selection =
-        requested ??
-        (data.product.variants.nodes.length === 1
-          ? data.product.variants.nodes[0].id
-          : undefined);
+      const selection = matches[0].id;
       const observation = {
-        data,
+        data: {
+          ...data,
+          product: { ...data.product, selectedVariantId: selection },
+        },
         code: input.data.code,
         format: input.data.format,
       };
@@ -332,21 +406,21 @@ export default function ScanScreen() {
     }
   }
   function scanned(event: BarcodeScanningResult) {
-    // A shelf's hardware barcode and merchandise QR can be visible together.
-    // Filter in JS too so a queued event cannot bypass the native format choice.
-    if (
-      generation.current === cameraEpoch &&
-      (scanMode === "shelf" ? event.type === "qr" : event.type !== "qr")
-    )
+    // Fence queued callbacks as well as the native decoder. QR is not this tab's workflow.
+    if (generation.current === cameraEpoch && isRetailBarcodeFormat(event.type))
       void lookup(event.data, event.type, true);
   }
   function nextItem() {
+    resumeOnActive.current = true;
+    setManual(Platform.OS === "web");
+    setLastLookup(null);
     pause();
     setCode("");
     setError(undefined);
     void startRef.current(false);
   }
   function openCart() {
+    resumeOnActive.current = false;
     pause();
     viewRef.current = "cart";
     setView("cart");
@@ -432,13 +506,17 @@ export default function ScanScreen() {
       scrollRef={scrollRef}
       introSize="minimal"
       eyebrow="In-store shopping"
-      title="Start Shopping"
+      title="Scan a barcode"
+      contentStyle={styles.content}
+      onViewportLayout={(event) =>
+        setViewportHeight(event.nativeEvent.layout.height)
+      }
     >
-      <View accessibilityRole="tablist" style={ui.row}>
+      <View accessibilityRole="tablist" style={styles.tabs}>
         <Pressable
           accessibilityRole="tab"
           accessibilityState={{ selected: view === "scan" }}
-          style={[ui.chip, view === "scan" && ui.selected]}
+          style={[ui.chip, styles.tab, view === "scan" && ui.selected]}
           onPress={() => {
             viewRef.current = "scan";
             setView("scan");
@@ -452,7 +530,7 @@ export default function ScanScreen() {
         <Pressable
           accessibilityRole="tab"
           accessibilityState={{ selected: view === "cart" }}
-          style={[ui.chip, view === "cart" && ui.selected]}
+          style={[ui.chip, styles.tab, view === "cart" && ui.selected]}
           onPress={openCart}
         >
           <Text style={[ui.label, view === "cart" && ui.selectedLabel]}>
@@ -475,40 +553,22 @@ export default function ScanScreen() {
         />
       ) : (
         <>
-          {Platform.OS !== "web" && (
-            <View accessibilityRole="tablist" style={ui.row}>
-              {([
-                ["shelf", "Shelf QR"],
-                ["box", "Box barcode"],
-              ] as const).map(([mode, label]) => (
-                <Pressable
-                  key={mode}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: scanMode === mode }}
-                  style={[ui.chip, scanMode === mode && ui.selected]}
-                  onPress={() => {
-                    if (scanMode !== mode) {
-                      setScanMode(mode);
-                      nextItem();
-                    }
-                  }}
-                >
-                  <Text style={[ui.label, scanMode === mode && ui.selectedLabel]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
           {!result && (
             <View
+              testID="barcode-camera-frame"
+              onLayout={(event) => setCameraTop(event.nativeEvent.layout.y)}
               style={[
                 styles.camera,
                 {
                   height:
                     Platform.OS === "web"
                       ? 220
-                      : Math.min(480, Math.max(280, Math.round(height * 0.44))),
+                      : viewportHeight > 0
+                        ? barcodePreviewHeight(viewportHeight, cameraTop)
+                        : Math.min(
+                            360,
+                            Math.max(220, Math.round(height * 0.34)),
+                          ),
                 },
               ]}
             >
@@ -523,22 +583,17 @@ export default function ScanScreen() {
                     style={StyleSheet.absoluteFill}
                     facing="back"
                     mode="picture"
-                    barcodeScannerSettings={{
-                      barcodeTypes: scanMode === "shelf" ? ["qr"] : [
-                        "ean13",
-                        "ean8",
-                        "upc_a",
-                        "upc_e",
-                        "code128",
-                        "code39",
-                      ],
-                    }}
+                    autofocus="on"
+                    barcodeScannerSettings={barcodeSettings}
                     onCameraReady={() => {
-                      if (valid(mountedEpoch) && wanted.current)
+                      if (valid(mountedEpoch) && wanted.current) {
                         ready.current = true;
+                        setCameraReady(true);
+                      }
                     }}
                     onMountError={() => {
                       if (valid(mountedEpoch)) {
+                        resumeOnActive.current = false;
                         pause("unavailable");
                         setError("camera_unavailable");
                       }
@@ -546,11 +601,16 @@ export default function ScanScreen() {
                     onBarcodeScanned={scanned}
                   />
                   <View pointerEvents="none" style={styles.viewfinder} />
-                  <Text style={styles.cameraHint}>
-                    {scanMode === "shelf"
-                      ? "Aim at the square QR on the shelf label"
-                      : "Aim at the barcode printed on the product box"}
-                  </Text>
+                  <View pointerEvents="none" style={styles.cameraHint}>
+                    <Text
+                      accessibilityLiveRegion="polite"
+                      style={styles.hintText}
+                    >
+                      {cameraReady
+                        ? "Ready · Aim at the product barcode"
+                        : "Opening camera…"}
+                    </Text>
+                  </View>
                 </>
               ) : (
                 <View style={styles.cameraState}>
@@ -584,7 +644,9 @@ export default function ScanScreen() {
                             ? permission?.canAskAgain === false
                               ? "Open camera settings"
                               : "Allow camera"
-                            : "Resume camera"
+                            : camera === "unavailable"
+                              ? "Retry camera"
+                              : "Resume camera"
                         }
                         onPress={() => {
                           if (
@@ -605,12 +667,31 @@ export default function ScanScreen() {
           )}
           {pending && (
             <Text accessibilityLiveRegion="polite" style={ui.copy}>
-              Finding your item…
+              Barcode detected. Finding your item…
             </Text>
           )}
           {error && (
             <Text accessibilityRole="alert" style={ui.copy}>
-              {shoppingMessage(error)}
+              {scanMessage(error)}
+            </Text>
+          )}
+          {error &&
+            lastLookup &&
+            !pending &&
+            !result &&
+            error !== "camera_unavailable" && (
+              <Button
+                appearance="storefront"
+                label="Retry barcode lookup"
+                onPress={() => {
+                  const attempt = lastLookup;
+                  if (attempt) void lookup(attempt.code, attempt.format);
+                }}
+              />
+            )}
+          {result && (
+            <Text accessibilityLiveRegion="polite" style={ui.label}>
+              Product found · Review before adding
             </Text>
           )}
           {result && (
@@ -658,7 +739,10 @@ export default function ScanScreen() {
               appearance="storefront"
               secondary
               label="Pause camera"
-              onPress={() => pause()}
+              onPress={() => {
+                resumeOnActive.current = false;
+                pause();
+              }}
             />
           )}
           <View style={styles.secondary}>
@@ -667,7 +751,13 @@ export default function ScanScreen() {
               secondary
               label={manual ? "Hide manual entry" : "Enter code manually"}
               onPress={() => {
-                if (!manual) pause();
+                if (!manual) {
+                  resumeOnActive.current = false;
+                  pause();
+                } else {
+                  resumeOnActive.current = true;
+                  void startRef.current(true);
+                }
                 setManual((value) => !value);
               }}
             />
@@ -680,13 +770,13 @@ export default function ScanScreen() {
           </View>
           {manual && (
             <Card appearance="storefront">
-              <Text style={ui.label}>Enter a barcode or Northside QR</Text>
+              <Text style={ui.label}>Enter a product barcode</Text>
               <TextInput
-                accessibilityLabel="Barcode or Northside QR code"
-                placeholder="Barcode or Northside QR"
+                accessibilityLabel="Product barcode"
+                placeholder="Product barcode"
                 value={code}
                 onChangeText={setCode}
-                maxLength={2048}
+                maxLength={64}
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="search"
@@ -726,6 +816,9 @@ export default function ScanScreen() {
   );
 }
 const styles = StyleSheet.create({
+  content: { gap: 12 },
+  tabs: { flexDirection: "row", gap: 12 },
+  tab: { flex: 1 },
   camera: {
     backgroundColor: storefront.colors.hero,
     borderRadius: 16,
@@ -768,9 +861,11 @@ const styles = StyleSheet.create({
     bottom: 18,
     left: 12,
     right: 12,
-    color: storefront.colors.white,
     backgroundColor: "#071526CC",
     padding: 10,
+  },
+  hintText: {
+    color: storefront.colors.white,
     textAlign: "center",
     fontSize: 14,
   },

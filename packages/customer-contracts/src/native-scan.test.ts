@@ -71,10 +71,10 @@ describe("real-label scanner identity boundary", () => {
       ).toBe(p.variants.nodes[0].id);
     },
   );
-  it("matches exact SKU and checksum-proved iOS EAN alias without stripping arbitrary leading zeroes", () => {
+  it("rejects SKU-only matches and accepts checksum-proved iOS EAN alias without stripping arbitrary leading zeroes", () => {
     const p = product();
-    expect(matchCatalogScan([p], "SKU-ONE", "code128").selectedVariantId).toBe(
-      p.variants.nodes[0].id,
+    expect(() => matchCatalogScan([p], "SKU-ONE", "code128")).toThrow(
+      "not_found",
     );
     expect(
       matchCatalogScan([p], "0746134150968", "ean13").selectedVariantId,
@@ -83,6 +83,35 @@ describe("real-label scanner identity boundary", () => {
       "not_found",
     );
     expect(() => matchCatalogScan([p], "sku-one")).toThrow("not_found");
+  });
+  it("ignores another variant's SKU and rejects equivalent UPC/EAN barcode collisions", () => {
+    const p = product(),
+      other = product(NORTHSIDE_NATIVE_SELECTION[1]);
+    other.variants.nodes[0].identifiers.sku =
+      p.variants.nodes[0].identifiers.barcode;
+    expect(
+      matchCatalogScan([p, other], "746134150968", "upc_a").selectedVariantId,
+    ).toBe(p.variants.nodes[0].id);
+    other.variants.nodes[0].identifiers.barcode = "0746134150968";
+    expect(() => matchCatalogScan([p, other], "746134150968", "upc_a")).toThrow(
+      "ambiguous_scan",
+    );
+    expect(
+      matchCatalogScan([other], "746134150968", "ean13").selectedVariantId,
+    ).toBe(other.variants.nodes[0].id);
+  });
+  it("matches a literal Code128 barcode independently of its SKU", () => {
+    const p = product();
+    p.variants.nodes[0].identifiers.barcode = "000BOX-001";
+    expect(
+      matchCatalogScan([p], "000BOX-001", "code128").selectedVariantId,
+    ).toBe(p.variants.nodes[0].id);
+    expect(() => matchCatalogScan([p], "BOX-001", "code128")).toThrow(
+      "not_found",
+    );
+    expect(() => matchCatalogScan([p], "SKU-ONE", "code128")).toThrow(
+      "not_found",
+    );
   });
   it("expands valid UPC-E and validates EAN-8 checksums", () => {
     expect(expandUpce("04252614")).toBe("042100005264");
@@ -108,7 +137,7 @@ describe("real-label scanner identity boundary", () => {
       ).toBe(selection.variantId);
     },
   );
-  it("resolves Golf's leading-zero manufacturer UPC, retained SKU and legacy QR by stable IDs", () => {
+  it("resolves Golf's leading-zero manufacturer UPC and legacy QR without SKU substitution by stable IDs", () => {
     const selection = NORTHSIDE_NATIVE_SELECTION[6];
     expect(selection).toMatchObject({
       id: "gid://shopify/Product/15993268240753",
@@ -135,9 +164,9 @@ describe("real-label scanner identity boundary", () => {
     expect(
       matchCatalogScan([p], "0053334437622", "ean13").selectedVariantId,
     ).toBe(selection.variantId);
-    expect(
-      matchCatalogScan([p], "92840090001065", "code128").selectedVariantId,
-    ).toBe(selection.variantId);
+    expect(() => matchCatalogScan([p], "92840090001065", "code128")).toThrow(
+      "not_found",
+    );
     expect(() => matchCatalogScan([p], "53334437622", "code128")).toThrow(
       "not_found",
     );
@@ -243,14 +272,14 @@ describe("real-label scanner identity boundary", () => {
   ])("refuses an unsupported URL: %s", (value) => {
     expect(() => matchCatalogScan([product()], value, "qr")).toThrow();
   });
-  it("rejects SKU/barcode collisions instead of choosing the first variant", () => {
+  it("rejects duplicate barcodes instead of choosing the first variant", () => {
     const p = product(),
       other = structuredClone(p);
     other.id = "gid://shopify/Product/999";
     other.variants.nodes[0].id = "gid://shopify/ProductVariant/999";
-    expect(() => matchCatalogScan([p, other], "SKU-ONE")).toThrow(
-      "ambiguous_scan",
-    );
+    expect(() =>
+      matchCatalogScan([p, other], p.variants.nodes[0].identifiers.barcode!),
+    ).toThrow("ambiguous_scan");
     expect(() => matchCatalogScan([p], "SKU-ONE\n")).toThrow("invalid_request");
     expect(() => matchCatalogScan([p], "SKU-ONE", "pdf417")).toThrow(
       "invalid_request",

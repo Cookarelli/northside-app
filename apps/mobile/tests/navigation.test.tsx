@@ -31,7 +31,7 @@ describe("actual customer native navigation", () => {
     expect(screen.getByRole("header", { name: "HOBBY LIVES HERE." })).toBeVisible();
     const destinations = [
       ["Shop", "Find your next favorite."],
-      ["Scan", "Start Shopping"],
+      ["Scan", "Scan a barcode"],
       ["Wallet", "Wallet not connected"],
       ["Account", "Account access unavailable"],
       ["Home", "HOBBY LIVES HERE."],
@@ -63,7 +63,7 @@ describe("actual customer native navigation", () => {
 
   it("Scan exposes manual shopping and associate help without provider traffic", async () => {
     await renderRouter(routes, { initialUrl: "/scan" });
-    expect(screen.getByRole("header", { name: "Start Shopping" })).toBeVisible();
+    expect(screen.getByRole("header", { name: "Scan a barcode" })).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Need help? Ask an associate" }));
     await fireEvent.press(
       screen.getByRole("link", { name: "Go to product search" }),

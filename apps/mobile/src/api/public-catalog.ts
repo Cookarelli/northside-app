@@ -252,7 +252,7 @@ export class PublicCatalogApi implements BrowseApi {
     const records = await this.read(PREVIEW_CATALOG_SELECTION, signal);
     try {
       // Keep drifted records' claims in the index: filtering first could hide
-      // a barcode/SKU collision and select the wrong otherwise-verified item.
+      // a barcode collision and select the wrong otherwise-verified item.
       const product = matchCatalogScan(
         records.map((record) => record.product),
         code,
