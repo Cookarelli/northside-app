@@ -13,7 +13,11 @@ QA now shows native versus configured build, embedded EAS source/job identity,
 actual lookup endpoint/HTTP/stage, and retained timestamped reports via visibleQA.
 Housing fields removed. Mobile374/374,shared44/44,localbackend35/35,TypeScript,
 lintzero-warnings,nativeplugin10+4Swift checks pass independently. Four camera
-files remain byte-identicalccb2139. Signed10 delivery pending; physical six-ESL
+files remain byte-identicalccb2139. InternalEAS e3dbdda8-8461-47d9-88f9-bb1efc9f2664
+finished19:57:37UTC. Signed10 source808eaa45/native/config/source/job identity,
+camera and compiledmatcher/Add/HTTP/QA verification allpass. IPA SHA256
+d67345866c74012612e0596d55c89f9f0a439cd93452b5bf23087abf18bc3607.
+Artifact verifier14/14 regressionspass. Physical six-ESL
 three-in-a-row/box/Scan-reentry/unknown/offline acceptance still required.
 See docs/qa/NORTHSIDE-SCANNER-REGRESSION-2026-11-13.md for evidence and capture steps.
 

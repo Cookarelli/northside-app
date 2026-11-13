@@ -1,5 +1,9 @@
 # Northside Preview 9 barcode investigation and repair — November 13, 2026
 
+[Install corrected internal iPhone build 0.1.0 (10)](https://expo.dev/accounts/northside-collectibles/projects/northside-customer/builds/e3dbdda8-8461-47d9-88f9-bb1efc9f2664).
+
+App source commit: `808eaa4557a82bec00b0af410fdb3ea6b1707864`. EAS build: `e3dbdda8-8461-47d9-88f9-bb1efc9f2664`, finished November13 at1:57:37PM CST (19:57:37UTC). The downloaded IPA passed signature/profile/registered-iPhone/native-camera and compiled matcher/Add/HTTP/diagnostic verification. Native build10, configured build10 and embedded source/EAS identity all agree exactly. IPA13,835,103bytes; SHA-256 `d67345866c74012612e0596d55c89f9f0a439cd93452b5bf23087abf18bc3607`. Physical acceptance remains pending.
+
 ## Outcome and scope
 
 The repaired internal build is configured as **0.1.0 (10)**. It fixes a reproduced UPC/EAN equivalence gap for product GTINs carried in Code 128 or entered manually, supplies the verified canonical Shopify barcode to explicit Add, and makes QA evidence durable enough to diagnose physical failures. No backend deployment is required. Camera capture/autofocus/exposure/zoom/format/lifecycle implementation files are unchanged from `ccb2139`. No permanent ESL housing resolution was implemented; obsolete housing-related diagnostic fields were removed. Product barcodes on the ESL screen and original boxes are the only customer workflow.
@@ -88,6 +92,6 @@ NOT TESTED: physical labels, three-in-a-row success, real explicit Add transacti
 4. Confirm unknown codes show not-found, offline mode shows a connection error, and restoring network plus Retry works. No failed or ambiguous lookup may display Add for a guessed product.
 5. Leave Scan for another tab and reopen it; background/foreground once; confirm automatic camera startup, sharp preview, 1×/1.5×/2×, torch and Scan next. Test small/large ESL labels and box print at8/12/16 inches. Review before explicit Add; scanning alone must never add.
 
-Install/build provenance is appended after the signed artifact is verified. The correction is app-side: it does not change currently installed builds8/9 or the deployed backend. A new internal install is required for normalization, canonical Add and QA retention.
+The signed build above is verified; artifact-verifier regressions14/14 also pass. The correction is app-side: it does not change currently installed builds8/9 or the deployed backend. A new internal install is required for normalization, canonical Add and QA retention. For consecutive attempts confirm recordedAt changes; a retained timestamp identifies an earlier result. If testing a camera that stays Ready, use explicit Clear before the new attempt so a zero-event report is unambiguous.
 
 Evidence in the current chat `work/scanner-regression-10/`: `signed8-vs9-identity.json`, `compiled-lookup-comparison.json`, `admin-current.json`, `barcode-duplicates-current.json`, `storefront-current.json`, `baseline-current.json`, `lookup-after.json`, `api-scan-http.sanitized.json`, `api-validation-http.sanitized.json`, `api-audit-findings.txt`, and independent test logs. Existing safeguards are in `packages/customer-contracts/src/native-scan.ts` and customer `mobile/{shopping,approved-native-catalog,storefront-cart}.ts`.
