@@ -47,8 +47,9 @@ const body = (description = "SAMPLE test intake") => ({
   reason: "Test intake evidence",
 });
 let newItem = "";
+const recoverableIntake = body();
 test("consignment: stable intake IDs, nullable amounts and independent customer ownership", async () => {
-  const b = body(),
+  const b = recoverableIntake,
     created = await run("staff", (db, a) => createConsignment(db, a, b));
   newItem = created.id;
   const repeat = await run("staff", (db, a) => createConsignment(db, a, b));
@@ -612,6 +613,11 @@ test("consignment: intake, settlements, matching and corrections survive databas
   await fixture.db.close();
   fixture = await openPreviewDatabase(directory);
   await initializeConsignmentPreview(fixture);
+  const recovered = await run("staff", (db, actor) =>
+    createConsignment(db, actor, recoverableIntake),
+  );
+  assert.equal(recovered.id, newItem);
+  assert.equal(recovered.duplicate, true);
   assert.equal((await run("a", consignmentItems)).length, before.length);
   assert.deepEqual(
     (await fixture.db.query("select count(*) from ns.consignment_settlements"))

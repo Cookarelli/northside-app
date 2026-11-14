@@ -2,7 +2,13 @@
 import { CustomerPicker } from "./customer-picker";
 import { ServiceTermsPanel } from "./service-terms";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   consignmentStates,
   consignmentMoney as money,
@@ -57,21 +63,33 @@ function Form({
   label: string;
   submit: (v: Record<string, string>) => Promise<unknown>;
 }) {
+  const submitting = useRef(false),
+    [busy, setBusy] = useState(false);
   return (
     <form
       className="grading-form"
       onSubmit={async (e) => {
         e.preventDefault();
-        await submit(
-          Object.fromEntries(new FormData(e.currentTarget)) as Record<
-            string,
-            string
-          >,
-        );
+        if (submitting.current) return;
+        submitting.current = true;
+        setBusy(true);
+        try {
+          await submit(
+            Object.fromEntries(new FormData(e.currentTarget)) as Record<
+              string,
+              string
+            >,
+          );
+        } finally {
+          submitting.current = false;
+          setBusy(false);
+        }
       }}
     >
       {children}
-      <button className="button">{label}</button>
+      <button className="button" disabled={busy}>
+        {busy ? "Saving…" : label}
+      </button>
     </form>
   );
 }
@@ -207,6 +225,7 @@ export function ConsignmentWorkspace({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
+    [intakeReceipt, setIntakeReceipt] = useState<string | null>(null),
     [intakeRequest, setIntakeRequest] = useState(() => crypto.randomUUID());
   const endpoint = fixture
     ? `/api/preview/consignment?actor=${who}`
@@ -267,9 +286,17 @@ export function ConsignmentWorkspace({
       const v = await r.json();
       if (!r.ok)
         throw Error(String(v.error || "Unable to save").replaceAll("_", " "));
-      setData(await get());
-      if (detail) setDetail(await get("item=" + detail.item.id));
       setNotice(fixture ? "Saved to the local sample database." : "Saved.");
+      try {
+        const current = await get();
+        const selected = detail ? await get("item=" + detail.item.id) : null;
+        setData(current);
+        if (selected) setDetail(selected);
+      } catch {
+        setError(
+          "Your change was saved, but the updated records could not be loaded. Reload before making another change. Do not submit it again",
+        );
+      }
       return v;
     } catch (e) {
       setError((e as Error).message);
@@ -290,6 +317,16 @@ export function ConsignmentWorkspace({
           Follow each card from intake through listing and recorded settlement.
         </p>
       </div>
+      {!staff && (
+        <nav className="grading-toolbar" aria-label="Consignment requests">
+          <Link className="button" href="/services/request?service=consignment">
+            Start a consignment request
+          </Link>
+          <Link className="button secondary" href="/my-cards/requests">
+            Track service requests
+          </Link>
+        </nav>
+      )}
       {fixture && (
         <aside className="grading-notice">
           <strong>LOCAL SAMPLE WORKSPACE</strong>
@@ -455,7 +492,9 @@ export function ConsignmentWorkspace({
                     fixture={fixture}
                     send={send}
                     get={get}
-                    reload={() => select(detail.item.id)}
+                    reload={async () => {
+                      setDetail(await get("item=" + detail.item.id));
+                    }}
                   />
                 ) : (
                   <section className="empty">
@@ -477,25 +516,50 @@ export function ConsignmentWorkspace({
                   Only a verified customer account can be selected. Unmatched
                   spreadsheet records stay in staff review.
                 </p>
-                <Form
-                  label="Save consignment intake"
-                  submit={async (v) => {
-                    const result = await send({
-                      action: "intake",
-                      request_id: intakeRequest,
-                      ...values(v),
-                    });
-                    if (result) setIntakeRequest(crypto.randomUUID());
-                    return result;
-                  }}
-                >
-                  <CustomerPicker
-                    customers={data.customers}
-                    fixture={fixture}
-                    verifiedOnly
-                  />
-                  <ItemFields />
-                </Form>
+                {intakeReceipt ? (
+                  <div role="status" className="grading-notice">
+                    <h3>Consignment intake saved</h3>
+                    <p>
+                      Permanent item reference: <code>{intakeReceipt}</code>
+                    </p>
+                    <p>
+                      This records physical intake. It does not confirm
+                      acceptance, a sale or a payout.
+                    </p>
+                    <button
+                      className="button secondary"
+                      onClick={() => {
+                        setIntakeReceipt(null);
+                        setIntakeRequest(crypto.randomUUID());
+                        setNotice("");
+                        setError("");
+                      }}
+                    >
+                      Start another intake
+                    </button>
+                  </div>
+                ) : (
+                  <Form
+                    label="Save consignment intake"
+                    submit={async (v) => {
+                      const result = await send({
+                        action: "intake",
+                        request_id: intakeRequest,
+                        ...values(v),
+                      });
+                      if (result && typeof result.id === "string")
+                        setIntakeReceipt(result.id);
+                      return result;
+                    }}
+                  >
+                    <CustomerPicker
+                      customers={data.customers}
+                      fixture={fixture}
+                      verifiedOnly
+                    />
+                    <ItemFields />
+                  </Form>
+                )}
               </section>
             )}
             {staff && writer && page === "Imports & matching" && (
@@ -565,7 +629,9 @@ function ItemDetail({
 }) {
   const i = detail.item,
     [fileError, setFileError] = useState(""),
-    [uploading, setUploading] = useState(false);
+    [fileNotice, setFileNotice] = useState(""),
+    [uploading, setUploading] = useState(false),
+    uploadInFlight = useRef(false);
   const reversed = new Set(
     detail.settlements.flatMap((s) => (s.reverses_id ? [s.reverses_id] : [])),
   );
@@ -692,8 +758,12 @@ function ItemDetail({
               disabled={uploading}
               onChange={async (e) => {
                 const f = e.target.files?.[0];
-                if (!f) return;
+                e.target.value = "";
+                if (!f || uploadInFlight.current) return;
+                uploadInFlight.current = true;
                 setUploading(true);
+                setFileError("");
+                setFileNotice("");
                 try {
                   const r = await fetch(
                     `/api/private/cards/${i.card_id}/upload`,
@@ -707,17 +777,25 @@ function ItemDetail({
                     throw Error(
                       "Upload failed. Check file type, size and Storage configuration.",
                     );
-                  await reload();
-                  setFileError("");
+                  setFileNotice("Image saved in private storage.");
+                  try {
+                    await reload();
+                  } catch {
+                    setFileError(
+                      "The image was saved, but the updated record could not be loaded. Reload to view it. Do not upload it again.",
+                    );
+                  }
                 } catch (e) {
                   setFileError((e as Error).message);
                 } finally {
+                  uploadInFlight.current = false;
                   setUploading(false);
                 }
               }}
             />
           </label>
         ))}
+      {fileNotice && <p role="status">{fileNotice}</p>}
       {fileError && <p role="alert">{fileError}</p>}
       <h3>Recorded history</h3>
       <ol className="timeline">
