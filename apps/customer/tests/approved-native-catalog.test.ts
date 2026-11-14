@@ -4,40 +4,45 @@ import {
   approvedNativeProducts,
   approvedNativeScan,
   nativeRetailQuantity,
+  readNativeCatalog,
+  readNativeProduct,
 } from "../lib/server/mobile/approved-native-catalog";
 import { NORTHSIDE_NATIVE_SELECTION } from "../../../packages/customer-contracts/src/native-scan";
 import type { Query } from "../lib/server/storefront";
 
 function payload() {
   return {
-    nodes: NORTHSIDE_NATIVE_SELECTION.map((p, i) => ({
-      id: p.id,
-      handle: p.handle,
-      title:
-        i === 6 ? "2026 Upper Deck Golf Hobby Box" : `SYNTHETIC product ${i}`,
-      description: "",
-      productType: "Cards",
-      publishedAt: "2026-11-10T00:00:00Z",
-      availableForSale: true,
-      featuredImage: null,
-      priceRange: {
-        minVariantPrice: { amount: "219.95", currencyCode: "USD" },
-      },
-      variants: {
-        nodes: [
-          {
-            id: p.variantId,
-            title: "Default Title",
-            sku: i === 6 ? "92840090001065" : `SKU-${i}`,
-            barcode: p.barcode,
-            availableForSale: true,
-            currentlyNotInStock: false,
-            price: { amount: "219.95", currencyCode: "USD" },
-          },
-        ],
-        pageInfo: { hasNextPage: false, endCursor: null },
-      },
-    })),
+    products: {
+      nodes: NORTHSIDE_NATIVE_SELECTION.map((p, i) => ({
+        id: p.id,
+        handle: p.handle,
+        title:
+          i === 6 ? "2026 Upper Deck Golf Hobby Box" : `SYNTHETIC product ${i}`,
+        description: "",
+        productType: "Cards",
+        publishedAt: "2026-11-10T00:00:00Z",
+        availableForSale: true,
+        featuredImage: null,
+        priceRange: {
+          minVariantPrice: { amount: "219.95", currencyCode: "USD" },
+        },
+        variants: {
+          nodes: [
+            {
+              id: p.variantId,
+              title: "Default Title",
+              sku: i === 6 ? "92840090001065" : `SKU-${i}`,
+              barcode: p.barcode,
+              availableForSale: true,
+              currentlyNotInStock: false,
+              price: { amount: "219.95", currencyCode: "USD" },
+            },
+          ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      })),
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
   };
 }
 function query(data: ReturnType<typeof payload>): Query {
@@ -60,14 +65,15 @@ test("verified helmet and six Panini identities resolve through the unchanged ap
       assert.equal(r.product.id, p.id);
       assert.equal(r.product.selectedVariantId, p.variantId);
     }
-  data.nodes[7].variants.nodes[0].sku = h.barcode;
-  data.nodes[7].variants.nodes[0].barcode = "OTHER-HELMET-BARCODE";
+  data.products.nodes[7].variants.nodes[0].sku = h.barcode;
+  data.products.nodes[7].variants.nodes[0].barcode = "OTHER-HELMET-BARCODE";
   await assert.rejects(approvedNativeScan(h.barcode, "code128", query(data)), {
     code: "not_found",
   });
-  await assert.rejects(
-    approvedNativeScan("OTHER-HELMET-BARCODE", "code128", query(data)),
-    { code: "invalid_provider_data" },
+  assert.equal(
+    (await approvedNativeScan("OTHER-HELMET-BARCODE", "code128", query(data)))
+      .product.selectedVariantId,
+    h.variantId,
   );
 });
 test("helmet approval does not weaken Retail Floor, SKU, tracked inventory or product identity checks", async () => {
@@ -100,7 +106,7 @@ test("helmet approval does not weaken Retail Floor, SKU, tracked inventory or pr
     async <T>() =>
       structuredClone(value) as T;
   assert.equal(
-    await nativeRetailQuantity(h.variantId, "793397728021", q(state())),
+    await nativeRetailQuantity(h.variantId, "793397728021", h.id, q(state())),
     99,
   );
   for (const change of [
@@ -123,20 +129,20 @@ test("helmet approval does not weaken Retail Floor, SKU, tracked inventory or pr
     const s = state();
     change(s);
     await assert.rejects(
-      nativeRetailQuantity(h.variantId, "793397728021", q(s)),
+      nativeRetailQuantity(h.variantId, "793397728021", h.id, q(s)),
       { code: "invalid_provider_data" },
     );
   }
   const zero = state();
   zero.productVariant.inventoryItem.inventoryLevels.nodes[0].quantities[0].quantity = 0;
   assert.equal(
-    await nativeRetailQuantity(h.variantId, "793397728021", q(zero)),
+    await nativeRetailQuantity(h.variantId, "793397728021", h.id, q(zero)),
     0,
   );
 });
-test("a separate Golf barcode change cannot take down valid Prizm scans", async () => {
+test("fresh Shopify barcodes replace embedded examples without taking down other scans", async () => {
   const data = payload();
-  data.nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
+  data.products.nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
   const q = query(data);
   const result = await approvedNativeScan("746134151026", "code128", q);
   assert.equal(result.product.id, "gid://shopify/Product/16135959413105");
@@ -144,20 +150,21 @@ test("a separate Golf barcode change cannot take down valid Prizm scans", async 
     result.product.selectedVariantId,
     "gid://shopify/ProductVariant/68224325419377",
   );
-  assert.equal((await approvedNativeProducts(q)).length, 7);
+  assert.equal((await approvedNativeProducts(q)).length, 8);
   for (const code of [
     "CHANGED-GOLF",
-    `https://9i3hnb-jw.myshopify.com/products/${data.nodes[6].handle}`,
+    `https://9i3hnb-jw.myshopify.com/products/${data.products.nodes[6].handle}`,
   ])
-    await assert.rejects(approvedNativeScan(code, undefined, q), {
-      code: "invalid_provider_data",
-    });
+    assert.equal(
+      (await approvedNativeScan(code, undefined, q)).product.selectedVariantId,
+      NORTHSIDE_NATIVE_SELECTION[6].variantId,
+    );
 });
-test("quarantined live barcode collisions reject ambiguity and SKUs are not aliases", async () => {
+test("all public barcode collisions reject ambiguity and SKUs are not aliases", async () => {
   for (const field of ["barcode", "sku"] as const) {
     const data = payload();
-    data.nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
-    data.nodes[6].variants.nodes[0][field] = "746134151026";
+    data.products.nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
+    data.products.nodes[6].variants.nodes[0][field] = "746134151026";
     if (field === "barcode")
       await assert.rejects(
         approvedNativeScan("746134151026", undefined, query(data)),
@@ -216,25 +223,26 @@ test("all approved UPCs and exact shelf QRs resolve stable variant IDs", async (
 test("identity, publication, complete variants, price and availability validation remain enforced", async () => {
   for (const mutate of [
     (d: ReturnType<typeof payload>) => {
-      d.nodes[5].id = "gid://shopify/Product/999";
+      d.products.nodes[5].id = d.products.nodes[0].id;
     },
     (d: ReturnType<typeof payload>) => {
-      d.nodes[5].handle = "wrong-handle";
+      d.products.nodes[5].handle = "INVALID HANDLE";
     },
     (d: ReturnType<typeof payload>) => {
-      d.nodes[5].variants.nodes[0].id = "gid://shopify/ProductVariant/999";
+      d.products.nodes[5].variants.nodes[0].id =
+        d.products.nodes[0].variants.nodes[0].id;
     },
     (d: ReturnType<typeof payload>) => {
-      d.nodes[5].variants.pageInfo.hasNextPage = true;
+      d.products.nodes[5].variants.pageInfo.hasNextPage = true;
     },
     (d: ReturnType<typeof payload>) => {
-      d.nodes[5].publishedAt = "";
+      d.products.nodes[5].publishedAt = "";
     },
     (d: ReturnType<typeof payload>) => {
-      d.nodes[5].variants.nodes[0].price.currencyCode = "CAD";
+      d.products.nodes[5].variants.nodes[0].price.currencyCode = "CAD";
     },
     (d: ReturnType<typeof payload>) => {
-      d.nodes[5].variants.nodes[0].price.amount = "NaN";
+      d.products.nodes[5].variants.nodes[0].price.amount = "NaN";
     },
   ])
     await assert.rejects(
@@ -251,10 +259,141 @@ test("identity, publication, complete variants, price and availability validatio
       ),
     );
   const data = payload();
-  data.nodes[5].variants.nodes[0].availableForSale = false;
+  data.products.nodes[5].variants.nodes[0].availableForSale = false;
   assert.equal(
     (await approvedNativeScan("746134151026", undefined, query(data))).product
       .variants.nodes[0].availability.state,
     "unavailable",
   );
+});
+
+test("an additional published product resolves without editing the compiled historical selection", async () => {
+  const data = payload();
+  const extra = structuredClone(data.products.nodes[0]);
+  extra.id = "gid://shopify/Product/777777";
+  extra.handle = "additional-public-product";
+  extra.variants.nodes[0].id = "gid://shopify/ProductVariant/888888";
+  extra.variants.nodes[0].barcode = "ADDED-BARCODE";
+  data.products.nodes.push(extra);
+  const q = query(data),
+    result = await approvedNativeScan("ADDED-BARCODE", "code128", q);
+  assert.equal(result.product.id, extra.id);
+  assert.equal(result.product.selectedVariantId, extra.variants.nodes[0].id);
+  assert.equal(NORTHSIDE_NATIVE_SELECTION.length, 8);
+  assert.equal((await readNativeCatalog({}, q)).products.length, 9);
+  assert.equal(
+    (await readNativeProduct(extra.handle, undefined, q)).product.id,
+    extra.id,
+  );
+});
+test("traversal includes later product pages and unavailable normalized duplicates", async () => {
+  const data = payload(),
+    duplicate = structuredClone(data.products.nodes[0]);
+  duplicate.id = "gid://shopify/Product/777777";
+  duplicate.handle = "later-product";
+  duplicate.availableForSale = false;
+  duplicate.variants.nodes[0].id = "gid://shopify/ProductVariant/888888";
+  duplicate.variants.nodes[0].availableForSale = false;
+  duplicate.variants.nodes[0].barcode =
+    "0" + NORTHSIDE_NATIVE_SELECTION[0].barcode;
+  let calls = 0;
+  const q: Query = async <T>(_doc: string, variables: object) => {
+    calls++;
+    return (
+      (variables as { after?: string }).after
+        ? {
+            products: {
+              nodes: [duplicate],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          }
+        : {
+            products: {
+              nodes: data.products.nodes,
+              pageInfo: { hasNextPage: true, endCursor: "second-page" },
+            },
+          }
+    ) as T;
+  };
+  await assert.rejects(
+    approvedNativeScan(NORTHSIDE_NATIVE_SELECTION[0].barcode, "upc_a", q),
+    { code: "ambiguous_scan" },
+  );
+  assert.equal(calls, 2);
+});
+test("variant continuation participates in matching and QR cannot choose one from a partial single-variant page", async () => {
+  const data = payload(),
+    first = data.products.nodes[0];
+  first.variants.pageInfo = {
+    hasNextPage: true,
+    endCursor: "variant-page-2" as never,
+  };
+  const next = structuredClone(first);
+  next.variants.pageInfo = { hasNextPage: false, endCursor: null };
+  next.variants.nodes[0].id = "gid://shopify/ProductVariant/888888";
+  next.variants.nodes[0].barcode = "NEXT-VARIANT";
+  const q: Query = async <T>(doc: string) =>
+    structuredClone(
+      doc.includes("NativePublicScanVariants") ? { node: next } : data,
+    ) as T;
+  assert.equal(
+    (await approvedNativeScan("NEXT-VARIANT", "code128", q)).product
+      .selectedVariantId,
+    next.variants.nodes[0].id,
+  );
+  await assert.rejects(
+    approvedNativeScan(
+      `https://9i3hnb-jw.myshopify.com/products/${first.handle}`,
+      "qr",
+      q,
+    ),
+    { code: "not_found" },
+  );
+});
+test("incomplete/repeated product or variant pagination fails closed instead of declaring a unique scan", async () => {
+  for (const variant of [false, true]) {
+    const data = payload();
+    if (variant)
+      data.products.nodes[0].variants.pageInfo = {
+        hasNextPage: true,
+        endCursor: "repeat" as never,
+      };
+    else
+      data.products.pageInfo = {
+        hasNextPage: true,
+        endCursor: "repeat" as never,
+      };
+    const q: Query = async <T>(doc: string) =>
+      structuredClone(
+        doc.includes("NativePublicScanVariants")
+          ? { node: data.products.nodes[0] }
+          : data,
+      ) as T;
+    await assert.rejects(
+      approvedNativeScan(NORTHSIDE_NATIVE_SELECTION[0].barcode, "upc_a", q),
+      { code: "invalid_provider_data" },
+    );
+  }
+});
+test("catalog pagination uses current public identities and retains filters", async () => {
+  const data = payload();
+  for (let n = 0; n < 7; n++) {
+    const p = structuredClone(data.products.nodes[0]);
+    p.id = `gid://shopify/Product/${700000 + n}`;
+    p.handle = `extra-${n}`;
+    p.variants.nodes[0].id = `gid://shopify/ProductVariant/${800000 + n}`;
+    p.variants.nodes[0].barcode = `EXTRA-${n}`;
+    data.products.nodes.push(p);
+  }
+  const q = query(data),
+    first = await readNativeCatalog({}, q);
+  assert.equal(first.products.length, 12);
+  assert.equal(first.pageInfo.hasNextPage, true);
+  const second = await readNativeCatalog(
+    { after: first.pageInfo.endCursor! },
+    q,
+  );
+  assert.equal(second.products.length, 3);
+  assert.equal(second.pageInfo.hasNextPage, false);
+  await assert.rejects(readNativeCatalog({ after: "foreign-cursor" }, q));
 });

@@ -30,22 +30,20 @@ import {
   approvedNativeScan,
   nativeRetailQuantity,
 } from "./approved-native-catalog";
-import { NORTHSIDE_NATIVE_SELECTION } from "../../../../../packages/customer-contracts/src/native-scan";
 
 function assertScope(cart: Cart) {
   const seen = new Set<string>();
-  if (
-    cart.lines.pageInfo.hasNextPage ||
-    cart.lines.nodes.length > NORTHSIDE_NATIVE_SELECTION.length
-  )
+  if (cart.lines.pageInfo.hasNextPage || cart.lines.nodes.length > 99)
     fail("cart_line_limit");
   for (const line of cart.lines.nodes) {
-    const expected = NORTHSIDE_NATIVE_SELECTION.find(
-      (p) => p.variantId === line.merchandise.id,
-    );
     if (
-      !expected ||
-      expected.handle !== line.merchandise.product.handle ||
+      !/^gid:\/\/shopify\/ProductVariant\/[1-9][0-9]{0,29}$/.test(
+        line.merchandise.id,
+      ) ||
+      !/^gid:\/\/shopify\/Product\/[1-9][0-9]{0,29}$/.test(
+        line.merchandise.product.id ?? "",
+      ) ||
+      !/^[a-z0-9-]{1,150}$/.test(line.merchandise.product.handle) ||
       seen.has(line.merchandise.id) ||
       !Number.isInteger(line.quantity) ||
       line.quantity < 1 ||
@@ -90,7 +88,7 @@ export function nativeCartPorts(query: Query = storefront()): NativeCartPorts {
   const policy = {
     assertCart: assertScope,
     assertVariant: (id: string) => {
-      if (!NORTHSIDE_NATIVE_SELECTION.some((p) => p.variantId === id))
+      if (!/^gid:\/\/shopify\/ProductVariant\/[1-9][0-9]{0,29}$/.test(id))
         fail("missing_or_unverified_variant");
     },
   };
@@ -181,12 +179,16 @@ export class NativeStorefrontCartService {
         const variant = product?.variants.nodes.find(
           (v) => v.id === line.merchandise.id,
         );
+        if (
+          product &&
+          (product.id !== line.merchandise.product.id ||
+            product.handle !== line.merchandise.product.handle)
+        )
+          fail("missing_or_unverified_variant");
         if (!product || !variant)
           return {
             variantId: line.merchandise.id,
-            productId: NORTHSIDE_NATIVE_SELECTION.find(
-              (p) => p.variantId === line.merchandise.id,
-            )!.id,
+            productId: line.merchandise.product.id!,
             title: "Item no longer available",
             variantTitle: "Unavailable variant",
             image: null,
@@ -199,6 +201,7 @@ export class NativeStorefrontCartService {
         const retail = await this.ports.retail(
           variant.id,
           variant.identifiers.sku,
+          product.id,
         );
         return {
           variantId: variant.id,
@@ -336,6 +339,15 @@ export class NativeStorefrontCartService {
         fail("scanned_variant_mismatch");
       if (variant.price.amountCents !== price)
         fail("scan_price_changed_review_required");
+      if (
+        cart.lines.nodes.some(
+          (line) =>
+            line.merchandise.id === variantId &&
+            (line.merchandise.product.id !== scan.product.id ||
+              line.merchandise.product.handle !== scan.product.handle),
+        )
+      )
+        fail("missing_or_unverified_variant");
       const quantity =
         cart.lines.nodes
           .filter((l) => l.merchandise.id === variantId)
@@ -345,7 +357,11 @@ export class NativeStorefrontCartService {
         !scan.product.availableForSale ||
         !variant.availability.availableForSale ||
         variant.availability.currentlyNotInStock ||
-        (await this.ports.retail(variantId, variant.identifiers.sku)) < quantity
+        (await this.ports.retail(
+          variantId,
+          variant.identifiers.sku,
+          scan.product.id,
+        )) < quantity
       )
         fail("quantity_unavailable");
       return this.ports.add(cart.id, variantId, 1, price, sent);
@@ -373,10 +389,15 @@ export class NativeStorefrontCartService {
         const variant = product?.variants.nodes.find((v) => v.id === variantId);
         if (
           !product?.availableForSale ||
+          product.id !== lines[0].merchandise.product.id ||
+          product.handle !== lines[0].merchandise.product.handle ||
           !variant?.availability.availableForSale ||
           variant.availability.currentlyNotInStock ||
-          (await this.ports.retail(variantId, variant.identifiers.sku)) <
-            quantity
+          (await this.ports.retail(
+            variantId,
+            variant.identifiers.sku,
+            product.id,
+          )) < quantity
         )
           fail("quantity_unavailable");
       }

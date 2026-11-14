@@ -124,12 +124,13 @@ function project(
   return { product: parsed.data, verified: v.barcode === expected.barcode };
 }
 
-/** Tokenless public product reads; no accounts, scan lookup, cart or checkout. */
+/** Standalone tokenless preview, or fresh reads through the configured native backend. */
 export class PublicCatalogApi implements BrowseApi {
   constructor(
     private readonly request: typeof fetch = fetch,
     private readonly timeoutMs = 12000,
-    private readonly scanFallback?: Pick<MobileApi, "scan">,
+    private readonly scanFallback?: Pick<MobileApi, "scan"> &
+      Partial<Pick<MobileApi, "catalog" | "product">>,
   ) {}
 
   private async read(
@@ -225,6 +226,8 @@ export class PublicCatalogApi implements BrowseApi {
     };
   }
   async catalog(input: CatalogInput = {}, signal?: AbortSignal) {
+    if (this.scanFallback?.catalog)
+      return this.scanFallback.catalog(input, signal);
     const parsed = catalogInputSchema.safeParse(input);
     if (!parsed.success || input.after)
       throw new MobileFailure("invalid_request");
@@ -263,6 +266,8 @@ export class PublicCatalogApi implements BrowseApi {
     });
   }
   async product(handle: string, after?: string, signal?: AbortSignal) {
+    if (this.scanFallback?.product)
+      return this.scanFallback.product(handle, after, signal);
     const selected = PREVIEW_CATALOG_SELECTION.find((p) => p.handle === handle);
     if (!selected || after) throw new MobileFailure("not_found");
     const records = await this.read([selected], signal);
@@ -276,6 +281,8 @@ export class PublicCatalogApi implements BrowseApi {
     });
   }
   scan: BrowseApi["scan"] = async (code, signal, format, trace) => {
+    if (this.scanFallback)
+      return this.scanFallback.scan(code, signal, format, trace);
     const path = "public-shopify-variant-barcode" as const;
     emitScanTrace(trace, {
       path,
@@ -370,12 +377,6 @@ export class PublicCatalogApi implements BrowseApi {
           throw new MobileFailure("product_unavailable");
         }
       }
-      if (
-        error instanceof Error &&
-        error.message === "unsupported_qr" &&
-        this.scanFallback
-      )
-        return this.scanFallback.scan(code, signal, format, trace);
       throw new MobileFailure(
         error instanceof Error &&
           [

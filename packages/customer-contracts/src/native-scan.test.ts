@@ -48,7 +48,7 @@ function product(p = NORTHSIDE_NATIVE_SELECTION[0]): CatalogProductV1 {
   };
 }
 describe("real-label scanner identity boundary", () => {
-  it("keeps eight explicitly approved unique identities and excludes Optic", () => {
+  it("preserves eight historical regression identities without an Optic example", () => {
     expect(NORTHSIDE_NATIVE_SELECTION).toHaveLength(8);
     expect(new Set(NORTHSIDE_NATIVE_SELECTION.map((p) => p.id)).size).toBe(8);
     expect(
@@ -359,4 +359,21 @@ describe("real-label scanner identity boundary", () => {
       "invalid_request",
     );
   });
+});
+
+it("a product QR without variant cannot select one variant from a partial page", () => {
+  const p = product(),
+    url = `https://9i3hnb-jw.myshopify.com/products/${p.handle}`;
+  p.variants.pageInfo = { hasNextPage: true, endCursor: "next-variant-page" };
+  expect(() => matchCatalogScan([p], url, "qr")).toThrow("not_found");
+  p.variants.pageInfo = { hasNextPage: false, endCursor: null };
+  p.variants.after = "previous-page";
+  expect(() => matchCatalogScan([p], url, "qr")).toThrow("not_found");
+  expect(
+    matchCatalogScan(
+      [p],
+      `${url}?variant=${p.variants.nodes[0].id.split("/").at(-1)}`,
+      "qr",
+    ).selectedVariantId,
+  ).toBe(p.variants.nodes[0].id);
 });

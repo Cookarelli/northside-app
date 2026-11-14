@@ -43,7 +43,12 @@ function query(data: ReturnType<typeof payload>): Query {
 }
 test("retail proof uses only the approved Floor location, never summed backstock", async () => {
   assert.equal(
-    await nativeRetailQuantity(p.variantId, "SYNTHETIC-SKU", query(payload())),
+    await nativeRetailQuantity(
+      p.variantId,
+      "SYNTHETIC-SKU",
+      p.id,
+      query(payload()),
+    ),
     2,
   );
 });
@@ -70,8 +75,25 @@ test("retail proof rejects truncated levels, wrong product/SKU, inactive Floor a
     const x = payload();
     mutate(x);
     await assert.rejects(
-      nativeRetailQuantity(p.variantId, "SYNTHETIC-SKU", query(x)),
+      nativeRetailQuantity(p.variantId, "SYNTHETIC-SKU", p.id, query(x)),
       /invalid_provider_data/,
     );
   }
+});
+
+test("dynamic Retail Floor proof accepts a newly public identity but rejects draft or mismatched parent", async () => {
+  const data = payload(),
+    id = "gid://shopify/Product/777777",
+    variant = "gid://shopify/ProductVariant/888888";
+  data.productVariant.id = variant;
+  data.productVariant.product.id = id;
+  assert.equal(
+    await nativeRetailQuantity(variant, "SYNTHETIC-SKU", id, query(data)),
+    2,
+  );
+  data.productVariant.product.status = "DRAFT";
+  await assert.rejects(
+    nativeRetailQuantity(variant, "SYNTHETIC-SKU", id, query(data)),
+    /invalid_provider_data/,
+  );
 });

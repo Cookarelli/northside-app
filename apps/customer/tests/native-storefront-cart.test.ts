@@ -23,7 +23,8 @@ test.after(() => {
 });
 const identity = NORTHSIDE_NATIVE_SELECTION[0],
   owner = { tenant: "native-test", customerId: null as string | null };
-function setup(injected?: Store) {
+function setup(injected?: Store, selectedIdentity = identity) {
+  const identity = selectedIdentity;
   const store = injected ?? new MemoryStore();
   let now = Date.now(),
     stock = 5,
@@ -110,7 +111,11 @@ function setup(injected?: Store) {
                   currentlyNotInStock: false,
                   quantityAvailable: 100,
                   price: { amount, currencyCode: "USD" },
-                  product: { title: product().title, handle: identity.handle },
+                  product: {
+                    id: identity.id,
+                    title: product().title,
+                    handle: identity.handle,
+                  },
                 },
                 cost: {
                   totalAmount: {
@@ -614,4 +619,41 @@ test("encrypted saved cart survives a real SQLite store restart", async () => {
     reopened.close();
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("native cart accepts a newly public variant absent from the historical source selection and proves its exact product at Floor", async () => {
+  const extra = {
+    id: "gid://shopify/Product/777777",
+    variantId: "gid://shopify/ProductVariant/888888",
+    barcode: "NEW-PUBLIC-BARCODE",
+    handle: "new-public-product",
+  } as const;
+  const h = setup(undefined, extra),
+    proofCalls: unknown[][] = [];
+  h.ports.retail = async (...args) => {
+    proofCalls.push(args);
+    return 4;
+  };
+  const service = h.service(),
+    first = await service.start(owner);
+  const added = await service.add(
+    first.token,
+    owner,
+    first.cart.version,
+    extra.barcode,
+    extra.variantId,
+    6995,
+  );
+  assert.equal(added.lines[0].productId, extra.id);
+  assert.equal(added.lines[0].variantId, extra.variantId);
+  assert.equal(added.lines[0].availability, "available");
+  assert.ok(
+    proofCalls.every(
+      (args) => args[0] === extra.variantId && args[2] === extra.id,
+    ),
+  );
+  assert.equal(
+    NORTHSIDE_NATIVE_SELECTION.some((p) => p.id === extra.id),
+    false,
+  );
 });

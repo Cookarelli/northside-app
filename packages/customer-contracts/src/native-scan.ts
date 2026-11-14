@@ -1,6 +1,6 @@
 import type { CatalogProductV1 } from "./catalog";
 
-/** Explicit approved preview identities; variant barcodes verified in Shopify, never inferred from SKUs. */
+/** Historical regression identities and the legacy /m QR target, not native catalog eligibility. */
 export const NORTHSIDE_NATIVE_SELECTION = Object.freeze(
   [
     [
@@ -195,7 +195,10 @@ export function matchCatalogScan(
     ))
       for (const v of product.variants.nodes)
         if (
-          (!selected && product.variants.nodes.length === 1) ||
+          (!selected &&
+            product.variants.nodes.length === 1 &&
+            product.variants.after === null &&
+            !product.variants.pageInfo.hasNextPage) ||
           v.id === `gid://shopify/ProductVariant/${selected}`
         )
           matched.push({ product, variantId: v.id });

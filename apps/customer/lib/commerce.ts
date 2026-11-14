@@ -23,7 +23,9 @@ export type Merchandise = {
 export type CartLine = {
   id: string;
   quantity: number;
-  merchandise: Variant & { product: { title: string; handle: string } };
+  merchandise: Variant & {
+    product: { id?: string; title: string; handle: string };
+  };
   cost: { totalAmount: Money };
 };
 // Shopify cart IDs (including their secret key) belong only in server storage.

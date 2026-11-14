@@ -182,7 +182,7 @@ describe("native live scanning", () => {
       request.mock.calls.every(([url]) => url === PUBLIC_CATALOG_ENDPOINT),
     ).toBe(true);
   });
-  it("only delegates opaque QR lookup to the fixed backend port, never to the scanned URL", async () => {
+  it("delegates configured QR lookup directly to the fixed backend port, never to the scanned URL", async () => {
     const request = jest.fn<typeof fetch>(
       async () =>
         new Response(
@@ -210,7 +210,7 @@ describe("native live scanning", () => {
       ),
     ).rejects.toThrow("registry unavailable");
     expect(fallback.scan).toHaveBeenCalledTimes(1);
-    expect(request.mock.calls[0][0]).toBe(PUBLIC_CATALOG_ENDPOINT);
+    expect(request).not.toHaveBeenCalled();
   });
 });
 describe("persistent opaque native cart", () => {

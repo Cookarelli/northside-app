@@ -274,15 +274,10 @@ describe("public Shopify preview catalog", () => {
     const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));
     nodes[6].variants.nodes[0].barcode = "CHANGED-GOLF";
     nodes[6].variants.nodes[0].sku = "92840090001065";
-    const fallback = { scan: jest.fn<MobileApi["scan"]>() };
-    const api = new PublicCatalogApi(
-      async (_url, init) => {
-        const ids = JSON.parse(String(init?.body)).variables.ids as string[];
-        return response(ids.map((id) => nodes.find((p) => p.id === id)));
-      },
-      undefined,
-      fallback,
-    );
+    const api = new PublicCatalogApi(async (_url, init) => {
+      const ids = JSON.parse(String(init?.body)).variables.ids as string[];
+      return response(ids.map((id) => nodes.find((p) => p.id === id)));
+    }, undefined);
     expect(
       (await api.scan("746134151026", undefined, "code128")).product
         .selectedVariantId,
@@ -298,7 +293,6 @@ describe("public Shopify preview catalog", () => {
       `https://9i3hnb-jw.myshopify.com/products/${nodes[6].handle}`,
     ])
       await expect(api.scan(code)).rejects.toThrow("invalid_response");
-    expect(fallback.scan).not.toHaveBeenCalled();
   });
   it.each(["barcode", "sku"] as const)(
     "retains ambiguous %s claims from a quarantined record",
@@ -592,4 +586,59 @@ describe("live catalog preview configuration", () => {
       );
     },
   );
+});
+
+describe("server-managed native public catalog", () => {
+  it("delegates every scan, catalog and product read to the configured fixed backend without fetching the compiled IDs", async () => {
+    const request = jest.fn<typeof fetch>();
+    const local = new PublicCatalogApi(async () =>
+      response(PREVIEW_CATALOG_SELECTION.map((_, i) => product(i))),
+    );
+    const scan = await local.scan("793397728021", undefined, "upc_a");
+    const catalog = await local.catalog();
+    const backend = {
+      scan: jest.fn<MobileApi["scan"]>(async () => scan),
+      catalog: jest.fn<MobileApi["catalog"]>(async () => catalog),
+      product: jest.fn<MobileApi["product"]>(async () => scan),
+    };
+    const api = new PublicCatalogApi(request, 12000, backend);
+    for (const code of [
+      "793397728021",
+      "NEW-PUBLISHED-BARCODE",
+      "https://9i3hnb-jw.myshopify.com/m",
+    ])
+      expect(await api.scan(code, undefined, "code128")).toBe(scan);
+    expect(await api.catalog({ q: "Topps" })).toBe(catalog);
+    expect(await api.product("new-published-product")).toBe(scan);
+    expect(request).not.toHaveBeenCalled();
+    expect(backend.scan).toHaveBeenCalledTimes(3);
+    expect(backend.catalog).toHaveBeenCalledWith({ q: "Topps" }, undefined);
+    expect(backend.product).toHaveBeenCalledWith(
+      "new-published-product",
+      undefined,
+      undefined,
+    );
+  });
+  it("does not fall back to a stale embedded catalog after a backend ambiguity, unknown or outage", async () => {
+    for (const error of [
+      "ambiguous_scan",
+      "not_found",
+      "service_unavailable",
+    ]) {
+      const request = jest.fn<typeof fetch>(),
+        backend = {
+          scan: jest.fn<MobileApi["scan"]>(async () => {
+            throw Error(error);
+          }),
+        };
+      await expect(
+        new PublicCatalogApi(request, 12000, backend).scan(
+          "793397728021",
+          undefined,
+          "upc_a",
+        ),
+      ).rejects.toThrow(error);
+      expect(request).not.toHaveBeenCalled();
+    }
+  });
 });

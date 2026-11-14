@@ -5,7 +5,11 @@ import {
   readScannedProduct,
 } from "./catalog";
 import { mobileShoppingHandler } from "./shopping";
-import { approvedNativeScan } from "./approved-native-catalog";
+import {
+  approvedNativeScan,
+  readNativeCatalog,
+  readNativeProduct,
+} from "./approved-native-catalog";
 import { nativeScanCartGate, nativeScanCartSelected } from "./scan-cart-gate";
 import {
   readNativeTracking,
@@ -205,11 +209,15 @@ export async function mobileHandler(request: Request) {
       const keys = [...url.searchParams.keys()];
       if (new Set(keys).size !== keys.length)
         throw new AccessError(400, "invalid_request");
-      return successMvp(
-        await readCatalog(
-          input(catalogInputSchema, Object.fromEntries(url.searchParams)),
-        ),
+      const catalogInput = input(
+        catalogInputSchema,
+        Object.fromEntries(url.searchParams),
       );
+      if (nativeScanCartSelected()) {
+        nativeScanCartGate();
+        return successMvp(await readNativeCatalog(catalogInput));
+      }
+      return successMvp(await readCatalog(catalogInput));
     }
     const productHandle = path.match(/^catalog\/([a-z0-9-]{1,150})$/);
     if (request.method === "GET" && productHandle) {
@@ -222,6 +230,12 @@ export async function mobileHandler(request: Request) {
         catalogInputSchema,
         Object.fromEntries(url.searchParams),
       );
+      if (nativeScanCartSelected()) {
+        nativeScanCartGate();
+        return successMvp(
+          await readNativeProduct(productHandle[1], query.after),
+        );
+      }
       return successMvp(await readProduct(productHandle[1], query.after));
     }
     if (request.method === "POST") {

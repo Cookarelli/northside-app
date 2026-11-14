@@ -26,7 +26,7 @@ const PAGE = "pageInfo { hasNextPage endCursor }";
 const MONEY = "amount currencyCode";
 const VARIANT = `id title availableForSale quantityAvailable currentlyNotInStock price { ${MONEY} }`;
 const PRODUCT = `id handle title description productType availableForSale featuredImage { url altText } priceRange { minVariantPrice { ${MONEY} } } variants(first: 1) { nodes { ${VARIANT} } ${PAGE} }`;
-const CART = `id totalQuantity discountCodes { code applicable } cost { subtotalAmount { ${MONEY} } totalAmount { ${MONEY} } totalAmountEstimated } lines(first: 100) { ${PAGE} nodes { id quantity cost { totalAmount { ${MONEY} } } merchandise { ... on ProductVariant { ${VARIANT} product { title handle } } } } }`;
+const CART = `id totalQuantity discountCodes { code applicable } cost { subtotalAmount { ${MONEY} } totalAmount { ${MONEY} } totalAmountEstimated } lines(first: 100) { ${PAGE} nodes { id quantity cost { totalAmount { ${MONEY} } } merchandise { ... on ProductVariant { ${VARIANT} product { id title handle } } } } }`;
 export function storefront(ip?: string): Query {
   const { shop, version } = commerceConfig();
   const token = required("SHOPIFY_STOREFRONT_PRIVATE_TOKEN");

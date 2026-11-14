@@ -243,8 +243,12 @@ export function formatScanDiagnostic(
       catalog: {
         shop: CATALOG_SHOP,
         apiVersion: CATALOG_SHOPIFY_API_VERSION,
-        scope: "approved-preview-products",
-        configuredProductCount: NORTHSIDE_NATIVE_SELECTION.length,
+        scope: app.commerceEndpoint
+          ? "server-managed-storefront-publication"
+          : "approved-preview-products",
+        configuredProductCount: app.commerceEndpoint
+          ? null
+          : NORTHSIDE_NATIVE_SELECTION.length,
       },
       note: "Last recorded attempt retained in memory until another lookup, identity change, Clear or app restart. No camera frame is saved. Native build and configured JS build are separate. OTA runtime is not installed; no runtime update ID is available. Product barcodes only.",
     },
