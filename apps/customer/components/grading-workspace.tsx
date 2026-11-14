@@ -6,6 +6,7 @@ import { GradingQuoteEditor } from "./grading-quote-editor";
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
   type FormEvent,
@@ -61,15 +62,22 @@ function Form({
   submit: string;
   onSubmit: (data: Record<string, string>) => Promise<unknown>;
 }) {
+  const submitting = useRef(false);
   return (
     <form
       className="grading-form"
       onSubmit={async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (submitting.current) return;
+        submitting.current = true;
         const form = e.currentTarget;
-        await onSubmit(
-          Object.fromEntries(new FormData(form)) as Record<string, string>,
-        );
+        try {
+          await onSubmit(
+            Object.fromEntries(new FormData(form)) as Record<string, string>,
+          );
+        } finally {
+          submitting.current = false;
+        }
       }}
     >
       {children}
@@ -177,7 +185,10 @@ export function GradingWorkspace({
       setError((e as Error).message);
     }
   };
+  const saving = useRef(false);
   const send: Send = async (body) => {
+    if (saving.current) return undefined;
+    saving.current = true;
     setBusy(true);
     setError("");
     setMessage("");
@@ -190,14 +201,27 @@ export function GradingWorkspace({
       const v = await r.json();
       if (!r.ok)
         throw Error(String(v.error || "Unable to save").replaceAll("_", " "));
-      setData(await get());
-      if (detail) setDetail(await get("card=" + detail.card.card_id));
-      setMessage("Saved" + (fixture ? " to this local sample database." : "."));
+      const reference =
+        typeof v.case_id === "string" ? ` Intake reference ${v.case_id}.` : "";
+      setMessage(
+        "Saved" +
+          (fixture ? " to this local sample database." : ".") +
+          reference,
+      );
+      try {
+        setData(await get());
+        if (detail) setDetail(await get("card=" + detail.card.card_id));
+      } catch {
+        setError(
+          "Your save is confirmed, but the records could not refresh. Keep the saved reference and reload the grading desk; do not create another intake to refresh it.",
+        );
+      }
       return v;
     } catch (e) {
       setError((e as Error).message);
       return undefined;
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
@@ -489,6 +513,9 @@ function Intake({
       <section className="panel">
         <h2>Cards received and saved</h2>
         <p>
+          Intake reference: <code>{savedCase}</code>
+        </p>
+        <p>
           Next, photograph and examine each physical card. An upload failure
           will not erase these records or repeat intake.
         </p>
@@ -511,6 +538,13 @@ function Intake({
               </Link>
             </p>
           ))}
+        <button
+          type="button"
+          className="plain"
+          onClick={() => window.location.reload()}
+        >
+          Reload saved records
+        </button>
         <button
           type="button"
           className="plain"

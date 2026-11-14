@@ -11,7 +11,24 @@ export default function Page() {
         </p>
       </div>
       <section className="panel">
-        <Link className="button" prefetch={false} href="/services/request">Start a service request or inquiry</Link>
+        <h2>Start with a grading request</h2>
+        <p>
+          Tell Northside about your cards and select a configured service or
+          request staff review. Keep the saved reference to follow staff review
+          and customer-visible status in My Cards.
+        </p>
+        <Link
+          className="button"
+          prefetch={false}
+          href="/services/request?service=grading"
+        >
+          Start a grading request or inquiry
+        </Link>
+        <p>
+          A request does not confirm physical receipt, take payment or submit
+          cards to a grader. Wait for Northside’s receiving instructions before
+          sending cards.
+        </p>
         <h2>Already dropped off cards?</h2>
         <p>
           Open My Cards to review the cards linked to your Northside Shopify
