@@ -6,12 +6,17 @@ const host =
   "northside-customer-pilot-native-api-steves-projects-e37a4ef4.vercel.app";
 const preview = profiles.build.preview;
 const rc = profiles.build["internal-rc"];
-const source = { ...preview.env, ...preview.ios.env, ...rc.ios.env };
+const source = { ...rc.env, ...rc.ios.env };
 const built = { ...source, EAS_BUILD: "true", EAS_BUILD_PLATFORM: "ios" };
 
 describe("integrated internal iOS release candidate", () => {
   it("keeps existing preview distinct and resolves inherited RC settings into build11 and the exact native target", () => {
-    expect(rc.extends).toBe("preview");
+    expect(rc.extends).toBe("base");
+    expect(rc.distribution).toBe("internal");
+    expect(rc.environment).toBe("preview");
+    expect(rc.ios.simulator).toBe(false);
+    expect(rc.ios.developmentClient).toBe(false);
+    expect("MOBILE_PREVIEW_COMMERCE_API_ORIGIN" in source).toBe(false);
     expect(preview.distribution).toBe("internal");
     expect(preview.ios.simulator).toBe(false);
     expect(preview.ios.developmentClient).toBe(false);

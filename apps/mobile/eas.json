@@ -68,13 +68,26 @@
       }
     },
     "internal-rc": {
-      "extends": "preview",
+      "extends": "base",
+      "distribution": "internal",
+      "environment": "preview",
+      "env": {
+        "MOBILE_APP_VARIANT": "preview"
+      },
       "ios": {
+        "simulator": false,
+        "developmentClient": false,
         "env": {
+          "MOBILE_IOS_PREVIEW_IDENTIFIERS_APPROVED": "true",
+          "MOBILE_PREVIEW_IOS_BUNDLE_ID": "com.northsidecollectibles.customer.preview",
+          "MOBILE_PREVIEW_APPLE_TEAM_ID": "NF42JBZCBW",
+          "MOBILE_PREVIEW_SCHEME": "northside-collectibles-preview",
+          "MOBILE_EXPO_OWNER": "northside-collectibles",
+          "MOBILE_EAS_PROJECT_ID": "ecfde92e-a01e-4158-b0ce-13908afa39ab",
+          "MOBILE_SCAN_DIAGNOSTICS": "true",
           "MOBILE_RELEASE_CANDIDATE": "true",
           "MOBILE_PUBLIC_CATALOG_PREVIEW": "false",
           "MOBILE_NATIVE_SCAN_CART": "false",
-          "MOBILE_PREVIEW_COMMERCE_API_ORIGIN": "",
           "MOBILE_PREVIEW_API_ORIGIN": "https://northside-customer-pilot-native-api-steves-projects-e37a4ef4.vercel.app",
           "MOBILE_IOS_BUILD_NUMBER": "11"
         }

@@ -12,16 +12,23 @@ try {
   )
     throw new Error("Use internal-rc only with preview ios.");
   const eas = JSON.parse(readFileSync(join(process.cwd(), "eas.json"), "utf8"));
+  const profileEnvironment = (
+    name: string,
+    seen = new Set<string>(),
+  ): Record<string, string> => {
+    const selected = eas.build[name];
+    if (!selected || seen.has(name))
+      throw new Error("Invalid build profile inheritance.");
+    seen.add(name);
+    return {
+      ...(selected.extends ? profileEnvironment(selected.extends, seen) : {}),
+      ...selected.env,
+      ...selected.ios?.env,
+    };
+  };
   const iosPreviewEnv: Record<string, string> =
     variant === "preview" && platform === "ios"
-      ? {
-          ...eas.build.base.env,
-          ...eas.build.preview.env,
-          ...eas.build.preview.ios.env,
-          ...(profile === "internal-rc"
-            ? { ...eas.build[profile].env, ...eas.build[profile].ios.env }
-            : {}),
-        }
+      ? profileEnvironment(profile)
       : {};
   const config = createAppConfig({
     ...process.env,
