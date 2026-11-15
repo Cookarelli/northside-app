@@ -104,3 +104,22 @@ Coordinate a separately approved staging deployment policy for the selected orig
 Tests use synthetic provider tokens and isolated local PGlite. Live Shopify OAuth,
 provider refresh, two-account device switching and real owned-order retrieval are
 pending. Do not advance another package until those acceptance results pass.
+
+NOVEMBER 14 INTERNAL QA WINDOW
+The requesting operator explicitly authorized a maximum 24-hour internal-QA
+exception for possible OAuth query metadata in private Vercel project logs.
+This does not establish log exclusion or authorize production/store promotion.
+The deployed staging opt-in now also requires canonical UTC ISO timestamps:
+NORTHSIDE_MOBILE_QA_APPROVED_AT
+NORTHSIDE_MOBILE_QA_EXPIRES_AT
+The interval must be positive and at most 24 hours. Both the native-host proxy
+and native auth/session configuration evaluate the clock on each call; private
+native endpoints close automatically at expiry. Missing or malformed dates,
+wrong environment/host or absent explicit approval fail closed. Public catalog,
+barcode lookup and shopping retain their previous routing. Browser/staff origin
+and authorization are unchanged. Dates belong only in reviewed server preview
+configuration; never put server credentials or bypass tokens in EAS.
+The task approval was recorded at 2026-11-15T02:42:57.000Z and expires at
+2026-11-16T02:42:57.000Z. Named QA accounts are procedural test scope, not an
+identity allowlist. Shopify identity, owner/tenant rules and private storage
+remain required. Hosted customer/provider acceptance is still pending.
