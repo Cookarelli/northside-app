@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { nativeIngressAllowed } from "./lib/native-api-ingress";
+import {
+  nativeCustomerServicesApproved,
+  nativeIngressAllowed,
+} from "./lib/native-api-ingress";
 
 export function proxy(request: NextRequest) {
   if (
@@ -8,8 +11,7 @@ export function proxy(request: NextRequest) {
       request.method,
       process.env.NORTHSIDE_NATIVE_API_HOST,
       request.headers.get("host"),
-      process.env.NORTHSIDE_MOBILE_ENVIRONMENT === "staging" &&
-        process.env.NORTHSIDE_MOBILE_CUSTOMER_SERVICES_APPROVED === "true",
+      nativeCustomerServicesApproved(process.env),
     )
   )
     return new NextResponse(null, {

@@ -1,6 +1,9 @@
 import "server-only";
 import { AccessError, appOrigin } from "../security";
-import { NORTHSIDE_NATIVE_API_PREVIEW_HOST } from "../../native-api-ingress";
+import {
+  NORTHSIDE_NATIVE_API_PREVIEW_HOST,
+  nativeCustomerServicesApproved,
+} from "../../native-api-ingress";
 import { liveOnly } from "../providers";
 import type { MobileVariant } from "../../../../../packages/customer-contracts/src/mobile";
 
@@ -30,7 +33,7 @@ export function mobileConfiguration(
     if (
       environment !== "staging" ||
       variant !== "preview" ||
-      process.env.NORTHSIDE_MOBILE_CUSTOMER_SERVICES_APPROVED !== "true" ||
+      !nativeCustomerServicesApproved(process.env) ||
       process.env.NORTHSIDE_NATIVE_API_HOST !==
         NORTHSIDE_NATIVE_API_PREVIEW_HOST ||
       nativeOrigin !== `https://${NORTHSIDE_NATIVE_API_PREVIEW_HOST}`

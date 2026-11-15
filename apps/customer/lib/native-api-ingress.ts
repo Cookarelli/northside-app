@@ -3,6 +3,37 @@
  */
 export const NORTHSIDE_NATIVE_API_PREVIEW_HOST =
   "northside-customer-pilot-native-api-steves-projects-e37a4ef4.vercel.app";
+
+/** A temporary internal QA grant expires without relying on another deployment. */
+export function nativeCustomerServicesApproved(
+  environment: Record<string, string | undefined>,
+  now = Date.now(),
+) {
+  if (
+    environment.NORTHSIDE_MOBILE_ENVIRONMENT !== "staging" ||
+    environment.NORTHSIDE_NATIVE_API_HOST !==
+      NORTHSIDE_NATIVE_API_PREVIEW_HOST ||
+    environment.NORTHSIDE_MOBILE_CUSTOMER_SERVICES_APPROVED !== "true" ||
+    !Number.isFinite(now)
+  )
+    return false;
+  const start = environment.NORTHSIDE_MOBILE_QA_APPROVED_AT;
+  const end = environment.NORTHSIDE_MOBILE_QA_EXPIRES_AT;
+  if (!start || !end) return false;
+  const approvedAt = Date.parse(start),
+    expiresAt = Date.parse(end);
+  if (
+    !Number.isFinite(approvedAt) ||
+    !Number.isFinite(expiresAt) ||
+    new Date(approvedAt).toISOString() !== start ||
+    new Date(expiresAt).toISOString() !== end ||
+    expiresAt <= approvedAt ||
+    expiresAt - approvedAt > 24 * 60 * 60 * 1000
+  )
+    return false;
+  return now >= approvedAt && now < expiresAt;
+}
+
 export function nativeIngressAllowed(
   url: string,
   method: string,

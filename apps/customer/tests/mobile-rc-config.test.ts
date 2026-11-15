@@ -18,6 +18,8 @@ const keys = [
   "NORTHSIDE_MOBILE_AUTH_ORIGIN",
   "NORTHSIDE_MOBILE_CUSTOMER_SERVICES_APPROVED",
   "NORTHSIDE_NATIVE_API_HOST",
+  "NORTHSIDE_MOBILE_QA_APPROVED_AT",
+  "NORTHSIDE_MOBILE_QA_EXPIRES_AT",
 ] as const;
 function configured<T>(
   values: Record<string, string | undefined>,
@@ -31,6 +33,12 @@ function configured<T>(
       NORTHSIDE_FIXTURES: "0",
       NORTHSIDE_MOBILE_ENVIRONMENT: "staging",
       NORTHSIDE_MOBILE_PREVIEW_RETURN_URI: returnUri,
+      NORTHSIDE_MOBILE_QA_APPROVED_AT: new Date(
+        Date.now() - 60_000,
+      ).toISOString(),
+      NORTHSIDE_MOBILE_QA_EXPIRES_AT: new Date(
+        Date.now() + 3_600_000,
+      ).toISOString(),
       ...Object.fromEntries(
         Object.entries(values).filter(([, v]) => v !== undefined),
       ),
