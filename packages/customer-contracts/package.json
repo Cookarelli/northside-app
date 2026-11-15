@@ -10,6 +10,7 @@
     "./mvp": "./src/mvp.ts",
     "./shopping": "./src/shopping.ts",
     "./tracking": "./src/tracking.ts",
+    "./grading-request": "./src/grading-request.ts",
     "./service-requests": "./src/service-requests.ts"
   },
   "dependencies": {

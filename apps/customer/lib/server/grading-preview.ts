@@ -99,11 +99,36 @@ export async function openPreviewDatabase(directory: string) {
           await readFile(resolve("supabase/migrations", file), "utf8"),
         );
     }
-    const requestRecoveryReady = (await db.query<{ ready: boolean }>(
-      "select exists(select from pg_policies where schemaname='ns' and tablename='service_request_notes' and policyname='staff_read' and qual not like '%read_only%') and exists(select from pg_proc where pronamespace='ns'::regnamespace and proname='submit_service_request' and position('Configured service level and declared value required' in prosrc)>0) and exists(select from pg_proc where pronamespace='ns'::regnamespace and proname='claim_service_request' and position($$status='pending'$$ in prosrc)>0) as ready"
-    )).rows[0]?.ready;
+    if (
+      !(
+        await db.query<{ present: string | null }>(
+          "select to_regclass('ns.service_request_photos')::text as present",
+        )
+      ).rows[0].present
+    )
+      await db.exec(
+        await readFile(
+          resolve(
+            "supabase/migrations/20261114233721_service_request_photos.sql",
+          ),
+          "utf8",
+        ),
+      );
+    const requestRecoveryReady = (
+      await db.query<{ ready: boolean }>(
+        "select exists(select from pg_policies where schemaname='ns' and tablename='service_request_notes' and policyname='staff_read' and qual not like '%read_only%') and exists(select from pg_proc where pronamespace='ns'::regnamespace and proname='submit_service_request' and position('Configured service level and declared value required' in prosrc)>0) and exists(select from pg_proc where pronamespace='ns'::regnamespace and proname='claim_service_request' and position($$status='pending'$$ in prosrc)>0) as ready",
+      )
+    ).rows[0]?.ready;
     if (!requestRecoveryReady)
-      await db.exec(await readFile(resolve("supabase/migrations", "20261110150000_service_request_recovery_privacy.sql"), "utf8"));
+      await db.exec(
+        await readFile(
+          resolve(
+            "supabase/migrations",
+            "20261110150000_service_request_recovery_privacy.sql",
+          ),
+          "utf8",
+        ),
+      );
     const tokens: Record<string, string> = {};
     for (const [name, n] of [
       ["a", 1],

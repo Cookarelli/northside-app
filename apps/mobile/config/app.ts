@@ -52,6 +52,10 @@ export function createAppConfig(env: Environment): ExpoConfig {
   const scanDiagnostics = env.MOBILE_SCAN_DIAGNOSTICS === "true";
   const prefix = `MOBILE_${selected.toUpperCase()}`;
   const origin = apiOrigin(env[`${prefix}_API_ORIGIN`], selected);
+  const releaseCandidate = env.MOBILE_RELEASE_CANDIDATE === "true";
+  const iosBuildNumber = env.MOBILE_IOS_BUILD_NUMBER;
+  if (iosBuildNumber && !/^[1-9][0-9]{0,17}$/.test(iosBuildNumber))
+    throw new Error("Invalid iOS build number.");
   const interfacePreview = env.MOBILE_IOS_INTERFACE_PREVIEW === "true";
   const publicCatalogPreview = env.MOBILE_PUBLIC_CATALOG_PREVIEW === "true";
   const scanCart = env.MOBILE_NATIVE_SCAN_CART === "true";
@@ -112,6 +116,29 @@ export function createAppConfig(env: Environment): ExpoConfig {
     throw new Error(
       "Interface preview is iOS preview only and must have no connected API origin.",
     );
+  if (
+    releaseCandidate &&
+    env.EAS_BUILD === "true" &&
+    env.EAS_BUILD_PLATFORM !== "ios"
+  )
+    throw new Error(
+      "Release candidate requires an explicit physical iOS build.",
+    );
+  if (
+    releaseCandidate &&
+    (selected !== "preview" ||
+      !origin ||
+      publicCatalogPreview ||
+      scanCart ||
+      commerceOrigin ||
+      interfacePreview ||
+      privateCatalogPreview ||
+      scanRehearsal ||
+      !iosBuildNumber)
+  )
+    throw new Error(
+      "Release candidate requires a connected internal preview with an explicit new iOS build number.",
+    );
   const iosId = env[`${prefix}_IOS_BUNDLE_ID`];
   const appleTeamId = env[`${prefix}_APPLE_TEAM_ID`];
   const androidId = env[`${prefix}_ANDROID_PACKAGE`];
@@ -161,7 +188,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
     throw new Error("Invalid EAS project identifier.");
   if (owner && !/^[a-z0-9][a-z0-9-]{1,38}$/.test(owner))
     throw new Error("Invalid Expo organization name.");
-  if (env.EAS_BUILD === "true" && publicCatalogPreview) {
+  if (env.EAS_BUILD === "true" && (publicCatalogPreview || releaseCandidate)) {
     if (
       iosId !== "com.northsidecollectibles.customer.preview" ||
       appleTeamId !== "NF42JBZCBW" ||
@@ -214,7 +241,8 @@ export function createAppConfig(env: Environment): ExpoConfig {
       supportsTablet: false,
       ...(iosId ? { bundleIdentifier: iosId } : {}),
       ...(appleTeamId ? { appleTeamId } : {}),
-      buildNumber: scanCart ? "10" : publicCatalogPreview ? "2" : "1",
+      buildNumber:
+        iosBuildNumber ?? (scanCart ? "10" : publicCatalogPreview ? "2" : "1"),
     },
     android: {
       ...(androidId ? { package: androidId } : {}),
@@ -290,6 +318,7 @@ export function createAppConfig(env: Environment): ExpoConfig {
         apiBasePath: "/api/mobile/v1",
         catalogContractVersion: "northside.catalog.v1",
         servicesConnected: false,
+        ...(releaseCandidate ? { releaseCandidate: true } : {}),
         ...(publicCatalogPreview ? { publicCatalogPreview: true } : {}),
         ...(scanCart
           ? { scanCart: true, commerceApiOrigin: commerceOrigin }

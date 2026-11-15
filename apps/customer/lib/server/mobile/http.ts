@@ -4,6 +4,7 @@ import {
   readProduct,
   readScannedProduct,
 } from "./catalog";
+import { requestPhotoAction } from "../service-request-photo-http";
 import { mobileShoppingHandler } from "./shopping";
 import {
   approvedNativeScan,
@@ -201,6 +202,23 @@ export async function mobileHandler(request: Request) {
     }
     // Native transport never borrows a browser session or client-selected identity.
     if (hasSessionCookie(request)) throw new AccessError(401, "unauthorized");
+    if (
+      path === "me/request-photos" &&
+      ["GET", "POST"].includes(request.method)
+    ) {
+      const keys = [...url.searchParams.keys()],
+        allowed =
+          request.method === "POST" ? ["request_id", "photo_id"] : ["photo_id"];
+      if (
+        keys.length !== allowed.length ||
+        new Set(keys).size !== keys.length ||
+        keys.some((k) => !allowed.includes(k))
+      )
+        throw new AccessError(400, "invalid_request");
+      return await withNativeTracking(bearer(request), (db, a) =>
+        requestPhotoAction(request, db, a),
+      );
+    }
     if (request.method === "GET" && path === "releases" && !url.search)
       return successMvp(await readReleases());
     if (request.method === "GET" && path === "info" && !url.search)

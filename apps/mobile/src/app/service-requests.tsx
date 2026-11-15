@@ -16,6 +16,9 @@ import {
   type ServiceRequestView,
 } from "@northside/customer-contracts/service-requests";
 import { useCustomerAuth } from "../auth/Provider";
+import { SubmittedRequestPhoto } from "../components/SubmittedRequestPhoto";
+import { RequestPhotoCapture } from "../components/RequestPhotoCapture";
+import { gradingRequestSelection } from "../../../../packages/customer-contracts/src/grading-request";
 import { MobileFailure } from "../api/client";
 import { CustomerScreen } from "../components/CustomerScreen";
 import { ActionLink, Button, Card } from "../components/Controls";
@@ -39,7 +42,11 @@ export default function ServiceRequestsScreen() {
       title="Service requests"
       description="Consignment and grading staff review"
     >
-      <ActionLink appearance="storefront" href="/my-cards" label="My Cards & private photos" />
+      <ActionLink
+        appearance="storefront"
+        href="/my-cards"
+        label="My Cards & private photos"
+      />
       {identity ? (
         <RequestContent key={identity} />
       ) : (
@@ -49,7 +56,11 @@ export default function ServiceRequestsScreen() {
               ? "Service requests are unavailable in this preview. Connect your account services to submit and view verified linked requests."
               : "Sign in to submit and view verified linked service requests."}
           </Text>
-          <ActionLink appearance="storefront" href="/account" label="Open account" />
+          <ActionLink
+            appearance="storefront"
+            href="/account"
+            label="Open account"
+          />
         </>
       )}
     </CustomerScreen>
@@ -69,11 +80,15 @@ function RequestContent() {
     [error, setError] = useState(""),
     [saved, setSaved] = useState(""),
     [busy, setBusy] = useState(false),
-    [frozen, setFrozen] = useState(false);
+    [frozen, setFrozen] = useState(false),
+    [photoIds, setPhotoIds] = useState<string[]>([]),
+    [photoPending, setPhotoPending] = useState(false);
   const epoch = useRef(0),
     abort = useRef<AbortController | null>(null),
     pending = useRef<ServiceRequestInput | null>(null),
-    submitting = useRef(false);
+    submitting = useRef(false),
+    draftId = useRef<string | null>(null),
+    photoBusy = useRef(false);
   useFocusEffect(
     useCallback(() => {
       const g = ++epoch.current;
@@ -82,11 +97,31 @@ function RequestContent() {
       void Promise.all([
         controller.serviceRequestConfig(a.signal),
         controller.serviceRequests(a.signal),
+        controller.pendingServiceRequest(),
       ])
-        .then(([c, r]) => {
+        .then(([c, r, recovered]) => {
           if (g === epoch.current) {
             setConfig(c);
             setRequests(r.requests);
+            if (recovered) {
+              pending.current = recovered;
+              draftId.current = recovered.request_id;
+              setFrozen(true);
+              setKind(recovered.kind);
+              setService(recovered.service);
+              setError(
+                "An unconfirmed request was recovered securely. Retry the same request; it will keep its original reference and details.",
+              );
+              const found = r.requests.find(
+                (x) => x.submission_id === recovered.request_id,
+              );
+              if (found) {
+                setSaved(
+                  `${found.reference}: Saved for staff review. Physical receipt unconfirmed.`,
+                );
+                void controller.keepServiceRequest(null).catch(() => {});
+              }
+            }
           }
         })
         .catch(() => {
@@ -106,9 +141,17 @@ function RequestContent() {
         pending.current = null;
         setFrozen(false);
         setSaved("");
+        setPhotoIds([]);
+        setPhotoPending(false);
+        photoBusy.current = false;
+        draftId.current = null;
       };
     }, [controller]),
   );
+  const photoPendingChanged = useCallback((value: boolean) => {
+    photoBusy.current = value;
+    setPhotoPending(value);
+  }, []);
   const input = (key: string, label: string, optional = false) => (
     <View key={key} style={s.field}>
       <Text style={ui.copy}>
@@ -138,7 +181,7 @@ function RequestContent() {
   );
   const term = config?.terms.find((t) => t.service === service);
   async function submit() {
-    if (submitting.current) return;
+    if (submitting.current || photoBusy.current) return;
     submitting.current = true;
     setBusy(true);
     setError("");
@@ -153,7 +196,7 @@ function RequestContent() {
         const bytes = await Crypto.getRandomBytesAsync(32);
         if (g !== epoch.current) return;
         const proposed = {
-          request_id: Crypto.randomUUID(),
+          request_id: (draftId.current ??= Crypto.randomUUID()),
           claim_token: btoa(String.fromCharCode(...bytes))
             .replaceAll("+", "-")
             .replaceAll("/", "_")
@@ -171,6 +214,13 @@ function RequestContent() {
               : service === "consignment"
                 ? {
                     listing_count: Number(fields.listing_count),
+                    items: [
+                      {
+                        description: fields.item_description ?? "",
+                        quantity: Number(fields.item_quantity || 1),
+                      },
+                    ],
+                    photo_ids: photoIds,
                     delivery_method: delivery,
                     inbound_carrier:
                       delivery === "shipped" ? (fields.carrier ?? "") : "",
@@ -180,6 +230,13 @@ function RequestContent() {
                   }
                 : {
                     provider,
+                    items: [
+                      {
+                        description: fields.item_description ?? "",
+                        quantity: Number(fields.item_quantity || 1),
+                      },
+                    ],
+                    photo_ids: photoIds,
                     service_level_id: level,
                     declared_value_cents: d
                       ? Number(d.split(".")[0]) * 100 +
@@ -207,6 +264,23 @@ function RequestContent() {
               .map((i) => `${i.path.join(" ")}: ${i.message}`)
               .join(". "),
           );
+        if (
+          p.data.kind === "service_request" &&
+          p.data.service === "grading" &&
+          config
+        ) {
+          const choice = gradingRequestSelection(
+            config,
+            p.data.details as {
+              provider: "PSA" | "SGC";
+              service_level_id: string | null;
+              declared_value_cents: number | null;
+            },
+          );
+          if (!choice.ok) throw Error(choice.message);
+        }
+        await controller.keepServiceRequest(p.data);
+        if (g !== epoch.current) return;
         pending.current = p.data;
         setFrozen(true);
       }
@@ -217,33 +291,65 @@ function RequestContent() {
       );
       if (g === epoch.current) {
         setSaved(`${r.reference}: ${r.next_steps}`);
+        await controller.keepServiceRequest(null).catch(() => {
+          if (g === epoch.current)
+            setError(
+              "Saved. Safe retry data could not be cleared; a retry will recover this same request.",
+            );
+        });
         try {
           const list = await controller.serviceRequests(abort.current?.signal);
           if (g === epoch.current) setRequests(list.requests);
         } catch {
           if (g === epoch.current)
-            setError("Your request was saved. Request history could not be refreshed; return to this screen when connected to load it.");
+            setError(
+              "Your request was saved. Request history could not be refreshed; return to this screen when connected to load it.",
+            );
         }
       }
     } catch (e) {
       if (g === epoch.current) {
-        if (e instanceof MobileFailure && ["request_terms_changed", "request_service_level_changed"].includes(e.code)) {
+        if (
+          e instanceof MobileFailure &&
+          ["request_terms_changed", "request_service_level_changed"].includes(
+            e.code,
+          )
+        ) {
+          try {
+            await controller.keepServiceRequest(null);
+          } catch {
+            setError(
+              "Service details changed, but secure retry storage could not be cleared. Retry when device storage is available before accepting revised terms.",
+            );
+            return;
+          }
           pending.current = null;
           setFrozen(false);
           setAccepted(null);
           setLevel(null);
           setConfig(null);
-          setError("Service details changed. Review the current options and terms before saving again.");
+          setError(
+            "Service details changed. Review the current options and terms before saving again.",
+          );
           try {
-            const current = await controller.serviceRequestConfig(abort.current?.signal);
+            const current = await controller.serviceRequestConfig(
+              abort.current?.signal,
+            );
             if (g === epoch.current) setConfig(current);
           } catch {
-            if (g === epoch.current) setError("Current service details could not be loaded. Return to this screen when connected before preparing a new request.");
+            if (g === epoch.current)
+              setError(
+                "Current service details could not be loaded. Return to this screen when connected before preparing a new request.",
+              );
           }
         } else {
-          setError(e instanceof MobileFailure
-            ? "Save unconfirmed. Retry the same request or ask Northside for help before starting another request."
-            : e instanceof Error ? e.message : "Submission unconfirmed. Retry the same request.");
+          setError(
+            e instanceof MobileFailure
+              ? "Save unconfirmed. Retry the same request or ask Northside for help before starting another request."
+              : e instanceof Error
+                ? e.message
+                : "Submission unconfirmed. Retry the same request.",
+          );
         }
       }
     } finally {
@@ -260,15 +366,22 @@ function RequestContent() {
         mail-in start date are unconfirmed. Do not mail cards based on this
         screen.
       </Text>
-      {error && <Text accessibilityRole="alert" style={ui.copy}>{error}</Text>}
+      {error && (
+        <Text accessibilityRole="alert" style={ui.copy}>
+          {error}
+        </Text>
+      )}
       {saved ? (
-        <Text accessibilityRole="alert" style={ui.copy}>Saved {saved}</Text>
+        <Text accessibilityRole="alert" style={ui.copy}>
+          Saved {saved}
+        </Text>
       ) : (
         <Card appearance="storefront">
           <Text style={ui.copy}>Service</Text>
           <View style={s.row}>
             {(["grading", "consignment"] as const).map((v) => (
-              <Button appearance="storefront"
+              <Button
+                appearance="storefront"
                 key={v}
                 label={v === service ? `Selected: ${v}` : v}
                 disabled={frozen || busy}
@@ -282,7 +395,8 @@ function RequestContent() {
           <Text style={ui.copy}>Request type</Text>
           <View style={s.row}>
             {(["inquiry", "service_request"] as const).map((v) => (
-              <Button appearance="storefront"
+              <Button
+                appearance="storefront"
                 key={v}
                 label={
                   v === kind
@@ -300,6 +414,40 @@ function RequestContent() {
           {input("name", "Full name")}
           {input("email", "Email")}
           {input("phone", "Phone")}
+          {kind === "service_request" && (
+            <>
+              {input("item_description", "Item details")}
+              {input("item_quantity", "Item quantity", true)}
+              <Text style={ui.copy}>
+                {photoIds.length} private photographs confirmed.
+              </Text>
+              <RequestPhotoCapture
+                disabled={frozen || busy || photoIds.length >= 10}
+                onPending={photoPendingChanged}
+                onBegin={() => {
+                  photoBusy.current = true;
+                  setPhotoPending(true);
+                  const g = epoch.current,
+                    signal = abort.current?.signal,
+                    requestId = (draftId.current ??= Crypto.randomUUID());
+                  return async (id, bytes) => {
+                    if (g !== epoch.current || signal?.aborted)
+                      throw new MobileFailure("cancelled");
+                    await controller.uploadServiceRequestPhoto(
+                      requestId,
+                      id,
+                      bytes,
+                      signal,
+                    );
+                    if (g === epoch.current)
+                      setPhotoIds((old) =>
+                        old.includes(id) ? old : [...old, id],
+                      );
+                  };
+                }}
+              />
+            </>
+          )}
           {kind === "inquiry" ? (
             input("question", "Question")
           ) : service === "consignment" ? (
@@ -308,7 +456,8 @@ function RequestContent() {
               <Text style={ui.copy}>Delivery method</Text>
               {["planning_delivery", "already_dropped_off", "shipped"].map(
                 (v) => (
-                  <Button appearance="storefront"
+                  <Button
+                    appearance="storefront"
                     key={v}
                     label={`${delivery === v ? "Selected: " : ""}${v.replaceAll("_", " ")}`}
                     disabled={frozen || busy}
@@ -331,7 +480,8 @@ function RequestContent() {
             <>
               <Text style={ui.copy}>Provider preference</Text>
               {["PSA", "SGC"].map((v) => (
-                <Button appearance="storefront"
+                <Button
+                  appearance="storefront"
                   key={v}
                   label={`${provider === v ? "Selected: " : ""}${v}`}
                   disabled={frozen || busy}
@@ -342,7 +492,8 @@ function RequestContent() {
                 />
               ))}
               <Text style={ui.copy}>Service level</Text>
-              <Button appearance="storefront"
+              <Button
+                appearance="storefront"
                 label={
                   level === null ? "Selected: Staff review" : "Staff review"
                 }
@@ -352,7 +503,8 @@ function RequestContent() {
               {config?.serviceLevels
                 .filter((l) => l.provider === provider)
                 .map((l) => (
-                  <Button appearance="storefront"
+                  <Button
+                    appearance="storefront"
                     key={l.id}
                     label={`${level === l.id ? "Selected: " : ""}${l.name}`}
                     disabled={frozen || busy}
@@ -409,11 +561,17 @@ function RequestContent() {
                 terms are being confirmed.
               </Text>
             ))}
-          <Button appearance="storefront"
+          <Button
+            appearance="storefront"
             label={
               busy ? "Saving…" : frozen ? "Retry same request" : "Save request"
             }
-            disabled={busy || !config || (kind === "service_request" && !term)}
+            disabled={
+              busy ||
+              photoPending ||
+              !config ||
+              (kind === "service_request" && !term)
+            }
             onPress={() => void submit()}
           />
         </Card>
@@ -426,6 +584,28 @@ function RequestContent() {
               <Text style={ui.copy}>
                 {r.reference} · {r.service} · {r.state}
               </Text>
+              {Array.isArray(r.details.items) &&
+                r.details.items.map((item, i) => {
+                  const value = item as {
+                    description?: unknown;
+                    quantity?: unknown;
+                  };
+                  return typeof value?.description === "string" &&
+                    typeof value.quantity === "number" ? (
+                    <Text key={i} style={ui.copy}>
+                      {value.quantity} × {value.description}
+                    </Text>
+                  ) : null;
+                })}
+              {Array.isArray(r.details.photo_ids) &&
+                r.details.photo_ids
+                  .filter(
+                    (id): id is string =>
+                      typeof id === "string" && /^[a-f0-9-]{36}$/i.test(id),
+                  )
+                  .map((id, i) => (
+                    <SubmittedRequestPhoto key={id} id={id} index={i + 1} />
+                  ))}
               <Text style={ui.copy}>
                 {r.received_at
                   ? `Physical receipt: ${new Date(r.received_at).toISOString().slice(0, 10)}`
@@ -449,7 +629,8 @@ function RequestContent() {
         </Text>
         {input("claim_id", "Request ID")}
         {input("claim_token", "Private claim code")}
-        <Button appearance="storefront"
+        <Button
+          appearance="storefront"
           label="Request verified linking"
           disabled={busy}
           onPress={() => {
@@ -489,5 +670,4 @@ const s = StyleSheet.create({
   stack: { gap: 20 },
   row: { gap: 10 },
   field: { gap: 6, marginVertical: 8 },
-
 });

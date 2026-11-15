@@ -285,6 +285,71 @@ export class MobileApi {
       signal,
     });
   }
+  async uploadServiceRequestPhoto(
+    token: string,
+    requestId: string,
+    photoId: string,
+    bytes: Uint8Array,
+    signal?: AbortSignal,
+  ) {
+    if (
+      !/^[a-f0-9-]{36}$/i.test(requestId) ||
+      !/^[a-f0-9-]{36}$/i.test(photoId) ||
+      !bytes.length ||
+      bytes.length > 4194304
+    )
+      throw new MobileFailure("invalid_request");
+    if (signal?.aborted) throw new MobileFailure("cancelled");
+    const controller = new AbortController(),
+      abort = () => controller.abort(),
+      timer = setTimeout(abort, this.timeoutMs);
+    signal?.addEventListener("abort", abort, { once: true });
+    try {
+      const request = this.request;
+      const res = await request(
+        `${this.base}/me/request-photos?request_id=${requestId}&photo_id=${photoId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "image/jpeg",
+            Accept: "application/json",
+          },
+          credentials: "omit",
+          cache: "no-store",
+          redirect: "error",
+          signal: controller.signal,
+          body: new Uint8Array(bytes),
+        },
+      );
+      if (!res.ok)
+        throw new MobileFailure(
+          res.status === 401
+            ? "session_expired"
+            : res.status === 429
+              ? "rate_limited"
+              : "service_unavailable",
+        );
+      let v: { id?: unknown };
+      try {
+        v = JSON.parse(await boundedText(res));
+      } catch {
+        throw new MobileFailure("invalid_response");
+      }
+      if (!v || typeof v !== "object" || v.id !== photoId)
+        throw new MobileFailure("invalid_response");
+      return { id: photoId };
+    } catch (e) {
+      if (signal?.aborted) throw new MobileFailure("cancelled");
+      if (e instanceof MobileFailure) throw e;
+      throw new MobileFailure(
+        controller.signal.aborted ? "timeout" : "offline",
+      );
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    }
+  }
   serviceRequests(token: string, signal?: AbortSignal) {
     return this.send("/me/service-requests", requestListSchema, {
       token,
@@ -360,6 +425,26 @@ export class MobileApi {
       [id, photo].some((v) => !/^[0-9a-f-]{36}$/i.test(v))
     )
       throw new MobileFailure("invalid_request");
+    return this.privatePhoto(
+      `/me/tracking/${service}/${id}/photos/${photo}`,
+      token,
+      signal,
+    );
+  }
+  serviceRequestPhoto(token: string, id: string, signal?: AbortSignal) {
+    if (!/^[a-f0-9-]{36}$/i.test(id))
+      throw new MobileFailure("invalid_request");
+    return this.privatePhoto(
+      `/me/request-photos?photo_id=${id}`,
+      token,
+      signal,
+    );
+  }
+  private async privatePhoto(
+    path: string,
+    token: string,
+    signal?: AbortSignal,
+  ) {
     if (signal?.aborted) throw new MobileFailure("cancelled");
     const controller = new AbortController(),
       abort = () => controller.abort(),
@@ -367,19 +452,16 @@ export class MobileApi {
     signal?.addEventListener("abort", abort, { once: true });
     try {
       const request = this.request,
-        r = await request(
-          `${this.base}/me/tracking/${service}/${id}/photos/${photo}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "image/jpeg,image/png,image/webp",
-            },
-            credentials: "omit",
-            redirect: "error",
-            cache: "no-store",
-            signal: controller.signal,
+        r = await request(`${this.base}${path}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "image/jpeg,image/png,image/webp",
           },
-        );
+          credentials: "omit",
+          redirect: "error",
+          cache: "no-store",
+          signal: controller.signal,
+        });
       if (!r.ok) {
         if (r.status === 401) throw new MobileFailure("session_expired");
         throw new MobileFailure(

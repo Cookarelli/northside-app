@@ -1411,3 +1411,20 @@ inches and1×/1.5×/2×. A successful binary does not establish that acceptance.
 `docs/qa/NORTHSIDE-SMALL-LABEL-CAMERA-2026-11-13.md` and current chat
 `outputs/iphone-preview-8`. No production/backend deployment, App Store submission,
 live commerce write, POS/ESL/QR/consignment/grading change.
+
+
+## November 14 2026 internal release candidate integration
+
+The launch integration starts at helmet fix 8c06768 and preserves the existing camera plugin and scanner screen. The native catalog now resolves the complete published Shopify Storefront feed through the matching preview backend rather than a compiled product list. Exact and supported normalized barcode matching, ambiguity rejection, publication, availability and fresh Retail Floor inventory proof are retained. Read-only Shopify verification resolves the original seven, helmet 793397728021 and existing Topps product 887521154753 outside the historical tuple list; no merchandise was created or published.
+
+Customer request implementation now includes structured item details, private normalized photographs, ready-object verification, durable references, owner-scoped receipt recovery and secure native retry recovery. Staff can review only submitted attached photographs; draft images are owner-only. Saves remain acknowledged when a subsequent refresh fails. Request submission remains distinct from physical receipt, provider submission, a quote or payout.
+
+Local integration checks pass: customer 472 tests; mobile 430 tests across 28 suites; root 310 tests; preserved script and pilot checks; TypeScript and affected lint. The customer, control and webhook applications build with frozen pinned dependencies. Additional focused camera-plugin and barcode matcher regressions are recorded in the task evidence. These are local software results, not hosted customer or physical-device acceptance.
+
+The separate internal-rc EAS profile prepares physical iOS build number 11 with OTA disabled and the existing approved preview identifiers. No binary build has started. The new authenticated native ingress is disabled unless the explicit staging customer-services flag is configured; the fixed native auth origin also requires the exact staging host and that flag. Existing public scanner preview mode remains unchanged.
+
+Migration 20261114233721_service_request_photos.sql was individually applied to designated nonproduction project nrsuosydvjqovrevmych after read-only target, prior-ledger and absence checks. Both ledgers atomically record the exact reviewed source (SHA256 ae2e782d1708799dfa4e634c9e1138b3d385005b90d7da133ce8e3e17428526c). Hosted readback confirms forced RLS, three runtime-only policies, ready-column-only update, denied anonymous/authenticated/auth/commerce access, the snapshot trigger and its invoker/search-path protection. Security advisors report the existing leaked-password-protection warning; no Auth settings were changed. Bucket metadata is private; actual object delivery remains unverified.
+
+Hosted release gates remain open: publish current service terms through a real authorized owner/admin session; configure the approved preview return URI and verify Shopify callback; verify public edge controls, actual customer/staff sign-in, private Storage and two-customer isolation. The hosted database has no approved terms or configured grading levels. A grading preference with staff review can remain unquoted; no fee is invented. Vercel currently has no custom per-source firewall configuration, so authenticated native ingress remains disabled. Provider automation is optional for launch.
+
+The current website service terms are the approved business source. New retail, loyalty and future advance-account policy documents are drafts for owner review. No new loyalty economics, advance rates, lending structure, commission, payout timing or physical-intake policy was activated. No production promotion, store submission or customer message occurred.

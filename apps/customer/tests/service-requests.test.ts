@@ -184,59 +184,147 @@ test("guest capture is durable, email grants no access, and canonical retry pres
 });
 test("actual read-only database session cannot read private request notes", async () => {
   const receipt = await guest(body());
-  await f.run("staff", (db, actor) => updateRequest(db, actor, {
-    id: receipt.id, version: 1, state: "review", staff_owner: null,
-    follow_up_at: null, staff_note: "PRIVATE regression note",
-    reason: "PRIVATE regression reason", customer_message: "SAMPLE public update",
-  }));
+  await f.run("staff", (db, actor) =>
+    updateRequest(db, actor, {
+      id: receipt.id,
+      version: 1,
+      state: "review",
+      staff_owner: null,
+      follow_up_at: null,
+      staff_note: "PRIVATE regression note",
+      reason: "PRIVATE regression reason",
+      customer_message: "SAMPLE public update",
+    }),
+  );
   const writer = await f.run("staff", staffRequestData);
   assert.ok(writer.notes.some((n) => n.request_id === receipt.id));
   const reader = await f.run("reader", staffRequestData);
   assert.deepEqual(reader.notes, []);
   assert.equal(JSON.stringify(reader).includes("PRIVATE regression"), false);
-  const raw = await f.run("reader", (db) => db.query("select * from ns.service_request_notes where request_id=$1", [receipt.id]));
+  const raw = await f.run("reader", (db) =>
+    db.query("select * from ns.service_request_notes where request_id=$1", [
+      receipt.id,
+    ]),
+  );
   assert.deepEqual(raw.rows, []);
   await assert.rejects(f.run("editor", staffRequestData), denied(403));
 });
 test("rejected claims never report pending or reopen; pending retries recover the same claim", async () => {
-  const b = body(), receipt = await guest(b);
-  const claim = () => f.run("a", (db, actor) => requestClaim(db, actor, { id: receipt.id, claim_token: b.claim_token }));
+  const b = body(),
+    receipt = await guest(b);
+  const claim = () =>
+    f.run("a", (db, actor) =>
+      requestClaim(db, actor, { id: receipt.id, claim_token: b.claim_token }),
+    );
   const first = await claim();
   assert.equal((await claim()).claim_id, first.claim_id);
-  await f.run("staff", (db, actor) => reviewRequestClaim(db, actor, {
-    claim_id: first.claim_id, approved: false,
-    verification_reference: "SAMPLE independent evidence insufficient", reason: "SAMPLE reject",
-  }));
+  await f.run("staff", (db, actor) =>
+    reviewRequestClaim(db, actor, {
+      claim_id: first.claim_id,
+      approved: false,
+      verification_reference: "SAMPLE independent evidence insufficient",
+      reason: "SAMPLE reject",
+    }),
+  );
   await assert.rejects(claim(), denied(409));
-  assert.equal((await f.db.query<{status: string}>("select status from ns.service_request_claims where id=$1", [first.claim_id])).rows[0].status, "rejected");
-  assert.equal((await f.run("a", listRequests)).requests.some((r) => r.id === receipt.id), false);
+  assert.equal(
+    (
+      await f.db.query<{ status: string }>(
+        "select status from ns.service_request_claims where id=$1",
+        [first.claim_id],
+      )
+    ).rows[0].status,
+    "rejected",
+  );
+  assert.equal(
+    (await f.run("a", listRequests)).requests.some((r) => r.id === receipt.id),
+    false,
+  );
 });
 test("saved grading receipt recovers after level and terms change, but new submissions must use current configuration", async () => {
-  const term = await f.run("staff", (db, actor) => publishServiceTerms(db, actor, {
-    service: "grading", version: randomUUID(), title: "SAMPLE local grading terms",
-    body: "SAMPLE local consent only", approval_reference: "SAMPLE isolated fixture", previous_id: null,
-  }));
+  const term = await f.run("staff", (db, actor) =>
+    publishServiceTerms(db, actor, {
+      service: "grading",
+      version: randomUUID(),
+      title: "SAMPLE local grading terms",
+      body: "SAMPLE local consent only",
+      approval_reference: "SAMPLE isolated fixture",
+      previous_id: null,
+    }),
+  );
   const level = randomUUID();
-  await f.db.query("insert into ns.request_grading_service_levels(tenant_id,id,provider,name,declared_value_limit_cents,active,approval_reference) values($1,$2,'PSA','SAMPLE level',10000,true,'SAMPLE local fixture')", [TENANT, level]);
-  const b = { ...body(), service: "grading", kind: "service_request", terms_id: term.id, terms_accepted: true,
-    details: { provider: "PSA", service_level_id: level, declared_value_cents: 10000,
-      address: {line1: "SAMPLE address", line2: "", city: "SAMPLE city", region: "IL", postal_code: "00000", country: "US"}, instructions: "" } };
+  await f.db.query(
+    "insert into ns.request_grading_service_levels(tenant_id,id,provider,name,declared_value_limit_cents,active,approval_reference) values($1,$2,'PSA','SAMPLE level',10000,true,'SAMPLE local fixture')",
+    [TENANT, level],
+  );
+  const b = {
+    ...body(),
+    service: "grading",
+    kind: "service_request",
+    terms_id: term.id,
+    terms_accepted: true,
+    details: {
+      provider: "PSA",
+      service_level_id: level,
+      declared_value_cents: 10000,
+      address: {
+        line1: "SAMPLE address",
+        line2: "",
+        city: "SAMPLE city",
+        region: "IL",
+        postal_code: "00000",
+        country: "US",
+      },
+      instructions: "",
+    },
+  };
   const receipt = await guest(b);
-  await f.db.query("update ns.request_grading_service_levels set active=false where tenant_id=$1 and id=$2", [TENANT, level]);
+  await f.db.query(
+    "update ns.request_grading_service_levels set active=false where tenant_id=$1 and id=$2",
+    [TENANT, level],
+  );
   assert.equal((await guest(b)).id, receipt.id);
-  await assert.rejects(guest({...b, request_id: randomUUID()}), (e) => e instanceof AccessError && e.message === "request_service_level_changed");
-  await f.run("staff", (db, actor) => publishServiceTerms(db, actor, {
-    service: "grading", version: randomUUID(), title: "SAMPLE revised local terms",
-    body: "SAMPLE revised consent only", approval_reference: "SAMPLE isolated revision", previous_id: term.id,
-  }));
+  await assert.rejects(
+    guest({ ...b, request_id: randomUUID() }),
+    (e) =>
+      e instanceof AccessError && e.message === "request_service_level_changed",
+  );
+  await f.run("staff", (db, actor) =>
+    publishServiceTerms(db, actor, {
+      service: "grading",
+      version: randomUUID(),
+      title: "SAMPLE revised local terms",
+      body: "SAMPLE revised consent only",
+      approval_reference: "SAMPLE isolated revision",
+      previous_id: term.id,
+    }),
+  );
   assert.equal((await guest(b)).id, receipt.id);
-  await assert.rejects(guest({...b, request_id: randomUUID()}), (e) => e instanceof AccessError && e.message === "request_terms_changed");
-  const counts = (await f.db.query<{requests:number;events:number;secrets:number}>("select (select count(*)::int from ns.service_requests where id=$1) requests,(select count(*)::int from ns.service_request_events where request_id=$1) events,(select count(*)::int from ns.service_request_secrets where request_id=$1) secrets", [receipt.id])).rows[0];
-  assert.deepEqual(counts, {requests:1, events:1, secrets:1});
+  await assert.rejects(
+    guest({ ...b, request_id: randomUUID() }),
+    (e) => e instanceof AccessError && e.message === "request_terms_changed",
+  );
+  const counts = (
+    await f.db.query<{ requests: number; events: number; secrets: number }>(
+      "select (select count(*)::int from ns.service_requests where id=$1) requests,(select count(*)::int from ns.service_request_events where request_id=$1) events,(select count(*)::int from ns.service_request_secrets where request_id=$1) secrets",
+      [receipt.id],
+    )
+  ).rows[0];
+  assert.deepEqual(counts, { requests: 1, events: 1, secrets: 1 });
 });
 test("unclassified database failure remains an uncertain save rather than a definitive conflict", async () => {
-  const db = { query: async () => { throw new Error("SAMPLE connection lost after commit"); } };
-  await assert.rejects(submitRequest(db, null, body(), "shopify_website", hashToken("SAMPLE")), (e) => e instanceof AccessError && e.status === 503 && e.message === "service_unavailable");
+  const db = {
+    query: async () => {
+      throw new Error("SAMPLE connection lost after commit");
+    },
+  };
+  await assert.rejects(
+    submitRequest(db, null, body(), "shopify_website", hashToken("SAMPLE")),
+    (e) =>
+      e instanceof AccessError &&
+      e.status === 503 &&
+      e.message === "service_unavailable",
+  );
 });
 test("verified customer + secret + independent staff review links guest; exactly-once intake uses actual card count", async () => {
   const b = await serviceBody(),
@@ -504,4 +592,51 @@ test("HTTP rejects cross-origin private mutation and unconfigured public transpo
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;
   }
+});
+
+test("request byte limits are portable to native and new photo IDs normalize without changing legacy fields", () => {
+  const encoder = globalThis.TextEncoder;
+  Reflect.set(globalThis, "TextEncoder", undefined);
+  try {
+    assert.equal(
+      requestSchema.safeParse({
+        ...body(),
+        details: { question: "a".repeat(2600) },
+      }).success,
+      true,
+    );
+    assert.equal(
+      requestSchema.safeParse({
+        ...body(),
+        details: { question: "漢".repeat(2600) },
+      }).success,
+      false,
+    );
+  } finally {
+    Reflect.set(globalThis, "TextEncoder", encoder);
+  }
+  const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const input = {
+    ...body(),
+    kind: "service_request",
+    terms_id: randomUUID(),
+    terms_accepted: true,
+    details: {
+      listing_count: 1,
+      delivery_method: "planning_delivery",
+      inbound_carrier: "",
+      inbound_tracking_number: "",
+      instructions: "None",
+      photo_ids: [id.toUpperCase()],
+    },
+  };
+  const parsed = requestSchema.parse(input);
+  assert.deepEqual(parsed.details.photo_ids, [id]);
+  assert.equal(
+    requestSchema.safeParse({
+      ...input,
+      details: { ...input.details, photo_ids: [id, id.toUpperCase()] },
+    }).success,
+    false,
+  );
 });

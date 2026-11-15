@@ -5,11 +5,23 @@ import { join } from "node:path";
 try {
   const variant = process.argv[2] ?? "development";
   const platform = process.argv[3] ?? process.env.EAS_BUILD_PLATFORM;
-  // Match the approved iOS-only profile; do not relax other platform guards.
+  const profile = process.argv[4] ?? "preview";
+  if (
+    !["preview", "internal-rc"].includes(profile) ||
+    (profile === "internal-rc" && (variant !== "preview" || platform !== "ios"))
+  )
+    throw new Error("Use internal-rc only with preview ios.");
+  const eas = JSON.parse(readFileSync(join(process.cwd(), "eas.json"), "utf8"));
   const iosPreviewEnv: Record<string, string> =
     variant === "preview" && platform === "ios"
-      ? JSON.parse(readFileSync(join(process.cwd(), "eas.json"), "utf8"))
-          .build.preview.ios.env
+      ? {
+          ...eas.build.base.env,
+          ...eas.build.preview.env,
+          ...eas.build.preview.ios.env,
+          ...(profile === "internal-rc"
+            ? { ...eas.build[profile].env, ...eas.build[profile].ios.env }
+            : {}),
+        }
       : {};
   const config = createAppConfig({
     ...process.env,

@@ -8,6 +8,8 @@ export function proxy(request: NextRequest) {
       request.method,
       process.env.NORTHSIDE_NATIVE_API_HOST,
       request.headers.get("host"),
+      process.env.NORTHSIDE_MOBILE_ENVIRONMENT === "staging" &&
+        process.env.NORTHSIDE_MOBILE_CUSTOMER_SERVICES_APPROVED === "true",
     )
   )
     return new NextResponse(null, {

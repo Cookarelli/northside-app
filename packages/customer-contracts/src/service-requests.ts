@@ -17,6 +17,32 @@ export const requestStates = [
   "in_progress",
   "completed",
 ] as const;
+const requestItems = z
+  .array(
+    z.strictObject({
+      description: required(500),
+      quantity: z.number().int().min(1).max(100000),
+    }),
+  )
+  .min(1)
+  .max(100)
+  .optional();
+const requestPhotos = z
+  .array(z.uuid().transform((v) => v.toLowerCase()))
+  .max(10)
+  .refine(
+    (v) => new Set(v).size === v.length,
+    "Duplicate photographs are not allowed",
+  )
+  .optional();
+const payloadBytes = (value: unknown) => {
+  let size = 0;
+  for (const character of JSON.stringify(value)) {
+    const point = character.codePointAt(0)!;
+    size += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4;
+  }
+  return size;
+};
 export const requestSchema = z
   .strictObject({
     request_id: z.uuid(),
@@ -40,6 +66,8 @@ export const requestSchema = z
           ? z
               .strictObject({
                 listing_count: z.number().int().min(1).max(100000),
+                items: requestItems,
+                photo_ids: requestPhotos,
                 delivery_method: z.enum([
                   "already_dropped_off",
                   "shipped",
@@ -57,6 +85,8 @@ export const requestSchema = z
               )
           : z.strictObject({
               provider: z.enum(["PSA", "SGC"]),
+              items: requestItems,
+              photo_ids: requestPhotos,
               service_level_id: z.uuid().nullable(),
               declared_value_cents: z
                 .number()
@@ -74,6 +104,13 @@ export const requestSchema = z
               }),
               instructions: copy(3000),
             });
+    if (payloadBytes(v) > 7500)
+      ctx.addIssue({
+        code: "custom",
+        path: ["details"],
+        message:
+          "Request details are too long; shorten item descriptions or instructions",
+      });
     const parsed = schema.safeParse(v.details);
     if (!parsed.success)
       for (const issue of parsed.error.issues)
@@ -94,10 +131,24 @@ export const requestSchema = z
         path: ["terms_id"],
         message: "Inquiries do not accept service terms",
       });
-  });
+  })
+  .transform((v) =>
+    Array.isArray(v.details.photo_ids)
+      ? {
+          ...v,
+          details: {
+            ...v.details,
+            photo_ids: v.details.photo_ids.map((id) =>
+              (id as string).toLowerCase(),
+            ),
+          },
+        }
+      : v,
+  );
 export type ServiceRequestInput = z.infer<typeof requestSchema>;
 export type RequestConfig = {
   contractVersion: "1";
+  customerScope?: string | null;
   location: {
     address: string;
     receivingPostalCode: null;
@@ -124,6 +175,7 @@ export type ServiceRequestView = {
   kind: string;
   service: string;
   source: string;
+  submission_id?: string;
   contact: Record<string, string>;
   details: Record<string, unknown>;
   state: string;
@@ -150,6 +202,11 @@ const termSchema = z.object({
 });
 export const requestConfigSchema = z.object({
   contractVersion: z.literal("1"),
+  customerScope: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable()
+    .optional(),
   location: z.object({
     address: required(300),
     receivingPostalCode: z.null(),
@@ -190,6 +247,7 @@ export const requestListSchema = z.object({
         kind: z.enum(["inquiry", "service_request"]),
         service: z.enum(["grading", "consignment"]),
         source: required(40),
+        submission_id: z.uuid().optional(),
         contact: z.record(z.string(), z.string()),
         details: z.record(z.string(), z.unknown()),
         state: required(40),

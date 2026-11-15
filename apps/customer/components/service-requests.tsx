@@ -27,6 +27,7 @@ import {
   requestSchema,
   requestStates,
 } from "../../../packages/customer-contracts/src/service-requests";
+import { gradingRequestSelection } from "../../../packages/customer-contracts/src/grading-request";
 import styles from "./service-requests.module.css";
 
 const stateLabels: Record<string, string> = {
@@ -46,7 +47,9 @@ const roleLabels: Record<string, string> = {
 const staffLabel = (role: string, id: string) =>
   `${roleLabels[role] ?? role} · ${id.slice(-8)}`;
 function requestMessage(error: string) {
-  if (["request terms changed", "request service level changed"].includes(error))
+  if (
+    ["request terms changed", "request service level changed"].includes(error)
+  )
     return "Service details changed. Review the current options and terms before saving again.";
   if (error === "service unavailable")
     return "Service details are unavailable. Check your connection and try again.";
@@ -110,16 +113,18 @@ const localDate = (value: string | null) =>
 export function ServiceRequestForm({
   fixture = false,
   staff = false,
+  initialService = "grading",
 }: {
   fixture?: boolean;
   staff?: boolean;
+  initialService?: "grading" | "consignment";
 }) {
   const endpoint = fixture
     ? `/api/preview/service-requests?actor=${staff ? "staff" : "a"}`
     : "/api/private/service-requests";
   const [config, setConfig] = useState<RequestConfig | null>(null),
     [error, setError] = useState(""),
-    [service, setService] = useState<"grading" | "consignment">("grading"),
+    [service, setService] = useState<"grading" | "consignment">(initialService),
     [kind, setKind] = useState("inquiry"),
     [provider, setProvider] = useState("PSA"),
     [delivery, setDelivery] = useState("planning_delivery"),
@@ -133,10 +138,110 @@ export function ServiceRequestForm({
     } | null>(null),
     [busy, setBusy] = useState(false),
     [guest, setGuest] = useState(false),
-    [frozen, setFrozen] = useState(false);
+    [frozen, setFrozen] = useState(false),
+    [photoIds, setPhotoIds] = useState<string[]>([]),
+    [photoError, setPhotoError] = useState(""),
+    [uploading, setUploading] = useState(false),
+    [photoUnconfirmed, setPhotoUnconfirmed] = useState(false),
+    [recoveryId, setRecoveryId] = useState<string | null>(null),
+    [recovering, setRecovering] = useState(false);
+  const draftId = useRef<string | null>(null),
+    uploadLock = useRef(false),
+    uploadPending = useRef<{ id: string; file: File } | null>(null);
+  const recoveryKey = config?.customerScope
+    ? `northside.request.pending.${config.customerScope}`
+    : null;
+  function requestId() {
+    return (draftId.current ??= crypto.randomUUID());
+  }
+  async function uploadPhoto(file: File) {
+    if (uploadLock.current || frozen || photoIds.length >= 10) return;
+    uploadLock.current = true;
+    setUploading(true);
+    setPhotoError("");
+    const item = uploadPending.current ?? { id: crypto.randomUUID(), file };
+    uploadPending.current = item;
+    setPhotoUnconfirmed(true);
+    try {
+      const url =
+        (fixture
+          ? "/api/preview/service-request-photos?actor=a&"
+          : "/api/private/service-request-photos?") +
+        new URLSearchParams({ request_id: requestId(), photo_id: item.id });
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": item.file.type },
+        body: item.file,
+        cache: "no-store",
+      });
+      if (!res.ok)
+        throw Error(
+          "Photo upload unconfirmed. Retry this photo before submitting.",
+        );
+      const value = await res.json();
+      if (value.id !== item.id)
+        throw Error("Photo upload unconfirmed. Retry this photo.");
+      setPhotoIds((old) => (old.includes(item.id) ? old : [...old, item.id]));
+      uploadPending.current = null;
+      setPhotoUnconfirmed(false);
+    } catch (e) {
+      setPhotoError(
+        e instanceof Error
+          ? e.message
+          : "Photo upload unconfirmed. Retry this photo.",
+      );
+    } finally {
+      uploadLock.current = false;
+      setUploading(false);
+    }
+  }
   const pending = useRef<ServiceRequestInput | null>(null),
     submitting = useRef(false),
     mounted = useRef(true);
+  const recoverSaved = useCallback(
+    async (id: string, signal?: AbortSignal, keyToClear?: string | null) => {
+      setRecovering(true);
+      try {
+        const v = await json(
+          endpoint +
+            (fixture ? "&" : "?") +
+            "recover=" +
+            encodeURIComponent(id),
+          undefined,
+          signal,
+        );
+        if (signal?.aborted) return false;
+        if (v.receipt) {
+          setKind(v.receipt.kind);
+          setService(v.receipt.service);
+          setReceipt({ ...v.receipt, claim_code: "" });
+          setError("");
+          setRecoveryId(null);
+          try {
+            if (keyToClear) sessionStorage.removeItem(keyToClear);
+          } catch {}
+          return true;
+        }
+        setFrozen(false);
+        setError(
+          "No saved record was found for the earlier attempt. Re-enter the details to retry using the same request reference, or check again if the earlier request is still processing.",
+        );
+        return false;
+      } catch {
+        if (!signal?.aborted) {
+          setFrozen(true);
+          setError(
+            "The earlier save cannot be checked yet. Sign in to the same account and check its saved reference before starting another request.",
+          );
+        }
+        return false;
+      } finally {
+        if (!signal?.aborted) setRecovering(false);
+      }
+    },
+    [endpoint, fixture],
+  );
   useEffect(() => {
     const abort = new AbortController();
     mounted.current = true;
@@ -152,7 +257,21 @@ export function ServiceRequestForm({
         return json("/api/public/v1/service-requests", undefined, abort.signal);
       })
       .then((v) => {
-        if (!abort.signal.aborted) setConfig(v);
+        if (abort.signal.aborted) return;
+        setConfig(v);
+        if (!staff && typeof v.customerScope === "string") {
+          const key = `northside.request.pending.${v.customerScope}`;
+          let recovery: string | null = null;
+          try {
+            recovery = sessionStorage.getItem(key);
+          } catch {}
+          if (recovery && /^[a-f0-9-]{36}$/i.test(recovery)) {
+            draftId.current = recovery;
+            setRecoveryId(recovery);
+            setFrozen(true);
+            void recoverSaved(recovery, abort.signal, key);
+          }
+        }
       })
       .catch((e) => {
         if (!abort.signal.aborted) setError(e.message);
@@ -161,11 +280,19 @@ export function ServiceRequestForm({
       mounted.current = false;
       abort.abort();
     };
-  }, [endpoint, fixture]);
+  }, [endpoint, fixture, staff, recoverSaved]);
   const term = config?.terms.find((t) => t.service === service);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (submitting.current) return;
+    if (
+      submitting.current ||
+      recovering ||
+      uploadLock.current ||
+      uploadPending.current
+    ) {
+      setError("Finish or retry your photo upload before saving.");
+      return;
+    }
     setError("");
     if (!pending.current) {
       const f = new FormData(e.currentTarget),
@@ -182,7 +309,7 @@ export function ServiceRequestForm({
           Number((dollars.split(".")[1] ?? "").padEnd(2, "0"))
         : null;
       const input = {
-        request_id: crypto.randomUUID(),
+        request_id: requestId(),
         claim_token: token(),
         kind,
         service,
@@ -193,6 +320,13 @@ export function ServiceRequestForm({
             : service === "consignment"
               ? {
                   listing_count: Number(s("listing_count")),
+                  items: [
+                    {
+                      description: s("item_description"),
+                      quantity: Number(s("item_quantity")),
+                    },
+                  ],
+                  photo_ids: photoIds,
                   delivery_method: delivery,
                   inbound_carrier: delivery === "shipped" ? s("carrier") : "",
                   inbound_tracking_number:
@@ -201,6 +335,13 @@ export function ServiceRequestForm({
                 }
               : {
                   provider,
+                  items: [
+                    {
+                      description: s("item_description"),
+                      quantity: Number(s("item_quantity")),
+                    },
+                  ],
+                  photo_ids: photoIds,
                   service_level_id: s("service_level") || null,
                   declared_value_cents: cents,
                   address: Object.fromEntries(
@@ -227,6 +368,35 @@ export function ServiceRequestForm({
         );
         return;
       }
+      if (
+        parsed.data.kind === "service_request" &&
+        parsed.data.service === "grading" &&
+        config
+      ) {
+        const choice = gradingRequestSelection(
+          config,
+          parsed.data.details as {
+            provider: "PSA" | "SGC";
+            service_level_id: string | null;
+            declared_value_cents: number | null;
+          },
+        );
+        if (!choice.ok) {
+          setError(choice.message);
+          return;
+        }
+      }
+      try {
+        if (!guest && !staff) {
+          if (!recoveryKey) throw Error("missing_owner_recovery_scope");
+          sessionStorage.setItem(recoveryKey, parsed.data.request_id);
+        }
+      } catch {
+        setError(
+          "This browser cannot retain a safe retry reference. Enable session storage before saving.",
+        );
+        return;
+      }
       pending.current = parsed.data;
       setFrozen(true);
     }
@@ -237,14 +407,37 @@ export function ServiceRequestForm({
         guest ? "/api/public/v1/service-requests" : endpoint,
         guest ? pending.current : { action: "submit", input: pending.current },
       );
-      if (mounted.current)
+      if (mounted.current) {
         setReceipt({ ...v, claim_code: pending.current!.claim_token });
+        setRecoveryId(null);
+        try {
+          if (recoveryKey) sessionStorage.removeItem(recoveryKey);
+        } catch {}
+      }
     } catch (e) {
+      if (
+        mounted.current &&
+        pending.current &&
+        !guest &&
+        e instanceof RequestFailure &&
+        e.code === "request_conflict"
+      ) {
+        if (
+          await recoverSaved(pending.current.request_id, undefined, recoveryKey)
+        )
+          return;
+      }
+      if (mounted.current && pending.current && !guest)
+        setRecoveryId(pending.current.request_id);
       if (
         mounted.current &&
         e instanceof RequestFailure &&
         [400, 409].includes(e.status) &&
-        ["invalid_service_request_fields", "request_terms_changed", "request_service_level_changed"].includes(e.code)
+        [
+          "invalid_service_request_fields",
+          "request_terms_changed",
+          "request_service_level_changed",
+        ].includes(e.code)
       ) {
         pending.current = null;
         setFrozen(false);
@@ -263,7 +456,9 @@ export function ServiceRequestForm({
       }
       if (mounted.current)
         setError(
-          !(e instanceof RequestFailure) || e.status >= 500 || e.code === "request_conflict"
+          !(e instanceof RequestFailure) ||
+            e.status >= 500 ||
+            e.code === "request_conflict"
             ? "Save unconfirmed. Retry the same request or contact Northside before starting another request."
             : e.message,
         );
@@ -325,6 +520,23 @@ export function ServiceRequestForm({
                   <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               )}
+            </div>
+          )}
+          {recoveryId && !receipt && (
+            <div className={styles.notice} role="status">
+              <p>
+                An earlier save has a retained retry reference. Check it before
+                making a separate request.
+              </p>
+              <button
+                type="button"
+                disabled={recovering || busy}
+                onClick={() =>
+                  void recoverSaved(recoveryId, undefined, recoveryKey)
+                }
+              >
+                {recovering ? "Checking saved request…" : "Check saved request"}
+              </button>
             </div>
           )}
           {receipt ? (
@@ -492,6 +704,74 @@ export function ServiceRequestForm({
                       </p>
                     </div>
                   </div>
+                  {kind === "service_request" && (
+                    <div className={styles.grid}>
+                      <label className={styles.fullWidth}>
+                        Item details
+                        <textarea
+                          name="item_description"
+                          required
+                          maxLength={500}
+                          placeholder="Identify the cards or items for staff review"
+                        />
+                      </label>
+                      <label>
+                        Item quantity
+                        <input
+                          name="item_quantity"
+                          type="number"
+                          required
+                          min="1"
+                          max="100000"
+                          step="1"
+                          defaultValue="1"
+                        />
+                      </label>
+                      {!staff && (
+                        <div className={styles.fullWidth}>
+                          <label>
+                            Private item photos (optional, up to 10; JPEG, PNG
+                            or WebP, 4 MiB each)
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              disabled={
+                                guest ||
+                                uploading ||
+                                frozen ||
+                                photoIds.length >= 10 ||
+                                photoUnconfirmed
+                              }
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                e.target.value = "";
+                                if (file) void uploadPhoto(file);
+                              }}
+                            />
+                          </label>
+                          {guest && (
+                            <p>Sign in to attach private photographs.</p>
+                          )}
+                          <p role="status">
+                            {uploading
+                              ? "Confirming private storage…"
+                              : `${photoIds.length} photographs confirmed in private storage.`}
+                          </p>
+                          {photoError && <p role="alert">{photoError}</p>}
+                          {photoUnconfirmed && !uploading && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void uploadPhoto(uploadPending.current!.file)
+                              }
+                            >
+                              Retry same photo
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {kind === "inquiry" ? (
                     <label>
                       Question
@@ -789,8 +1069,12 @@ type QueueData = {
 
 function SubmittedRequestDetails({
   request: r,
+  fixture = false,
+  staff = false,
 }: {
   request: ServiceRequestView;
+  fixture?: boolean;
+  staff?: boolean;
 }) {
   const labels: Record<string, string> = {
     question: "Question",
@@ -805,6 +1089,10 @@ function SubmittedRequestDetails({
     address: "Mailing address",
   };
   function detailValue(key: string, value: unknown): string {
+    if (key === "items" && Array.isArray(value))
+      return value.map((i) => `${i.quantity} × ${i.description}`).join("\n");
+    if (key === "photo_ids" && Array.isArray(value))
+      return `${value.length} private photographs`;
     if (value === null || value === "") return "Not provided";
     if (key === "delivery_method" && typeof value === "string")
       return (
@@ -864,6 +1152,22 @@ function SubmittedRequestDetails({
           </div>
         ) : null}
       </dl>
+      {Array.isArray(r.details.photo_ids) && r.details.photo_ids.length > 0 && (
+        <div className={styles.fullWidth}>
+          <h3>Submitted private photographs</h3>
+          {(r.details.photo_ids as string[]).map((id, i) => (
+            <p key={id}>
+              <a
+                href={`${fixture ? `/api/preview/service-request-photos?actor=${staff ? "staff" : "a"}&` : "/api/private/service-request-photos?"}photo_id=${encodeURIComponent(id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View private request photo {i + 1}
+              </a>
+            </p>
+          ))}
+        </div>
+      )}
       <details>
         <summary>Submission record</summary>
         <pre>
@@ -1055,7 +1359,15 @@ export function ServiceRequestQueue({
       {error && (
         <p className={styles.error} role="alert">
           {requestMessage(error)}{" "}
-          <Link href={staff ? "/staff/login" : "/account?returnTo=%2Fmy-cards%2Frequests"}>Sign in</Link>
+          <Link
+            href={
+              staff
+                ? "/staff/login"
+                : "/account?returnTo=%2Fmy-cards%2Frequests"
+            }
+          >
+            Sign in
+          </Link>
         </p>
       )}
       {savedNotice && (
@@ -1189,7 +1501,11 @@ export function ServiceRequestQueue({
           </p>
           <details>
             <summary>Contact, submitted details & terms</summary>
-            <SubmittedRequestDetails request={r} />
+            <SubmittedRequestDetails
+              request={r}
+              fixture={fixture}
+              staff={staff}
+            />
           </details>
           <ol className={styles.history} aria-label="Request history">
             {r.history.map((h, i) => (
@@ -1365,16 +1681,18 @@ export function ServiceRequestQueue({
                   )}
                 </>
               )}
-              {canEditRequests && <details>
-                <summary>Private staff notes</summary>
-                {data?.notes
-                  ?.filter((n) => n.request_id === r.id)
-                  .map((n, i) => (
-                    <p className={styles.staffNote} key={i}>
-                      {when(n.created_at)}: {n.reason} — {n.note}
-                    </p>
-                  ))}
-              </details>}
+              {canEditRequests && (
+                <details>
+                  <summary>Private staff notes</summary>
+                  {data?.notes
+                    ?.filter((n) => n.request_id === r.id)
+                    .map((n, i) => (
+                      <p className={styles.staffNote} key={i}>
+                        {when(n.created_at)}: {n.reason} — {n.note}
+                      </p>
+                    ))}
+                </details>
+              )}
             </>
           )}
         </section>

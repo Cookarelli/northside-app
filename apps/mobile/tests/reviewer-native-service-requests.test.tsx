@@ -17,7 +17,10 @@ import {
 import { Platform } from "react-native";
 import type { ReactNode, EffectCallback } from "react";
 import type { AuthController, AuthSnapshot } from "../src/auth/controller";
-import type { RequestConfig } from "@northside/customer-contracts/service-requests";
+import type {
+  RequestConfig,
+  ServiceRequestInput,
+} from "@northside/customer-contracts/service-requests";
 import ServiceRequests from "../src/app/service-requests";
 import { MobileFailure } from "../src/api/client";
 const A = "11111111-1111-4111-8111-111111111111",
@@ -42,19 +45,24 @@ const mockPressHandlers = new Map<string, () => void>();
 const mockConfig = jest.fn<AuthController["serviceRequestConfig"]>(),
   mockList = jest.fn<AuthController["serviceRequests"]>(),
   mockSubmit = jest.fn<AuthController["submitServiceRequest"]>(),
-  mockClaim = jest.fn<AuthController["claimServiceRequest"]>();
+  mockClaim = jest.fn<AuthController["claimServiceRequest"]>(),
+  mockPending = jest.fn<AuthController["pendingServiceRequest"]>(),
+  mockKeep = jest.fn<AuthController["keepServiceRequest"]>(),
+  mockUpload = jest.fn<AuthController["uploadServiceRequestPhoto"]>();
+const mockDrafts = new Map<string, ServiceRequestInput>();
+const mockCapture = jest.fn<() => Promise<{ base64: string }>>();
 const mockController = {
   serviceRequestConfig: mockConfig,
   serviceRequests: mockList,
   submitServiceRequest: mockSubmit,
   claimServiceRequest: mockClaim,
+  pendingServiceRequest: mockPending,
+  keepServiceRequest: mockKeep,
+  uploadServiceRequestPhoto: mockUpload,
 };
-jest.mock(
-  "../src/auth/Provider",
-  () => ({
-    useCustomerAuth: () => ({ state: mockState, controller: mockController }),
-  }),
-);
+jest.mock("../src/auth/Provider", () => ({
+  useCustomerAuth: () => ({ state: mockState, controller: mockController }),
+}));
 jest.mock("expo-router", () => {
   const React = jest.requireActual<typeof import("react")>("react");
   return {
@@ -73,44 +81,71 @@ jest.mock("expo-crypto", () => ({
     () => `00000000-0000-4000-8000-${String(++mockUuid).padStart(12, "0")}`,
   ),
 }));
-jest.mock(
-  "../src/components/CustomerScreen",
-  () => {
-    const React = jest.requireActual<typeof import("react")>("react"),
-      RN = jest.requireActual<typeof import("react-native")>("react-native");
-    return {
-      CustomerScreen: ({ children }: { children: ReactNode }) =>
-        React.createElement(RN.View, null, children),
-    };
-  },
-);
-jest.mock(
-  "../src/components/Controls",
-  () => {
-    const React = jest.requireActual<typeof import("react")>("react"),
-      RN = jest.requireActual<typeof import("react-native")>("react-native");
-    return {
-      Card: ({ children }: { children: ReactNode }) =>
-        React.createElement(RN.View, null, children),
-      Button: ({ label, disabled, onPress }: { label: string; disabled?: boolean; onPress: () => void }) => {
-        mockPressHandlers.set(label, onPress);
-        return React.createElement(
-          RN.Pressable,
-          {
-            accessibilityRole: "button",
-            accessibilityLabel: label,
-            accessibilityState: { disabled: !!disabled },
-            disabled,
-            onPress,
-          },
-          React.createElement(RN.Text, null, label),
-        );
-      },
-      ActionLink: ({ label }: { label: string }) =>
-        React.createElement(RN.Text, { accessibilityRole: "link" }, label),
-    };
-  },
-);
+jest.mock("expo-camera", () => {
+  const React = jest.requireActual<typeof import("react")>("react"),
+    RN = jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    useCameraPermissions: () => [
+      { granted: true },
+      async () => ({ granted: true }),
+    ],
+    CameraView: React.forwardRef(function MockRequestCamera(
+      props: { onCameraReady: () => void },
+      ref,
+    ) {
+      React.useImperativeHandle(ref, () => ({
+        takePictureAsync: () => mockCapture(),
+      }));
+      const ready = React.useRef(props.onCameraReady);
+      React.useEffect(() => {
+        ready.current();
+      }, []);
+      return React.createElement(RN.View, {
+        accessibilityLabel: "Request photo camera",
+      });
+    }),
+  };
+});
+jest.mock("../src/components/CustomerScreen", () => {
+  const React = jest.requireActual<typeof import("react")>("react"),
+    RN = jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    CustomerScreen: ({ children }: { children: ReactNode }) =>
+      React.createElement(RN.View, null, children),
+  };
+});
+jest.mock("../src/components/Controls", () => {
+  const React = jest.requireActual<typeof import("react")>("react"),
+    RN = jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    Card: ({ children }: { children: ReactNode }) =>
+      React.createElement(RN.View, null, children),
+    Button: ({
+      label,
+      disabled,
+      onPress,
+    }: {
+      label: string;
+      disabled?: boolean;
+      onPress: () => void;
+    }) => {
+      mockPressHandlers.set(label, onPress);
+      return React.createElement(
+        RN.Pressable,
+        {
+          accessibilityRole: "button",
+          accessibilityLabel: label,
+          accessibilityState: { disabled: !!disabled },
+          disabled,
+          onPress,
+        },
+        React.createElement(RN.Text, null, label),
+      );
+    },
+    ActionLink: ({ label }: { label: string }) =>
+      React.createElement(RN.Text, { accessibilityRole: "link" }, label),
+  };
+});
 const config = (revision = 1): RequestConfig => ({
   contractVersion: "1",
   location: {
@@ -144,7 +179,9 @@ const config = (revision = 1): RequestConfig => ({
     },
   ],
 });
-type RequestReceipt = Awaited<ReturnType<AuthController["submitServiceRequest"]>>;
+type RequestReceipt = Awaited<
+  ReturnType<AuthController["submitServiceRequest"]>
+>;
 type RequestList = Awaited<ReturnType<AuthController["serviceRequests"]>>;
 const receipt = (ref = "NS-SAMPLE-A"): RequestReceipt => ({
   contractVersion: "1",
@@ -170,6 +207,8 @@ async function contact() {
   await fill("Full name", "SAMPLE collector");
   await fill("Email", "sample@example.invalid");
   await fill("Phone", "8155550100");
+  if (screen.queryByLabelText("Item details"))
+    await fill("Item details", "SAMPLE card for staff review");
 }
 async function start() {
   const view = await render(<ServiceRequests />);
@@ -191,6 +230,19 @@ beforeEach(() => {
   mockFocus = true;
   mockUuid = 0;
   mockPressHandlers.clear();
+  mockDrafts.clear();
+  mockPending
+    .mockReset()
+    .mockImplementation(
+      async () => mockDrafts.get(mockState.account?.customer.id ?? "") ?? null,
+    );
+  mockKeep.mockReset().mockImplementation(async (input) => {
+    const id = mockState.account?.customer.id ?? "";
+    if (input) mockDrafts.set(id, structuredClone(input));
+    else mockDrafts.delete(id);
+  });
+  mockUpload.mockReset().mockImplementation(async (_request, id) => ({ id }));
+  mockCapture.mockReset().mockResolvedValue({ base64: "cGhvdG8=" });
   Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" });
   mockConfig.mockReset().mockResolvedValue(config());
   mockList
@@ -203,21 +255,120 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("actual native shared request screen", () => {
+  it("deferred capture synchronously blocks Save and late capture after blur never uploads", async () => {
+    const capture = deferred<{ base64: string }>();
+    mockCapture.mockImplementationOnce(() => capture.promise);
+    const view = await start();
+    await press("consignment");
+    await press("service request");
+    await contact();
+    await fill("Number of listings / lots", "1");
+    await fill("Special instructions — enter None if none", "None");
+    await accept();
+    await press("Take private item photo");
+    await waitFor(() =>
+      expect(button("Capture request photo")).not.toBeDisabled(),
+    );
+    const save = mockPressHandlers.get("Save request")!,
+      capturePress = mockPressHandlers.get("Capture request photo")!;
+    await act(async () => {
+      capturePress();
+      save();
+    });
+    expect(mockSubmit).not.toHaveBeenCalled();
+    expect(button("Save request")).toBeDisabled();
+    mockFocus = false;
+    await view.rerender(<ServiceRequests />);
+    await act(async () => capture.resolve({ base64: "cGhvdG8=" }));
+    expect(mockUpload).not.toHaveBeenCalled();
+    mockFocus = true;
+    await view.rerender(<ServiceRequests />);
+    await waitFor(() => expect(button("Save request")).not.toBeDisabled());
+  });
+  it("lost photo response retries identical bytes and identity before one request snapshot", async () => {
+    mockUpload.mockRejectedValueOnce(new MobileFailure("offline"));
+    await start();
+    await press("consignment");
+    await press("service request");
+    await contact();
+    await fill("Number of listings / lots", "1");
+    await fill("Special instructions — enter None if none", "None");
+    await accept();
+    await press("Take private item photo");
+    await waitFor(() =>
+      expect(button("Capture request photo")).not.toBeDisabled(),
+    );
+    await press("Capture request photo");
+    await waitFor(() =>
+      expect(button("Retry same request photo")).not.toBeDisabled(),
+    );
+    expect(button("Save request")).toBeDisabled();
+    const [request, id, bytes] = mockUpload.mock.calls[0];
+    await press("Retry same request photo");
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(2));
+    expect(mockUpload.mock.calls[1].slice(0, 3)).toEqual([request, id, bytes]);
+    expect(mockCapture).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(button("Save request")).not.toBeDisabled());
+    await press("Save request");
+    await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
+    expect(mockSubmit.mock.calls[0][0].request_id).toBe(request);
+    expect(mockSubmit.mock.calls[0][0].details.photo_ids).toEqual([id]);
+  });
+  it("reload recovers exact secure pending input without creating a replacement submission", async () => {
+    const draft: ServiceRequestInput = {
+      request_id: A,
+      claim_token: "A".repeat(43),
+      kind: "inquiry",
+      service: "grading",
+      contact: {
+        name: "SAMPLE original",
+        email: "original@example.invalid",
+        phone: "8155550100",
+      },
+      details: { question: "SAMPLE original question" },
+      terms_id: null,
+      terms_accepted: false,
+    };
+    mockDrafts.set(A, draft);
+    await render(<ServiceRequests />);
+    await waitFor(() =>
+      expect(button("Retry same request")).not.toBeDisabled(),
+    );
+    await press("Retry same request");
+    await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
+    expect(mockSubmit.mock.calls[0][0]).toEqual(draft);
+    await waitFor(() =>
+      expect(screen.getByText(/Saved NS-SAMPLE-A/)).toBeVisible(),
+    );
+    expect(mockDrafts.has(A)).toBe(false);
+  });
+
   it("an acknowledged save stays saved when only the history refresh fails", async () => {
-    mockList.mockResolvedValueOnce({contractVersion: "1", requests: []})
+    mockList
+      .mockResolvedValueOnce({ contractVersion: "1", requests: [] })
       .mockRejectedValueOnce(new MobileFailure("service_unavailable"));
     await start();
     await inquiry();
     await press("Save request");
-    await waitFor(() => expect(screen.getByText(/Saved NS-SAMPLE-A/)).toBeVisible());
-    expect(screen.getByText(/Your request was saved. Request history could not be refreshed/)).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByText(/Saved NS-SAMPLE-A/)).toBeVisible(),
+    );
+    expect(
+      screen.getByText(
+        /Your request was saved. Request history could not be refreshed/,
+      ),
+    ).toBeVisible();
     expect(screen.queryByText(/Save unconfirmed/)).toBeNull();
-    expect(screen.queryByRole("button", {name: "Retry same request"})).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Retry same request" }),
+    ).toBeNull();
     expect(mockSubmit).toHaveBeenCalledTimes(1);
   });
-  it("definitive changed terms require renewed consent and a new request key", async () => {
+  it("definitive changed terms require renewed consent while preserving the draft photo namespace", async () => {
     mockConfig.mockResolvedValueOnce(config()).mockResolvedValueOnce(config(2));
-    mockSubmit.mockRejectedValueOnce(new MobileFailure("request_terms_changed"));
+    mockSubmit.mockRejectedValueOnce(
+      new MobileFailure("request_terms_changed"),
+    );
     await start();
     await press("consignment");
     await press("service request");
@@ -227,34 +378,74 @@ describe("actual native shared request screen", () => {
     await accept();
     await press("Save request");
     await waitFor(() => expect(mockConfig).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.getByText("SAMPLE current consignment policy 2")).toBeVisible());
+    await waitFor(() =>
+      expect(
+        screen.getByText("SAMPLE current consignment policy 2"),
+      ).toBeVisible(),
+    );
     expect(screen.getByLabelText("Email")).toHaveProp("editable", true);
     await press("Save request");
     expect(mockSubmit).toHaveBeenCalledTimes(1);
     await accept();
     await press("Save request");
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(2));
-    expect(mockSubmit.mock.calls[1][0].request_id).not.toBe(mockSubmit.mock.calls[0][0].request_id);
+    expect(mockSubmit.mock.calls[1][0].request_id).toBe(
+      mockSubmit.mock.calls[0][0].request_id,
+    );
     expect(mockSubmit.mock.calls[1][0].terms_id).toBe(config(2).terms[1].id);
   });
+  it("secure retry deletion failure after changed terms remains visibly frozen without an unhandled rejection", async () => {
+    mockSubmit.mockRejectedValueOnce(
+      new MobileFailure("request_terms_changed"),
+    );
+    mockKeep
+      .mockImplementationOnce(async (input) => {
+        if (input) mockDrafts.set(A, structuredClone(input));
+      })
+      .mockRejectedValueOnce(new MobileFailure("storage_unavailable"));
+    await start();
+    await inquiry();
+    await press("Save request");
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /secure retry storage could not be cleared/,
+      ),
+    );
+    expect(screen.getByLabelText("Email")).toHaveProp("editable", false);
+    expect(button("Retry same request")).not.toBeDisabled();
+    expect(mockSubmit).toHaveBeenCalledTimes(1);
+    expect(mockConfig).toHaveBeenCalledTimes(1);
+    expect(mockDrafts.get(A)?.request_id).toBe(
+      mockSubmit.mock.calls[0][0].request_id,
+    );
+  });
   it("configuration reload failure after definitive rejection disables saving", async () => {
-    mockConfig.mockResolvedValueOnce(config()).mockRejectedValueOnce(new Error("SAMPLE offline"));
-    mockSubmit.mockRejectedValueOnce(new MobileFailure("request_service_level_changed"));
+    mockConfig
+      .mockResolvedValueOnce(config())
+      .mockRejectedValueOnce(new Error("SAMPLE offline"));
+    mockSubmit.mockRejectedValueOnce(
+      new MobileFailure("request_service_level_changed"),
+    );
     await start();
     await inquiry();
     await press("Save request");
     await waitFor(() => expect(mockConfig).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(button("Save request")).toBeDisabled());
-    expect(screen.getByRole("alert")).toHaveTextContent(/Current service details could not be loaded/);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /Current service details could not be loaded/,
+    );
     expect(mockSubmit).toHaveBeenCalledTimes(1);
   });
   it("uncertain transport failure and conflicting keys retain the exact retry payload", async () => {
-    mockSubmit.mockRejectedValueOnce(new MobileFailure("service_unavailable"))
+    mockSubmit
+      .mockRejectedValueOnce(new MobileFailure("service_unavailable"))
       .mockRejectedValueOnce(new MobileFailure("request_conflict"));
     await start();
     await inquiry();
     await press("Save request");
-    await waitFor(() => expect(button("Retry same request")).not.toBeDisabled());
+    await waitFor(() =>
+      expect(button("Retry same request")).not.toBeDisabled(),
+    );
     const original = structuredClone(mockSubmit.mock.calls[0][0]);
     await press("Retry same request");
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(2));
@@ -319,6 +510,8 @@ describe("actual native shared request screen", () => {
         terms_accepted: true,
         details: {
           listing_count: 3,
+          items: [{ description: "SAMPLE card for staff review", quantity: 1 }],
+          photo_ids: [],
           delivery_method: "shipped",
           inbound_carrier: "SAMPLE carrier",
           inbound_tracking_number: "free text / no URL",
@@ -348,6 +541,8 @@ describe("actual native shared request screen", () => {
         terms_id: TG,
         details: {
           provider: "SGC",
+          items: [{ description: "SAMPLE card for staff review", quantity: 1 }],
+          photo_ids: [],
           service_level_id: LEVEL,
           declared_value_cents: 10005,
           address: {
@@ -488,7 +683,7 @@ describe("actual native shared request screen", () => {
     await press("service request");
     expect(screen.getByText("SAMPLE current grading policy 2")).toBeVisible();
   });
-  it("same-identity blur cancels old form work and an old finally cannot unlock a new in-flight request", async () => {
+  it("same-identity blur recovers the exact pending request and an old finally cannot unlock its retry", async () => {
     const old = deferred<RequestReceipt>(),
       current = deferred<RequestReceipt>();
     mockSubmit
@@ -503,11 +698,14 @@ describe("actual native shared request screen", () => {
     await view.rerender(<ServiceRequests />);
     mockFocus = true;
     await view.rerender(<ServiceRequests />);
-    await waitFor(() => expect(button("Save request")).not.toBeDisabled());
+    await waitFor(() =>
+      expect(button("Retry same request")).not.toBeDisabled(),
+    );
     expect(signal?.aborted).toBe(true);
-    await inquiry();
-    await press("Save request");
+    expect(screen.getByLabelText("Email")).toHaveProp("editable", false);
+    await press("Retry same request");
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(2));
+    expect(mockSubmit.mock.calls[1][0]).toEqual(mockSubmit.mock.calls[0][0]);
     await act(async () => old.resolve(receipt("NS-OLD-BLURRED")));
     expect(screen.queryByText(/NS-OLD-BLURRED/)).toBeNull();
     expect(button("Saving…")).toBeDisabled();

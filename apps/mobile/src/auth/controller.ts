@@ -17,7 +17,10 @@ import type {
   TrackingService,
   TermsAcceptance,
 } from "@northside/customer-contracts/tracking";
-import type { ServiceRequestInput } from "@northside/customer-contracts/service-requests";
+import {
+  requestSchema,
+  type ServiceRequestInput,
+} from "@northside/customer-contracts/service-requests";
 export const accountDestinations = [
   "/account",
   "/my-cards?service=grading",
@@ -179,6 +182,7 @@ export class AuthController {
       const results = await Promise.allSettled([
         this.ports.storage.remove("renewal"),
         this.ports.storage.remove("pending"),
+        this.ports.storage.remove("service_request"),
       ]);
       if (results.some((result) => result.status === "rejected"))
         throw new MobileFailure("storage_unavailable");
@@ -480,6 +484,62 @@ export class AuthController {
   tracking(service: TrackingService, signal?: AbortSignal) {
     return this.trackingRequest(
       (api, access, s) => api.tracking(access, service, s),
+      signal,
+    );
+  }
+  async pendingServiceRequest(): Promise<ServiceRequestInput | null> {
+    const g = this.generation,
+      customerId = this.state.account?.customer.id;
+    if (this.state.status !== "authenticated" || !customerId)
+      throw new MobileFailure("session_expired");
+    const raw = await this.save(() =>
+      this.ports.storage.get("service_request"),
+    );
+    this.current(g);
+    if (!raw) return null;
+    try {
+      const v = JSON.parse(raw);
+      const p = requestSchema.safeParse(v.input);
+      if (v.customerId !== customerId || !p.success) throw new Error();
+      return p.data;
+    } catch {
+      await this.save(() => this.ports.storage.remove("service_request"));
+      this.current(g);
+      return null;
+    }
+  }
+  async keepServiceRequest(input: ServiceRequestInput | null) {
+    const g = this.generation,
+      customerId = this.state.account?.customer.id;
+    if (this.state.status !== "authenticated" || !customerId)
+      throw new MobileFailure("session_expired");
+    if (input && !requestSchema.safeParse(input).success)
+      throw new MobileFailure("invalid_request");
+    await this.save(() =>
+      input
+        ? this.ports.storage.set(
+            "service_request",
+            JSON.stringify({ customerId, input }),
+          )
+        : this.ports.storage.remove("service_request"),
+    );
+    this.current(g);
+  }
+  serviceRequestPhoto(id: string, signal?: AbortSignal) {
+    return this.trackingRequest(
+      (api, access, s) => api.serviceRequestPhoto(access, id, s),
+      signal,
+    );
+  }
+  uploadServiceRequestPhoto(
+    requestId: string,
+    photoId: string,
+    bytes: Uint8Array,
+    signal?: AbortSignal,
+  ) {
+    return this.trackingRequest(
+      (api, access, s) =>
+        api.uploadServiceRequestPhoto(access, requestId, photoId, bytes, s),
       signal,
     );
   }

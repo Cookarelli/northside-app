@@ -11,6 +11,7 @@ import {
 } from "./security";
 import { boundedJson } from "./grading-api";
 import {
+  recoverRequest,
   requestConfig,
   submitRequest,
   listRequests,
@@ -29,6 +30,11 @@ export async function serviceRequestAction(
 ) {
   const u = new URL(request.url);
   if (request.method === "GET") {
+    if (u.searchParams.has("recover")) {
+      if (u.searchParams.getAll("recover").length !== 1)
+        throw new AccessError(400, "invalid_request");
+      return recoverRequest(db, a, u.searchParams.get("recover"));
+    }
     if (u.searchParams.has("config")) return requestConfig(db, a);
     if (u.searchParams.has("staff")) return staffRequestData(db, a);
     return listRequests(db, a);

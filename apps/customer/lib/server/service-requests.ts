@@ -12,6 +12,8 @@ import {
   type ServiceRequestView,
 } from "../../../../packages/customer-contracts/src/service-requests";
 
+import { verifyRequestPhotos } from "./service-request-photos";
+
 const writers = (a: Actor) => requireRole(a, ["owner", "admin", "operations"]);
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
@@ -41,6 +43,9 @@ export async function requestConfig(
   return {
     contractVersion: "1",
     ...row.config,
+    customerScope: a?.customer_id
+      ? hashToken(`service-request:${a.tenant_id}:${a.customer_id}`)
+      : null,
     location: {
       address: "6800 Forest Hills Road, Unit 3, Loves Park, Illinois",
       receivingPostalCode: null,
@@ -64,6 +69,10 @@ export async function submitRequest(
   const p = requestSchema.safeParse(body);
   if (!p.success) throw new AccessError(400, "invalid_service_request_fields");
   const b = p.data;
+  await verifyRequestPhotos(db, a, {
+    request_id: b.request_id,
+    photo_ids: b.details.photo_ids as string[] | undefined,
+  });
   if (a?.staff_id) {
     writers(a);
     if (b.kind !== "inquiry")
@@ -127,6 +136,38 @@ export async function submitRequest(
     throw new AccessError(503, "service_unavailable");
   }
 }
+/** Recover a committed receipt by a non-authorizing attempt ID within the signed-in owner scope. */
+export async function recoverRequest(db: Sql, a: Actor, submission: unknown) {
+  requireCustomer(a);
+  const id = uuid(text(submission, 36, true)).toLowerCase();
+  await db.query("select pg_advisory_xact_lock(hashtext($1))", [
+    `${a.tenant_id}:request:${id}`,
+  ]);
+  const row = (
+    await db.query<{
+      id: string;
+      reference: string;
+      state: string;
+      kind: string;
+      service: string;
+    }>(
+      "select id,reference,state,kind,service from ns.service_requests where tenant_id=$1 and submitted_customer_id=$2 and submission_id=$3",
+      [a.tenant_id, a.customer_id, id],
+    )
+  ).rows[0];
+  return {
+    receipt: row
+      ? {
+          contractVersion: "1",
+          ...row,
+          duplicate: true,
+          requires_claim: false,
+          next_steps:
+            "Saved for Northside staff review. This does not confirm physical receipt, a quote, a payout or submission to a grading provider. Track this linked request in My Cards.",
+        }
+      : null,
+  };
+}
 async function ownedRequest(db: Sql, a: Actor, id: unknown, lock = false) {
   if (!a.customer_id)
     requireRole(a, ["owner", "admin", "operations", "read_only"]);
@@ -148,7 +189,7 @@ export async function listRequests(db: Sql, a: Actor) {
     requireRole(a, ["owner", "admin", "operations", "read_only"]);
   const rows = (
     await db.query<ServiceRequestView>(
-      `select id,reference,kind,service,source,contact,details,state,version,created_at,updated_at,staff_owner,follow_up_at,received_at,customer_id,terms_id,terms_version,terms_hash,terms_accepted_at,intake_result from ns.service_requests where tenant_id=$1 ${a.customer_id ? "and customer_id=$2" : ""} order by created_at desc,id limit 500`,
+      `select id,submission_id,reference,kind,service,source,contact,details,state,version,created_at,updated_at,staff_owner,follow_up_at,received_at,customer_id,terms_id,terms_version,terms_hash,terms_accepted_at,intake_result from ns.service_requests where tenant_id=$1 ${a.customer_id ? "and customer_id=$2" : ""} order by created_at desc,id limit 500`,
       a.customer_id ? [a.tenant_id, a.customer_id] : [a.tenant_id],
     )
   ).rows;
@@ -204,12 +245,14 @@ export async function staffRequestData(db: Sql, a: Actor) {
         [a.tenant_id],
       )
     ).rows,
-    notes: ["owner", "admin", "operations"].includes(a.staff_role ?? "") ? (
-      await db.query(
-        "select request_id,note,reason,created_at from ns.service_request_notes where tenant_id=$1 order by created_at desc limit 1000",
-        [a.tenant_id],
-      )
-    ).rows : [],
+    notes: ["owner", "admin", "operations"].includes(a.staff_role ?? "")
+      ? (
+          await db.query(
+            "select request_id,note,reason,created_at from ns.service_request_notes where tenant_id=$1 order by created_at desc limit 1000",
+            [a.tenant_id],
+          )
+        ).rows
+      : [],
     outbox: (
       await db.query(
         "select id,request_id,state,attempts,next_attempt_at,last_error from ns.service_request_outbox where tenant_id=$1 order by next_attempt_at limit 500",
