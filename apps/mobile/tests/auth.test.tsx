@@ -551,6 +551,22 @@ describe("native customer authentication safety with simulated provider/backend"
 });
 
 describe("versioned transport safety", () => {
+  it.each(["text/plain", "text/html", "application/json"])(
+    "surfaces an edge 429 safely without retrying a read or renewal: %s",
+    async (contentType) => {
+      const request = jest.fn<typeof fetch>(
+        async () =>
+          new Response("edge throttle; not an application response", {
+            status: 429,
+            headers: { "Content-Type": contentType },
+          }),
+      );
+      const api = new MobileApi("https://stage.example.test", request);
+      await expect(api.account(opaque(1))).rejects.toThrow("rate_limited");
+      await expect(api.renew(opaque(2))).rejects.toThrow("rate_limited");
+      expect(request).toHaveBeenCalledTimes(2);
+    },
+  );
   it("rejects insecure or credential-bearing API origins", () => {
     for (const origin of [
       "http://example.test",

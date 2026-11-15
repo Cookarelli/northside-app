@@ -176,6 +176,8 @@ export class MobileApi {
           )
             throw new MobileFailure("scan_endpoint_unavailable");
         }
+        // The edge may throttle before the application can return its JSON contract.
+        if (response.status === 429) throw new MobileFailure("rate_limited");
         if (
           !/application\/json/i.test(response.headers.get("content-type") ?? "")
         )
