@@ -192,7 +192,7 @@ describe("public native configuration boundary", () => {
       "expo-camera",
       {
         cameraPermission:
-          "Allow Northside to scan product barcodes. No photos or audio are recorded.",
+          "Allow Northside to scan product barcodes and take item photos for your service requests. Audio is not recorded.",
         recordAudioAndroid: false,
         microphonePermission: false,
       },
