@@ -13,6 +13,7 @@ import {
   type TrackingList,
   type TrackingService,
 } from "../../../packages/customer-contracts/src/tracking";
+import { websiteServiceTerms } from "../lib/website-service-terms";
 const when = (v: string) =>
   new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Chicago",
@@ -97,6 +98,10 @@ export function ServiceTermsPanel({
     };
   }, [query, key, staff]);
   const current = state?.key === key ? state : null;
+  const prepared =
+    staff && !fixture && current && !current.terms.current
+      ? websiteServiceTerms[service]
+      : null;
   async function send(body: Record<string, unknown>) {
     const sentScope = scope.current.epoch,
       abort = new AbortController();
@@ -196,7 +201,7 @@ export function ServiceTermsPanel({
         Reload service terms
       </button>
       {staff && (
-        <details>
+        <details open={!!prepared}>
           <summary>
             Configure an approved terms version — owner/admin only
           </summary>
@@ -205,7 +210,15 @@ export function ServiceTermsPanel({
             No legal terms are generated here. Existing versions and acceptances
             cannot be edited.
           </p>
+          {prepared && (
+            <p>
+              The existing <a href={prepared.source}>Northside website terms</a>{" "}
+              are prepared below. Review the text and proposed version before
+              saving. Your staff account will be recorded as the publisher.
+            </p>
+          )}
           <form
+            key={current?.terms.current?.id ?? (prepared ? service : "loading")}
             className="grading-form"
             onSubmit={(e) => {
               e.preventDefault();
@@ -223,16 +236,29 @@ export function ServiceTermsPanel({
           >
             <label>
               Version
-              <input name="version" maxLength={80} required disabled={busy} />
+              <input
+                name="version"
+                defaultValue={prepared?.version ?? ""}
+                maxLength={80}
+                required
+                disabled={busy}
+              />
             </label>
             <label>
               Document title
-              <input name="title" maxLength={200} required disabled={busy} />
+              <input
+                name="title"
+                defaultValue={prepared?.title ?? ""}
+                maxLength={200}
+                required
+                disabled={busy}
+              />
             </label>
             <label>
               Approved customer-visible text
               <textarea
                 name="body"
+                defaultValue={prepared?.body ?? ""}
                 maxLength={16000}
                 required
                 disabled={busy}
@@ -242,6 +268,7 @@ export function ServiceTermsPanel({
               Business approval reference — staff only
               <input
                 name="approval_reference"
+                defaultValue={prepared?.approvalReference ?? ""}
                 maxLength={1000}
                 required
                 disabled={busy}
