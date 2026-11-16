@@ -21,6 +21,7 @@ import type {
   RequestConfig,
   ServiceRequestInput,
 } from "@northside/customer-contracts/service-requests";
+import { requestSchema, storedRequestSchema } from "@northside/customer-contracts/service-requests";
 import ServiceRequests from "../src/app/service-requests";
 import { MobileFailure } from "../src/api/client";
 const A = "11111111-1111-4111-8111-111111111111",
@@ -258,11 +259,11 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("actual native shared request screen", () => {
-  it.each(["grading", "consignment"] as const)("routes a %s advance question to staff without submitting a financial request", async (service) => {
+  it("routes advance inquiries to consignment only", async () => {
     mockTopic = "advance";
     await start();
     expect(screen.queryByRole("button", { name: "service request" })).toBeNull();
-    if (service === "consignment") await press("consignment");
+    expect(screen.queryByRole("button", { name: /grading/i })).toBeNull();
     await contact();
     await press("Save request");
     expect(mockSubmit).not.toHaveBeenCalled();
@@ -270,8 +271,8 @@ describe("actual native shared request screen", () => {
     await press("Save request");
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
     expect(mockSubmit.mock.calls[0][0]).toMatchObject({
-      service, kind: "inquiry", terms_accepted: false,
-      details: { question: `Card advance inquiry (${service}): Northside Cash store credit. SAMPLE card NS-123` },
+      service: "consignment", kind: "inquiry", terms_accepted: false,
+      details: { question: "Card advance inquiry (consignment): Northside Cash store credit. SAMPLE card NS-123" },
     });
   });
   it("deferred capture synchronously blocks Save and late capture after blur never uploads", async () => {
@@ -335,15 +336,15 @@ describe("actual native shared request screen", () => {
   });
   it.each([
     ["ordinary", "SAMPLE original question"],
-    ["prior advance", "Card advance inquiry (grading): SAMPLE original card"],
-    ["Northside Cash advance", "Card advance inquiry (grading): Northside Cash store credit. SAMPLE original card"],
+    ["prior advance", "Card advance inquiry (consignment): SAMPLE original card"],
+    ["Northside Cash advance", "Card advance inquiry (consignment): Northside Cash store credit. SAMPLE original card"],
   ])("recovering a pending %s inquiry preserves the original submission", async (kind, question) => {
     mockTopic = kind === "ordinary" ? undefined : "advance";
     const draft: ServiceRequestInput = {
       request_id: A,
       claim_token: "A".repeat(43),
       kind: "inquiry",
-      service: "grading",
+      service: kind === "ordinary" ? "grading" : "consignment",
       contact: {
         name: "SAMPLE original",
         email: "original@example.invalid",
@@ -367,6 +368,25 @@ describe("actual native shared request screen", () => {
     await waitFor(() =>
       expect(screen.getByText(/Saved NS-SAMPLE-A/)).toBeVisible(),
     );
+    expect(mockDrafts.has(A)).toBe(false);
+  });
+
+  it.each(["advance", undefined])("closes an old grading advance without resubmitting it from topic %s", async (topic) => {
+    mockTopic = topic;
+    const draft: ServiceRequestInput = {
+      request_id: A, claim_token: "A".repeat(43), kind: "inquiry", service: "grading",
+      contact: { name: "SAMPLE", email: "test@example.invalid", phone: "8155550100" },
+      details: { question: "Card advance inquiry (grading): Northside Cash store credit. SAMPLE" },
+      terms_id: null, terms_accepted: false,
+    };
+    expect(storedRequestSchema.safeParse(draft).success).toBe(true);
+    expect(requestSchema.safeParse(draft).success).toBe(false);
+    expect(requestSchema.safeParse({ ...draft, details: { question: "When will my graded card return?" } }).success).toBe(true);
+    mockDrafts.set(A, draft);
+    await start();
+    expect(screen.getByText(/earlier grading advance draft has been closed/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Retry same request" })).toBeNull();
+    expect(mockSubmit).not.toHaveBeenCalled();
     expect(mockDrafts.has(A)).toBe(false);
   });
 

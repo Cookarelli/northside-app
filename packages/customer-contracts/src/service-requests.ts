@@ -43,7 +43,7 @@ const payloadBytes = (value: unknown) => {
   }
   return size;
 };
-export const requestSchema = z
+export const storedRequestSchema = z
   .strictObject({
     request_id: z.uuid(),
     claim_token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
@@ -145,6 +145,19 @@ export const requestSchema = z
         }
       : v,
   );
+export const maxConsignmentAdvancePercent = 30;
+
+// Preserve the original payload for recovery, including drafts saved by older apps.
+export function isRetiredGradingAdvance(input: z.infer<typeof storedRequestSchema>) {
+  return input.service === "grading" && input.kind === "inquiry" &&
+    typeof input.details.question === "string" &&
+    input.details.question.startsWith("Card advance inquiry (grading): ");
+}
+
+export const requestSchema = storedRequestSchema.refine(
+  (input) => !isRetiredGradingAdvance(input),
+  { path: ["details", "question"], message: "Northside Cash advances are available for consigned cards only." },
+);
 export type ServiceRequestInput = z.infer<typeof requestSchema>;
 export type RequestConfig = {
   contractVersion: "1";

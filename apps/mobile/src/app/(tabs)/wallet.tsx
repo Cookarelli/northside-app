@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { AppState, Text } from "react-native";
+import { maxConsignmentAdvancePercent } from "@northside/customer-contracts/service-requests";
 import { CustomerScreen as Screen } from "../../components/CustomerScreen";
 import { ActionLink, Button, Card } from "../../components/Controls";
 import { StatePanel } from "../../components/StatePanel";
@@ -122,12 +123,11 @@ export default function WalletScreen() {
         <Text style={ui.copy}>Rookie · Vet · HOF · GOAT</Text>
       </Card>
       <Card appearance="storefront">
-        <Text accessibilityRole="header" style={ui.heading}>Card advances</Text>
+        <Text accessibilityRole="header" style={ui.heading}>Consignment advances</Text>
         <Text style={ui.copy}>
-          For a card in consignment or grading, you can ask for an advance in
-          Northside Cash store credit. Staff will review your card and explain any offer.
+          For consigned cards only, you can request an advance of up to {maxConsignmentAdvancePercent}% of the card’s estimated sale price in Northside Cash store credit. Staff will confirm the estimate and any offer.
         </Text>
-        <ActionLink appearance="storefront" href={{ pathname: "/service-requests", params: { topic: "advance" } }} label="Ask about a card advance" />
+        <ActionLink appearance="storefront" href={{ pathname: "/service-requests", params: { topic: "advance" } }} label="Ask about a consignment advance" />
       </Card>
       <Card appearance="storefront">
         <Text accessibilityRole="header" style={ui.heading}>Consignment proceeds</Text>

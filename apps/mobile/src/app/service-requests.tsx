@@ -11,6 +11,8 @@ import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import {
   requestSchema,
+  isRetiredGradingAdvance,
+  maxConsignmentAdvancePercent,
   type RequestConfig,
   type ServiceRequestInput,
   type ServiceRequestView,
@@ -46,12 +48,12 @@ export default function ServiceRequestsScreen() {
   return (
     <CustomerScreen
       eyebrow="NORTHSIDE SERVICES"
-      title={advance ? "Card advance inquiry" : "Service requests"}
-      description={advance ? "Ask staff to review your consignment or grading card for a Northside Cash store credit advance. Sending an inquiry creates no payment or repayment obligation." : "Consignment and grading staff review"}
+      title={advance ? "Consignment advance inquiry" : "Service requests"}
+      description={advance ? `Request up to ${maxConsignmentAdvancePercent}% of your consigned card’s estimated sale price in Northside Cash store credit. Staff will confirm the estimate and any offer before you decide.` : "Consignment and grading staff review"}
     >
       <ActionLink
         appearance="storefront"
-        href="/my-cards"
+        href={advance ? "/my-cards?service=consignment" : "/my-cards"}
         label="My Cards & private photos"
       />
       {identity ? (
@@ -79,7 +81,7 @@ function RequestContent({ advance }: { advance: boolean }) {
   const { controller } = useCustomerAuth(),
     [config, setConfig] = useState<RequestConfig | null>(null),
     [requests, setRequests] = useState<ServiceRequestView[]>([]),
-    [service, setService] = useState<"grading" | "consignment">("grading"),
+    [service, setService] = useState<"grading" | "consignment">(advance ? "consignment" : "grading"),
     [kind, setKind] = useState<"inquiry" | "service_request">("inquiry"),
     [provider, setProvider] = useState("PSA"),
     [level, setLevel] = useState<string | null>(null),
@@ -113,6 +115,15 @@ function RequestContent({ advance }: { advance: boolean }) {
           if (g === epoch.current) {
             setRequests(r.requests);
             if (recovered) {
+              if (isRetiredGradingAdvance(recovered)) {
+                const previous = r.requests.find((item) => item.submission_id === recovered.request_id);
+                await controller.keepServiceRequest(null);
+                if (g !== epoch.current) return;
+                const note = previous ? `Your earlier inquiry ${previous.reference} is in your history.` : "Your earlier grading advance draft has been closed.";
+                setError(`${note} Northside Cash advances are for consigned cards only.`);
+                setConfig(c);
+                return;
+              }
               const subject = advanceSubject(recovered.service);
               const question = recovered.details.question;
               if (advance && (recovered.kind !== "inquiry" || typeof question !== "string" || !question.startsWith(subject))) {
@@ -414,6 +425,7 @@ function RequestContent({ advance }: { advance: boolean }) {
         </Text>
       ) : (
         <Card appearance="storefront">
+          {!advance && <>
           <Text style={ui.copy}>Service</Text>
           <View style={s.row}>
             {(["grading", "consignment"] as const).map((v) => (
@@ -429,7 +441,6 @@ function RequestContent({ advance }: { advance: boolean }) {
               />
             ))}
           </View>
-          {!advance && <>
           <Text style={ui.copy}>Request type</Text>
           <View style={s.row}>
             {(["inquiry", "service_request"] as const).map((v) => (

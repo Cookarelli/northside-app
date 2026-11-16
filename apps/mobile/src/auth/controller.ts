@@ -19,6 +19,7 @@ import type {
 } from "@northside/customer-contracts/tracking";
 import {
   requestSchema,
+  storedRequestSchema,
   type ServiceRequestInput,
 } from "@northside/customer-contracts/service-requests";
 export const accountDestinations = [
@@ -500,7 +501,7 @@ export class AuthController {
     if (!raw) return null;
     try {
       const v = JSON.parse(raw);
-      const p = requestSchema.safeParse(v.input);
+      const p = storedRequestSchema.safeParse(v.input);
       if (v.customerId !== customerId || !p.success) throw new Error();
       return p.data;
     } catch {

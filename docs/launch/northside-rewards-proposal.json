@@ -72,13 +72,14 @@
   "advance_funding": {
     "method": "store_credit",
     "name": "Northside Cash",
-    "services": ["consignment", "grading"],
+    "services": ["consignment"],
+    "max_advance_percent": 30,
+    "valuation_basis": "estimated_sale_price",
     "issuance_enabled": false
   },
   "advance_decisions": [
-    "Steve confirmed Northside Cash store credit for both services. Record the accepted offer against the verified card and customer before issuing credit.",
-    "For consignment, agree on valuation, maximum, any fees, and who covers an unsold card or shortfall. At settlement, subtract the outstanding advance once from the customer’s agreed net proceeds and show both amounts.",
-    "For grading, decide whether the card must sell or the owner can pick it up, what clears the advance in either case, and what happens if the grade is lower than expected.",
+    "For consigned cards only, the maximum advance is 30% of the estimated sale price in Northside Cash store credit. Staff must document the estimated sale price and the accepted offer against the verified card and customer before issuing credit.",
+    "Confirm any fees and who covers an unsold card or shortfall. At settlement, subtract the outstanding advance once from the customer’s agreed net proceeds and show both amounts.",
     "Keep reward points, available store credit, pending proceeds, eligible payouts and outstanding advances distinct. An inquiry or estimate does not create a ledger entry or release funds."
   ]
 }

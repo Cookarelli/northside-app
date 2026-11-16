@@ -77,3 +77,8 @@ it("does not reuse an earlier clock when a late stale wallet response rerenders"
   expect(screen.queryByText("450 available points")).toBeNull();
   expect(screen.getByText("Refresh your wallet")).toBeVisible();
 });
+
+it("describes the consignment-only credit ceiling without quoting a credit balance", async () => {
+  await render(<Wallet />);
+  expect(screen.getByText(/For consigned cards only, you can request an advance of up to 30% of the card’s estimated sale price/)).toBeVisible();
+});
