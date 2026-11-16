@@ -5,12 +5,12 @@ import { join } from "node:path";
 try {
   const variant = process.argv[2] ?? "development";
   const platform = process.argv[3] ?? process.env.EAS_BUILD_PLATFORM;
-  const profile = process.argv[4] ?? "preview";
+  const profile = process.argv[4] ?? variant;
   if (
-    !["preview", "internal-rc"].includes(profile) ||
-    (profile === "internal-rc" && (variant !== "preview" || platform !== "ios"))
+    profile !== variant &&
+    !(profile === "internal-rc" && variant === "preview" && platform === "ios")
   )
-    throw new Error("Use internal-rc only with preview ios.");
+    throw new Error("The profile must match the variant. Use internal-rc only with preview ios.");
   const eas = JSON.parse(readFileSync(join(process.cwd(), "eas.json"), "utf8"));
   const profileEnvironment = (
     name: string,
@@ -26,13 +26,13 @@ try {
       ...selected.ios?.env,
     };
   };
-  const iosPreviewEnv: Record<string, string> =
-    variant === "preview" && platform === "ios"
+  const iosProfileEnv: Record<string, string> =
+    (variant === "preview" || variant === "production") && platform === "ios"
       ? profileEnvironment(profile)
       : {};
   const config = createAppConfig({
     ...process.env,
-    ...iosPreviewEnv,
+    ...iosProfileEnv,
     EAS_BUILD: "true",
     MOBILE_APP_VARIANT: variant,
     ...(platform ? { EAS_BUILD_PLATFORM: platform } : {}),

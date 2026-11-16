@@ -9,16 +9,24 @@ The same team and bundle are associated with `@northside-collectibles/northside-
 on EAS. `MOBILE_PREVIEW_APPLE_TEAM_ID` pins only the selected preview variant.
 No signing certificate or provisioning profile was created during registration.
 
+On November 16, 2026, Apple registered the production iOS bundle ID
+`com.northsidecollectibles.customer` on the same team. The App Store Connect
+record for Northside Collectibles has Apple ID `6835580583`. The production
+iOS profile uses `northside-collectibles://auth/return` and connects to
+`https://api.northsidecollectibles.com`. Run `pnpm build:check production ios`
+to validate the build configuration. Verify the deployed API and Shopify sign-in
+separately before submitting a store build.
+
 The remaining platform/variant identifiers still need owner review:
 
 | Variant     | iOS / Android candidate                      |
 | ----------- | -------------------------------------------- |
 | development | `com.northsidecollectibles.customer.dev`     |
 | preview Android | `com.northsidecollectibles.customer.preview` |
-| production  | `com.northsidecollectibles.customer`         |
+| production Android | `com.northsidecollectibles.customer`  |
 
 The table contains proposals, not verified available identifiers. The registered
-iOS preview ID described above is separate from the Android proposal. The configuration does
+iOS IDs described above are separate from the Android proposals. The configuration does
 not read this table or silently use these values. Confirm company ownership,
 Apple team/Play records, Expo organization/project, separate return schemes and
 API origins before filling the corresponding `MOBILE_*` fields in `.env.local`

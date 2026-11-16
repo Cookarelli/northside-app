@@ -65,11 +65,10 @@ Before any cloud action, confirm company Expo/EAS membership and project, budget
 approved variant IDs/scheme/API origin, Apple signing/team/device registration for
 iOS, and Android signing ownership. Then, in the same terminal environment:
 
-Cloud builds also require every approved public `MOBILE_*` value, including
-identifier approval and company owner/project, in the matching EAS environment.
-The ignored local `.env.local` file is not uploaded and does not configure the
-remote worker. Configure those environment values through the company-controlled
-EAS project before running the build commands below.
+Cloud builds read public `MOBILE_*` values from their build profile and the
+matching EAS environment. The iOS preview and production profiles include their
+approved identifiers. Supply any remaining settings through the company EAS
+project. The ignored `.env.local` file applies only to local commands.
 
 ```sh
 pnpm build:check development
@@ -83,14 +82,15 @@ explicit identifier approval, and starts no build. EAS CLI is version-pinned in
 these commands and `eas.json`, rather than installed in app dependencies as
 Expo Doctor recommends. Raw EAS commands must follow the local preflight.
 `development-simulator` is available for an unsigned iOS simulator build.
-`preview` uses internal distribution; `production` is a future store profile.
+`preview` uses internal distribution. The iOS `production` profile targets the App Store.
 The approved iOS preview connects the seven-product public Shopify catalog without
 a catalog token and uses the existing secure API for scan/cart; see [live catalog setup and acceptance](docs/LIVE_CATALOG.md).
 Its public identifiers and catalog mode are in `eas.json`; run
-`pnpm build:check preview ios` before an iOS preview build. Other cloud profiles
-still require their own approved API origins and identities.
-No submit configuration, automatic submission, remote version allocation or OTA
-publication is enabled. Build and physical-device results are recorded separately.
+`pnpm build:check preview ios` before an iOS preview build. Run
+`pnpm build:check production ios` for the registered production app. Its
+manual submission profile points to App Store Connect record `6835580583`.
+Automatic submission, remote version allocation and OTA updates are disabled.
+Build and physical-device results are recorded separately.
 
 ## Native authentication
 

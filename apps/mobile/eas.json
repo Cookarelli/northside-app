@@ -62,6 +62,17 @@
       "env": {
         "MOBILE_APP_VARIANT": "production"
       },
+      "ios": {
+        "env": {
+          "MOBILE_PRODUCTION_IOS_BUNDLE_ID": "com.northsidecollectibles.customer",
+          "MOBILE_PRODUCTION_APPLE_TEAM_ID": "NF42JBZCBW",
+          "MOBILE_PRODUCTION_API_ORIGIN": "https://api.northsidecollectibles.com",
+          "MOBILE_PRODUCTION_SCHEME": "northside-collectibles",
+          "MOBILE_EXPO_OWNER": "northside-collectibles",
+          "MOBILE_EAS_PROJECT_ID": "ecfde92e-a01e-4158-b0ce-13908afa39ab",
+          "MOBILE_IDENTIFIERS_APPROVED": "true"
+        }
+      },
       "android": {
         "buildType": "app-bundle"
       }
@@ -89,6 +100,13 @@
           "MOBILE_PREVIEW_API_ORIGIN": "https://northside-customer-pilot-native-api-steves-projects-e37a4ef4.vercel.app",
           "MOBILE_IOS_BUILD_NUMBER": "13"
         }
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6835580583"
       }
     }
   }
