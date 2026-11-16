@@ -1907,7 +1907,7 @@ describe("customer mobile MVP with simulated services", () => {
     );
     await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Enter a product barcode, up to 64 characters.",
+      "Enter a product barcode, up to 255 characters.",
     );
     expect(h.scans).toEqual([]);
     expect(h.shoppingActions).toEqual([]);
