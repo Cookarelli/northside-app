@@ -7,10 +7,10 @@ import {
 import { requestPhotoAction } from "../service-request-photo-http";
 import { mobileShoppingHandler } from "./shopping";
 import {
-  approvedNativeScan,
   readNativeCatalog,
   readNativeProduct,
 } from "./approved-native-catalog";
+import { lookupActiveScan } from "./active-scan";
 import { nativeScanCartGate, nativeScanCartSelected } from "./scan-cart-gate";
 import {
   readNativeTracking,
@@ -288,7 +288,7 @@ export async function mobileHandler(request: Request) {
         if (nativeScanCartSelected()) {
           nativeScanCartGate();
           try {
-            return successMvp(await approvedNativeScan(scan.code, scan.format));
+            return successMvp(await lookupActiveScan(scan.code, scan.format));
           } catch (error) {
             if (
               !(error instanceof AccessError) ||

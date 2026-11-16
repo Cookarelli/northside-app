@@ -28,14 +28,14 @@ import Constants from "expo-constants";
 import {
   currentObservation,
   scanInputSchema,
-  type MobileProduct,
+  type MobileScan,
 } from "@northside/customer-contracts/mvp";
 import type { ShoppingAction } from "@northside/customer-contracts/shopping";
 import { CustomerScreen as Screen } from "../../components/CustomerScreen";
 import { ActionLink, Button, Card } from "../../components/Controls";
 import { Icon } from "../../components/Icon";
 import { useMvp } from "../../mvp/Provider";
-import { storefrontUi as ui } from "../../mvp/Components";
+import { money, storefrontUi as ui } from "../../mvp/Components";
 import { useCustomerAuth } from "../../auth/Provider";
 import { MobileFailure } from "../../api/client";
 import { useShopping } from "../../shopping/Provider";
@@ -44,7 +44,10 @@ import { ScanProduct } from "../../shopping/ScanProduct";
 import { shoppingMessage } from "../../shopping/messages";
 import { BarcodeCamera } from "../../shopping/BarcodeCamera";
 import { storefront } from "../../theme";
-import { barcodeCandidates } from "../../../../../packages/customer-contracts/src/native-scan";
+import {
+  barcodeCandidates,
+  isProductBarcode,
+} from "../../../../../packages/customer-contracts/src/native-scan";
 import {
   isRetailBarcodeFormat,
   barcodePreviewHeight,
@@ -65,9 +68,9 @@ function scanMessage(error: string) {
   if (error === "camera_setup_unavailable")
     return "Camera controls could not initialize. Retry the camera or install the updated preview. You can enter the barcode manually.";
   if (error === "invalid_request" || error === "unsupported_qr")
-    return "Enter a product barcode, up to 64 characters.";
+    return "Enter a product barcode, up to 255 characters.";
   if (error === "not_found")
-    return "Product not found. No approved product matches this barcode. Check the product barcode on the ESL display or original box, or ask an associate.";
+    return "Product not found. No active product matches this barcode. Check the product barcode on the ESL display or original box, or ask an associate.";
   if (error === "server_error" || error === "scan_endpoint_unavailable")
     return "The store lookup service returned an error. Retry the barcode lookup or ask an associate.";
   if (error === "rate_limited")
@@ -82,7 +85,7 @@ function scanMessage(error: string) {
 }
 
 type ScanFormat = Extract<ShoppingAction, { action: "add" }>["format"];
-type Observation = { data: MobileProduct; code: string; format?: ScanFormat };
+type Observation = { data: MobileScan; code: string; format?: ScanFormat };
 type CameraState =
   "checking" | "running" | "paused" | "denied" | "unavailable" | "web";
 type ScanNavigation = ReturnType<typeof useNavigation> & {
@@ -386,7 +389,7 @@ export default function ScanScreen() {
         outcome: "looking_up",
       });
     }
-    if (!/^[A-Za-z0-9][A-Za-z0-9 ._$%+\/-]{0,63}$/.test(value)) {
+    if (!isProductBarcode(value)) {
       setError("invalid_request");
       observe({
         outcome: "invalid_barcode",
@@ -452,6 +455,35 @@ export default function ScanScreen() {
       if (!currentObservation(data)) {
         verificationFailure = "expired_product_observation";
         throw new MobileFailure("refresh_required");
+      }
+      if (data.kind === "active-item") {
+        const item = data.product;
+        if (!candidates.includes(item.barcode)) {
+          verificationFailure = "returned_variant_barcode_mismatch";
+          throw new MobileFailure("invalid_response");
+        }
+        observe({
+          matched: {
+            productId: item.id,
+            title: diagnosticValue(item.title),
+            variantId: item.selectedVariantId,
+            variantTitle: diagnosticValue(item.variantTitle),
+            variantBarcode: item.barcode,
+            appEligible: false,
+          },
+          outcome: "product_unavailable",
+          failureReason: null,
+          canonicalAddInput: null,
+        });
+        const observation = {
+          data,
+          code: input.data.code,
+          format: input.data.format,
+        };
+        setSelected(undefined);
+        resultRef.current = observation;
+        setResult(observation);
+        return;
       }
       if (data.product.publication !== "published") {
         verificationFailure = "product_not_published";
@@ -567,6 +599,7 @@ export default function ScanScreen() {
       return;
     if (
       !result ||
+      result.data.kind !== "product-detail" ||
       !selected ||
       cart.busy ||
       cart.needsRefresh ||
@@ -884,14 +917,38 @@ export default function ScanScreen() {
                 }}
               />
             )}
-          {result && (
+          {result?.data.kind === "active-item" && (
+            <Card appearance="storefront">
+              <Text accessibilityLiveRegion="polite" style={ui.label}>
+                Product found
+              </Text>
+              <Text style={ui.label}>{result.data.product.title}</Text>
+              {result.data.product.variantTitle !== "Default Title" && (
+                <Text style={ui.copy}>{result.data.product.variantTitle}</Text>
+              )}
+              <Text style={ui.copy}>
+                {money(result.data.product.price.amountCents)}
+              </Text>
+              <Text style={ui.copy}>
+                Ask an associate to check availability and ring this up at the
+                counter.
+              </Text>
+              <Button
+                appearance="storefront"
+                secondary
+                label="Scan next item"
+                onPress={nextItem}
+              />
+            </Card>
+          )}
+          {result?.data.kind === "product-detail" && (
             <Text accessibilityLiveRegion="polite" style={ui.label}>
               {selected && !diagnosticMatch(result.data, selected).appEligible
                 ? "Product found · Unavailable in the app"
                 : "Product found · Review before adding"}
             </Text>
           )}
-          {result && (
+          {result?.data.kind === "product-detail" && (
             <ScanProduct
               data={result.data}
               selected={selected}
@@ -973,7 +1030,7 @@ export default function ScanScreen() {
                 placeholder="Product barcode"
                 value={code}
                 onChangeText={setCode}
-                maxLength={64}
+                maxLength={255}
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="search"

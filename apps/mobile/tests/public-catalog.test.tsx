@@ -324,6 +324,8 @@ describe("public Shopify preview catalog", () => {
       expect(result.product.selectedVariantId).toBe(
         PREVIEW_CATALOG_SELECTION[6].variantId,
       );
+      if (result.kind !== "product-detail")
+        throw Error("Expected a published item");
       expect(result.product.variants.nodes[0].identifiers.barcode).toBe(
         "053334437622",
       );
@@ -595,6 +597,7 @@ describe("server-managed native public catalog", () => {
       response(PREVIEW_CATALOG_SELECTION.map((_, i) => product(i))),
     );
     const scan = await local.scan("793397728021", undefined, "upc_a");
+    if (scan.kind !== "product-detail") throw Error("Expected published scan");
     const catalog = await local.catalog();
     const backend = {
       scan: jest.fn<MobileApi["scan"]>(async () => scan),

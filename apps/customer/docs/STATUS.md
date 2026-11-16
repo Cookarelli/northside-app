@@ -1442,3 +1442,13 @@ The actual pinned EAS CLI caught an invalid empty environment override before an
 Native authentication now recognizes an edge-generated HTTP 429 before MIME or application-contract parsing. Three regressions cover plain text, HTML and noncontract JSON without retrying a GET or renewal POST. Existing scan diagnostics keep their earlier handling. The complete mobile suite passes 433 tests under pinned Node 24, with mobile TypeScript and affected lint clean. No binary build was started.
 
 The operator published the preview-only 429 quota. Verification returned 30 closed-auth 404s followed by one 429; an ordinary barcode scan still resolved outside the auth quota. The user explicitly authorized a temporary internal-QA exception for possible private-platform OAuth-query metadata, recorded at 2026-11-15T02:42:57.000Z and ending 2026-11-16T02:42:57.000Z. Log exclusion remains unverified. A shared staging-only gate now requires canonical approved-at/expiry timestamps with a positive interval of at most 24 hours, and closes native customer routes and native auth/session configuration at expiry without another deployment. Ten independent isolated-branch regressions cover the fences, invalid dates/clocks, strict host/environment and public-route preservation. This exception changes neither customer/staff authorization nor production policy. Real hosted customer/provider acceptance remains pending.
+
+## November 16, 2026 — Active Shopify barcode lookup
+
+The iOS internal RC uses the native barcode endpoint. Build 10 queried seven
+compiled products and missed barcode 887521144914. The updated endpoint finds
+exact matches across ACTIVE variants and their registered barcodes using Admin
+API 2026-10, then reads the matched variant's current Storefront details and
+cart eligibility. An active variant outside the storefront returns a counter-only
+scan result. Distinct matching variant IDs produce an ambiguity response.
+The existing catalog, checkout and Retail Floor stock rules still apply.

@@ -95,6 +95,15 @@ export function expandUpce(code: string) {
           : ns + a + b + c + d + e + "0000" + f + check;
   return validGtin(expanded) ? expanded : null;
 }
+export function isProductBarcode(value: string) {
+  return (
+    value.length > 0 &&
+    value.length <= 255 &&
+    value === value.trim() &&
+    !/[\u0000-\u001f\u007f]/.test(value) &&
+    !/^https?:|:\/\//i.test(value)
+  );
+}
 export function barcodeCandidates(code: string, format?: string) {
   if (format && !(NATIVE_SCAN_FORMATS as readonly string[]).includes(format))
     throw Error("invalid_request");

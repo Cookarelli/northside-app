@@ -53,15 +53,19 @@ export async function adminToken(run = fetch) {
   };
   return data.access_token as string;
 }
-export async function adminQuery(): Promise<Query> {
+export async function adminQuery(
+  barcodeApiVersion?: "2026-10",
+): Promise<Query> {
   const { shop, version } = commerceConfig(),
     token = await adminToken();
   return (query, variables) =>
     graphql(
-      `https://${shop}/admin/api/${version}/graphql.json`,
+      `https://${shop}/admin/api/${barcodeApiVersion ?? version}/graphql.json`,
       { "X-Shopify-Access-Token": token },
       query,
       variables,
+      fetch,
+      barcodeApiVersion ?? version,
     );
 }
 type Bag = { shopMoney: Money };

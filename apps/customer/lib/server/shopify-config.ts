@@ -38,6 +38,7 @@ export async function graphql<T>(
   query: string,
   variables: object,
   run = fetch,
+  expectedVersion = apiVersion(),
 ): Promise<T> {
   const response = await run(url, {
     method: "POST",
@@ -49,7 +50,7 @@ export async function graphql<T>(
   });
   if (!response.ok) throw new AccessError(503, "shopify_unavailable");
   const actual = response.headers.get("x-shopify-api-version");
-  if (actual && actual !== apiVersion())
+  if (actual && actual !== expectedVersion)
     throw new AccessError(503, "shopify_version_mismatch");
   const result = await response.json();
   if (result.errors?.length || !result.data)

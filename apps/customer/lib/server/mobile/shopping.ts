@@ -12,7 +12,7 @@ import {
   NativeStorefrontCartService,
   nativeCartPorts,
 } from "./storefront-cart";
-import { approvedNativeScan } from "./approved-native-catalog";
+import { lookupCartScan } from "./active-scan";
 import { nativeScanCartGate, nativeScanCartSelected } from "./scan-cart-gate";
 import { storeGate } from "../store";
 import { nativeParent } from "./service";
@@ -151,7 +151,7 @@ const live: MobileShoppingDependencies = {
   canonicalCode: async (code, format) => {
     if (nativeScanCartSelected()) {
       try {
-        const { product } = await approvedNativeScan(code, format);
+        const { product } = await lookupCartScan(code, format);
         const v = product.variants.nodes.find(
           (v) => v.id === product.selectedVariantId,
         );

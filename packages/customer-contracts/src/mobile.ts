@@ -98,6 +98,7 @@ export const mobileLogoutSchema = z.strictObject({
   providerLogout: z.literal("not_performed"),
 });
 export const mobileErrorCodeSchema = z.enum([
+  "ambiguous_scan",
   "invalid_request",
   "unauthorized",
   "session_expired",

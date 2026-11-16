@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { MOBILE_CONTRACT_VERSION } from "./mobile";
-import { catalogProductV1Schema, catalogPageInfoV1Schema } from "./catalog";
+import {
+  catalogProductV1Schema,
+  catalogPageInfoV1Schema,
+  catalogMoneyV1Schema,
+} from "./catalog";
 const label = (max: number) =>
   z
     .string()
@@ -51,6 +55,27 @@ export const mobileProductSchema = z.strictObject({
   observedAt: stamp,
   expiresAt: stamp,
 });
+// A barcode may identify active merchandise unavailable through this storefront.
+export const activeItemScanSchema = z.strictObject({
+  ...base,
+  kind: z.literal("active-item"),
+  product: z.strictObject({
+    id: catalogProductV1Schema.shape.id,
+    title: label(255),
+    selectedVariantId: catalogProductV1Schema.shape.selectedVariantId.unwrap(),
+    variantTitle: label(255),
+    barcode: label(255),
+    price: catalogMoneyV1Schema,
+  }),
+  observedAt: stamp,
+  expiresAt: stamp,
+});
+export const mobileScanSchema = z.discriminatedUnion("kind", [
+  mobileProductSchema,
+  activeItemScanSchema,
+]);
+export type MobileScan = z.infer<typeof mobileScanSchema>;
+
 export const publicEventSchema = z.strictObject({
   id: z.uuid(),
   title: label(255),

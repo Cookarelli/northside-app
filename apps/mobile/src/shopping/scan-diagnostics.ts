@@ -129,6 +129,7 @@ export function scanAppIdentity(constants: {
       mobile?: {
         buildIdentity?: { sourceCommit?: unknown; easBuildId?: unknown };
         commerceApiOrigin?: unknown;
+        apiOrigin?: unknown;
       };
     };
   } | null;
@@ -157,7 +158,9 @@ export function scanAppIdentity(constants: {
     otaConfigured: c?.updates?.enabled ?? null,
     otaUpdateId: null,
     otaRuntime: "not_installed",
-    commerceEndpoint: safeEndpoint(c?.extra?.mobile?.commerceApiOrigin),
+    commerceEndpoint: safeEndpoint(
+      c?.extra?.mobile?.apiOrigin ?? c?.extra?.mobile?.commerceApiOrigin,
+    ),
   };
 }
 export function diagnosticMatch(data: MobileProduct, variantId: string) {
@@ -215,12 +218,17 @@ export function formatScanDiagnostic(
             title: d.matched.title,
             variantId: d.matched.variantId,
             variantTitle: d.matched.variantTitle,
-            variantBarcode: d.matched.variantBarcode,
+            variantBarcode:
+              d.matched.variantBarcode &&
+              diagnosticValue(d.matched.variantBarcode),
             appEligible: d.matched.appEligible,
           }
         : null,
       canonicalAddInput: d.canonicalAddInput
-        ? { code: d.canonicalAddInput.code, format: d.canonicalAddInput.format }
+        ? {
+            code: diagnosticValue(d.canonicalAddInput.code),
+            format: d.canonicalAddInput.format,
+          }
         : null,
       events: {
         forwarded: events.forwarded,
@@ -244,7 +252,7 @@ export function formatScanDiagnostic(
         shop: CATALOG_SHOP,
         apiVersion: CATALOG_SHOPIFY_API_VERSION,
         scope: app.commerceEndpoint
-          ? "server-managed-storefront-publication"
+          ? "all-active-shopify-variants"
           : "approved-preview-products",
         configuredProductCount: app.commerceEndpoint
           ? null

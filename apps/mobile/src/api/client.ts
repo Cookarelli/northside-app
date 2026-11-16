@@ -1,6 +1,7 @@
 import {
   mobileCatalogSchema,
   mobileProductSchema,
+  mobileScanSchema,
   mobileInfoSchema,
   mobileWalletSchema,
   mobileBreaksSchema,
@@ -554,7 +555,7 @@ export class MobileApi {
       httpStatus: null,
       requestCache: "no-store",
     });
-    const result = await this.send("/scan", mobileProductSchema, {
+    const result = await this.send("/scan", mobileScanSchema, {
       body: { code, ...(format ? { format } : {}) },
       signal,
       scan: { trace },

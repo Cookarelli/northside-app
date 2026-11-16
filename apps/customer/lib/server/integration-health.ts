@@ -20,7 +20,7 @@ export async function integrationHealth() {
     )
     .catch(() => "Not connected or unavailable");
   const admin = await Promise.resolve()
-    .then(adminQuery)
+    .then(() => adminQuery())
     .then((q) =>
       q<{
         shop: { myshopifyDomain: string };

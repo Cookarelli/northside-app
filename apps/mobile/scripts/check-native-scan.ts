@@ -12,7 +12,10 @@ async function main() {
       undefined,
       p.barcode.length === 12 ? "upc_a" : "code128",
     );
-    if (detail.product.selectedVariantId !== p.variantId)
+    if (
+      detail.kind !== "product-detail" ||
+      detail.product.selectedVariantId !== p.variantId
+    )
       throw Error("scan_mismatch");
     results.push({
       productId: p.id,

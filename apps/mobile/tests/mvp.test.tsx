@@ -854,6 +854,37 @@ describe("internal scan diagnostic screen", () => {
     });
     expect(h.shoppingActions).toEqual([]);
   });
+  it("shows an active counter-only item without offering an app cart add", async () => {
+    enableScanQa();
+    const h = harness();
+    jest.spyOn(h.api, "scan").mockResolvedValue({
+      contractVersion,
+      kind: "active-item",
+      product: {
+        id: "gid://shopify/Product/1",
+        title: "Counter Value Box",
+        selectedVariantId: "gid://shopify/ProductVariant/11",
+        variantTitle: "Default Title",
+        barcode: "887521144914",
+        price: { amountCents: 2995, currencyCode: "USD" },
+      },
+      observedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+    });
+    await renderApp(h, "/scan");
+    await fireEvent.changeText(await manualInput(), "887521144914");
+    await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
+    await waitFor(() =>
+      expect(screen.getByText("Counter Value Box")).toBeVisible(),
+    );
+    expect(screen.queryByRole("button", { name: "Add to items" })).toBeNull();
+    expect(await qaReport()).toMatchObject({
+      outcome: "product_unavailable",
+      matched: { appEligible: false },
+      canonicalAddInput: null,
+    });
+    expect(h.shoppingActions).toEqual([]);
+  });
   it("separates an unavailable verified product from a lookup failure", async () => {
     enableScanQa();
     const h = harness();
@@ -1717,7 +1748,7 @@ describe("customer mobile MVP with simulated services", () => {
     await fireEvent.changeText(await manualInput(), "unregistered");
     await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
     await waitFor(() =>
-      expect(screen.getByText(/No approved product matches/)).toBeVisible(),
+      expect(screen.getByText(/No active product matches/)).toBeVisible(),
     );
   });
   it("ignores QR and unsupported formats and fences callbacks from an old camera epoch", async () => {

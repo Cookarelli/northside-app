@@ -1,4 +1,7 @@
-import { barcodeCandidates } from "../../../../packages/customer-contracts/src/native-scan";
+import {
+  barcodeCandidates,
+  isProductBarcode,
+} from "../../../../packages/customer-contracts/src/native-scan";
 import { MobileFailure } from "../api/client";
 
 /** The old preview backend accepts the exact canonical Shopify barcode.
@@ -10,7 +13,7 @@ export function verifiedScanAddInput(
 ) {
   if (
     !barcode ||
-    !/^[A-Za-z0-9][A-Za-z0-9 ._$%+\/-]{0,63}$/.test(barcode) ||
+    !isProductBarcode(barcode) ||
     !barcodeCandidates(raw, format).includes(barcode)
   )
     throw new MobileFailure("missing_or_unverified_variant");

@@ -27,9 +27,10 @@ import {
 } from "../../../../../packages/customer-contracts/src/shopping";
 import {
   approvedNativeProducts,
-  approvedNativeScan,
   nativeRetailQuantity,
 } from "./approved-native-catalog";
+
+import { lookupCartScan } from "./active-scan";
 
 function assertScope(cart: Cart) {
   const seen = new Set<string>();
@@ -81,7 +82,7 @@ export type NativeCartPorts = {
     beforeMutation: () => Promise<void>,
   ): Promise<Cart>;
   products: typeof approvedNativeProducts;
-  scan: typeof approvedNativeScan;
+  scan: typeof lookupCartScan;
   retail: typeof nativeRetailQuantity;
 };
 export function nativeCartPorts(query: Query = storefront()): NativeCartPorts {
@@ -106,7 +107,7 @@ export function nativeCartPorts(query: Query = storefront()): NativeCartPorts {
     set: (id, line, quantity, before) =>
       updateLine(fenced(before), id, line, quantity, policy),
     products: () => approvedNativeProducts(query),
-    scan: (code, format) => approvedNativeScan(code, format, query),
+    scan: (code, format) => lookupCartScan(code, format, query),
     retail: nativeRetailQuantity,
   };
 }

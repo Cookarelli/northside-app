@@ -97,7 +97,7 @@ export const catalogIdentifiersV1Schema = z.discriminatedUnion("state", [
   z.strictObject({
     state: z.literal("observed"),
     sku: label(255).nullable(),
-    barcode: label(64).nullable(),
+    barcode: label(255).nullable(),
   }),
 ]);
 
