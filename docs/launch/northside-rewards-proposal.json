@@ -69,10 +69,16 @@
     "The named test products are active non-gift-card merchandise. Staff must choose the launch product set and confirm online and identified POS checkout and refunds before enabling rewards on each channel. The existing earning rule supports at most 100 explicit product IDs.",
     "Joey to decide the thresholds, any tier perks, reward minimum, voucher validity and eligible merchandise. No bonus or multiplier is assumed."
   ],
+  "advance_funding": {
+    "method": "store_credit",
+    "name": "Northside Cash",
+    "services": ["consignment", "grading"],
+    "issuance_enabled": false
+  },
   "advance_decisions": [
-    "Decide whether each service offers store credit, cash, or a choice. Record funding method and accepted offer against the verified card and customer before issuing value.",
+    "Steve confirmed Northside Cash store credit for both services. Record the accepted offer against the verified card and customer before issuing credit.",
     "For consignment, agree on valuation, maximum, any fees, and who covers an unsold card or shortfall. At settlement, subtract the outstanding advance once from the customer’s agreed net proceeds and show both amounts.",
-    "For grading, decide whether the card must sell or the owner can pick it up, what clears the advance in either case, and what happens if the grade is lower than expected. Obtain local review of cash-for-card terms before funding.",
+    "For grading, decide whether the card must sell or the owner can pick it up, what clears the advance in either case, and what happens if the grade is lower than expected.",
     "Keep reward points, available store credit, pending proceeds, eligible payouts and outstanding advances distinct. An inquiry or estimate does not create a ledger entry or release funds."
   ]
 }

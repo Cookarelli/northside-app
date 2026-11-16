@@ -271,7 +271,7 @@ describe("actual native shared request screen", () => {
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
     expect(mockSubmit.mock.calls[0][0]).toMatchObject({
       service, kind: "inquiry", terms_accepted: false,
-      details: { question: `Card advance inquiry (${service}): SAMPLE card NS-123` },
+      details: { question: `Card advance inquiry (${service}): Northside Cash store credit. SAMPLE card NS-123` },
     });
   });
   it("deferred capture synchronously blocks Save and late capture after blur never uploads", async () => {
@@ -333,8 +333,12 @@ describe("actual native shared request screen", () => {
     expect(mockSubmit.mock.calls[0][0].request_id).toBe(request);
     expect(mockSubmit.mock.calls[0][0].details.photo_ids).toEqual([id]);
   });
-  it.each([false, true])("recovering a pending inquiry preserves the original submission (advance %s)", async (advance) => {
-    mockTopic = advance ? "advance" : undefined;
+  it.each([
+    ["ordinary", "SAMPLE original question"],
+    ["prior advance", "Card advance inquiry (grading): SAMPLE original card"],
+    ["Northside Cash advance", "Card advance inquiry (grading): Northside Cash store credit. SAMPLE original card"],
+  ])("recovering a pending %s inquiry preserves the original submission", async (kind, question) => {
+    mockTopic = kind === "ordinary" ? undefined : "advance";
     const draft: ServiceRequestInput = {
       request_id: A,
       claim_token: "A".repeat(43),
@@ -345,7 +349,7 @@ describe("actual native shared request screen", () => {
         email: "original@example.invalid",
         phone: "8155550100",
       },
-      details: { question: advance ? "Card advance inquiry (grading): SAMPLE original card" : "SAMPLE original question" },
+      details: { question },
       terms_id: null,
       terms_accepted: false,
     };
@@ -354,6 +358,9 @@ describe("actual native shared request screen", () => {
     await waitFor(() =>
       expect(button("Retry same request")).not.toBeDisabled(),
     );
+    if (mockTopic === "advance") {
+      expect(screen.getByLabelText("Card description or request reference")).toHaveDisplayValue("SAMPLE original card");
+    }
     await press("Retry same request");
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
     expect(mockSubmit.mock.calls[0][0]).toEqual(draft);

@@ -33,6 +33,8 @@ const when = (value: string) =>
 const advanceSubject = (service: ServiceRequestInput["service"]) =>
   `Card advance inquiry (${service}): `;
 
+const advanceCreditLabel = "Northside Cash store credit. ";
+
 export default function ServiceRequestsScreen() {
   const { state, controller } = useCustomerAuth();
   const { topic } = useLocalSearchParams<{ topic?: string }>();
@@ -45,7 +47,7 @@ export default function ServiceRequestsScreen() {
     <CustomerScreen
       eyebrow="NORTHSIDE SERVICES"
       title={advance ? "Card advance inquiry" : "Service requests"}
-      description={advance ? "Ask staff to review a card in consignment or grading. An inquiry creates no payment or repayment obligation." : "Consignment and grading staff review"}
+      description={advance ? "Ask staff to review your consignment or grading card for a Northside Cash store credit advance. Sending an inquiry creates no payment or repayment obligation." : "Consignment and grading staff review"}
     >
       <ActionLink
         appearance="storefront"
@@ -123,7 +125,10 @@ function RequestContent({ advance }: { advance: boolean }) {
                 return;
               }
               if (typeof question === "string") {
-                setFields({ ...recovered.contact, question: advance ? question.slice(subject.length) : question });
+                const prefix = question.startsWith(subject + advanceCreditLabel)
+                  ? subject + advanceCreditLabel
+                  : subject;
+                setFields({ ...recovered.contact, question: advance ? question.slice(prefix.length) : question });
               }
               pending.current = recovered;
               draftId.current = recovered.request_id;
@@ -236,7 +241,7 @@ function RequestContent({ advance }: { advance: boolean }) {
           },
           details:
             kind === "inquiry"
-              ? { question: advance ? advanceSubject(service) + question : question }
+              ? { question: advance ? advanceSubject(service) + advanceCreditLabel + question : question }
               : service === "consignment"
                 ? {
                     listing_count: Number(fields.listing_count),

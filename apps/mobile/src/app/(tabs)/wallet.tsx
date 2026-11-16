@@ -29,7 +29,7 @@ export default function WalletScreen() {
     <Screen
       eyebrow="Northside Collectibles"
       title="Your wallet."
-      description="Your rewards, card advances and consignment proceeds."
+      description="Your rewards, Northside Cash and consignment proceeds."
     >
       <Text accessibilityRole="header" style={ui.heading}>Northside Rewards</Text>
       {state.status !== "authenticated" ? (
@@ -124,8 +124,8 @@ export default function WalletScreen() {
       <Card appearance="storefront">
         <Text accessibilityRole="header" style={ui.heading}>Card advances</Text>
         <Text style={ui.copy}>
-          Have a card in consignment or grading? Ask the team to review it for
-          an advance. Include the card description or your request reference.
+          For a card in consignment or grading, you can ask for an advance in
+          Northside Cash store credit. Staff will review your card and explain any offer.
         </Text>
         <ActionLink appearance="storefront" href={{ pathname: "/service-requests", params: { topic: "advance" } }} label="Ask about a card advance" />
       </Card>
@@ -135,8 +135,8 @@ export default function WalletScreen() {
         <ActionLink appearance="storefront" secondary href={{ pathname: "/my-cards", params: { service: "consignment" } }} label="View my consigned cards" />
       </Card>
       <Card appearance="storefront">
-        <Text accessibilityRole="header" style={ui.heading}>Northside store credit</Text>
-        <Text style={ui.copy}>Store credit balances are unavailable in this Wallet.</Text>
+        <Text accessibilityRole="header" style={ui.heading}>Northside Cash</Text>
+        <Text style={ui.copy}>Northside Cash is store credit at Northside Collectibles. Balances are unavailable in this Wallet.</Text>
       </Card>
     </Screen>
   );
