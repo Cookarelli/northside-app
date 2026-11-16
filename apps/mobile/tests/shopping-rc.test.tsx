@@ -117,6 +117,7 @@ function keyFor(principal: string, origin = ORIGIN) {
   );
 }
 function response(title: string): ShoppingResponse {
+  const observed = Date.now();
   return {
     contractVersion: "northside.mobile.v1",
     kind: "shopping",
@@ -149,8 +150,8 @@ function response(title: string): ShoppingResponse {
         estimated: true,
         checkoutEnabled: false,
       },
-      observedAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 60000).toISOString(),
+      observedAt: new Date(observed).toISOString(),
+      expiresAt: new Date(observed + 60000).toISOString(),
     },
   };
 }

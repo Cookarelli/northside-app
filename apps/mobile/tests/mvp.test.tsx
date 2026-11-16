@@ -168,7 +168,7 @@ function product(): MobileProduct["product"] {
 }
 function harness() {
   let offline = false,
-    unknown = false,
+    unknown: boolean | string = false,
     onlyRemainingVariant = false,
     currentCustomer = customerId,
     appState = "",
@@ -341,7 +341,7 @@ function harness() {
       });
     if (path.endsWith("/scan")) {
       scans.push(body?.code ?? "");
-      if (unknown)
+      if (unknown === true || unknown === body?.code)
         return response(
           {
             contractVersion,
@@ -534,8 +534,8 @@ function harness() {
     setOffline: (v: boolean) => {
       offline = v;
     },
-    setUnknown: () => {
-      unknown = true;
+    setUnknown: (code?: string) => {
+      unknown = code ?? true;
     },
     removeScannedVariant: () => {
       onlyRemainingVariant = true;
@@ -740,6 +740,209 @@ describe("internal scan diagnostic screen", () => {
       expect(screen.queryByText("Internal scan diagnostics")).toBeNull();
     },
   );
+  it.each(["housing first", "product first"])(
+    "chooses the retail UPC when both Code 128 labels are in view (%s)",
+    async (order) => {
+      const housing = "8000000421";
+      const productCode = "036000291452";
+      enableScanQa();
+      const h = harness();
+      await renderApp(h, "/scan");
+      const camera = await screen.findByTestId("product-camera");
+      await fireEvent(camera, "cameraReady");
+      const codes =
+        order === "housing first"
+          ? [housing, productCode]
+          : [productCode, housing];
+      await act(async () => {
+        for (const data of codes)
+          camera.props.onBarcodeScanned({ data, type: "code128" });
+      });
+      expect(await screen.findByText("REVIEW YOUR ITEM")).toBeVisible();
+      expect(h.scans).toEqual([productCode]);
+      expect(await qaReport()).toMatchObject({
+        outcome: "product_found",
+        rawValue: productCode,
+      });
+      expect(h.shoppingActions).toEqual([]);
+    },
+  );
+  it("falls back to the custom active barcode when the preferred retail code misses", async () => {
+    const h = harness();
+    const custom = "BOX-SMALL";
+    h.setUnknown("036000291452");
+    h.transformScan((p) => ({
+      ...p,
+      variants: {
+        ...p.variants,
+        nodes: p.variants.nodes.map((v, i) =>
+          i
+            ? v
+            : {
+                ...v,
+                identifiers: {
+                  ...v.identifiers,
+                  state: "observed" as const,
+                  barcode: custom,
+                },
+              },
+        ),
+      },
+    }));
+    await renderApp(h, "/scan");
+    const camera = await screen.findByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    await act(async () => {
+      for (const data of [custom, "036000291452"])
+        camera.props.onBarcodeScanned({ data, type: "code128" });
+    });
+    expect(await screen.findByText("REVIEW YOUR ITEM")).toBeVisible();
+    expect(h.scans).toEqual(["036000291452", custom]);
+  });
+  it("preserves a verified result if the finished camera reports a late mount error", async () => {
+    const actualCamera = barcodeCamera.BarcodeCamera;
+    let lateError: Parameters<typeof actualCamera>[0]["onError"] | undefined;
+    jest.spyOn(barcodeCamera, "BarcodeCamera").mockImplementation((props) => {
+      lateError = props.onError;
+      return createElement(actualCamera, props);
+    });
+    await renderApp(harness(), "/scan");
+    const camera = await screen.findByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    await fireEvent(camera, "barcodeScanned", {
+      data: "036000291452",
+      type: "upc_a",
+    });
+    expect(await screen.findByText("REVIEW YOUR ITEM")).toBeVisible();
+    expect(lateError).toBeDefined();
+    await act(async () => lateError!("camera_unavailable"));
+    expect(screen.getByText("REVIEW YOUR ITEM")).toBeVisible();
+  });
+  it("keeps a product callback received while an unregistered code is being checked", async () => {
+    const h = harness();
+    const original = h.api.scan.bind(h.api);
+    let finishMiss!: () => void;
+    jest.spyOn(h.api, "scan").mockImplementationOnce(
+      (...args) =>
+        new Promise((resolve, reject) => {
+          finishMiss = () => original(...args).then(resolve, reject);
+        }),
+    );
+    h.setUnknown("NEW-HOUSING");
+    await renderApp(h, "/scan");
+    const camera = await screen.findByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    await act(async () => {
+      camera.props.onBarcodeScanned({ data: "NEW-HOUSING", type: "code128" });
+    });
+    await waitFor(() => expect(finishMiss).toBeDefined());
+    await act(async () => {
+      for (const data of ["036000291452", "NEW-HOUSING"])
+        camera.props.onBarcodeScanned({ data, type: "code128" });
+    });
+    expect(camera).toBeVisible();
+    await act(async () => finishMiss());
+    expect(await screen.findByText("REVIEW YOUR ITEM")).toBeVisible();
+    expect(h.scans).toEqual(["NEW-HOUSING", "036000291452"]);
+    expect(h.shoppingActions).toEqual([]);
+  });
+  it("skips repeated camera misses and still resolves a similar ten-digit product code", async () => {
+    enableScanQa();
+    const h = harness();
+    const productCode = "8000000422";
+    h.setUnknown("NEW-HOUSING");
+    h.transformScan((p) => ({
+      ...p,
+      variants: {
+        ...p.variants,
+        nodes: p.variants.nodes.map((v, i) =>
+          i
+            ? v
+            : {
+                ...v,
+                identifiers: {
+                  ...v.identifiers,
+                  state: "observed" as const,
+                  barcode: productCode,
+                },
+              },
+        ),
+      },
+    }));
+    await renderApp(h, "/scan");
+    const camera = await screen.findByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    await fireEvent(camera, "barcodeScanned", {
+      data: "NEW-HOUSING",
+      type: "code128",
+    });
+    expect(await screen.findByText(/Still scanning/)).toBeVisible();
+    await fireEvent(camera, "barcodeScanned", {
+      data: "NEW-HOUSING",
+      type: "code128",
+    });
+    expect(camera).toBeVisible();
+    expect(screen.queryByText(/No active product matches/)).toBeNull();
+    await fireEvent(camera, "barcodeScanned", {
+      data: productCode,
+      type: "code128",
+    });
+    expect(await screen.findByText("REVIEW YOUR ITEM")).toBeVisible();
+    expect(h.scans).toEqual(["NEW-HOUSING", productCode]);
+  });
+  it("tries a UPC-E read even if the same digits as Code 128 just missed", async () => {
+    const h = harness();
+    const scan = h.api.scan.bind(h.api);
+    jest.spyOn(h.api, "scan").mockImplementationOnce(async (...args) => {
+      h.setUnknown();
+      try {
+        return await scan(...args);
+      } finally {
+        h.setUnknown("OTHER");
+      }
+    });
+    h.transformScan((p) => ({
+      ...p,
+      variants: {
+        ...p.variants,
+        nodes: p.variants.nodes.map((v, i) =>
+          i
+            ? v
+            : {
+                ...v,
+                identifiers: {
+                  ...v.identifiers,
+                  state: "observed" as const,
+                  barcode: "042100005264",
+                },
+              },
+        ),
+      },
+    }));
+    await renderApp(h, "/scan");
+    const camera = await screen.findByTestId("product-camera");
+    await fireEvent(camera, "cameraReady");
+    await act(async () => {
+      camera.props.onBarcodeScanned({ data: "04252614", type: "code128" });
+    });
+    expect(await screen.findByText(/Still scanning/)).toBeVisible();
+    await act(async () => {
+      camera.props.onBarcodeScanned({ data: "04252614", type: "upc_e" });
+    });
+    expect(await screen.findByText("REVIEW YOUR ITEM")).toBeVisible();
+    expect(h.scans).toEqual(["04252614", "04252614"]);
+  });
+  it("looks up an explicitly entered housing ID and shows the catalog response", async () => {
+    const housing = "8000000421";
+    enableScanQa();
+    const h = harness();
+    h.setUnknown();
+    await renderApp(h, "/scan");
+    await fireEvent.changeText(await manualInput(), housing);
+    await fireEvent.press(screen.getByRole("button", { name: "Look up code" }));
+    expect(await screen.findByText(/No active product matches/)).toBeVisible();
+    expect(h.scans).toEqual([housing]);
+  });
   it("captures the accepted leading-zero scan, ignores queued A/B/A duplicates and copies only on explicit action", async () => {
     enableScanQa();
     const copy = jest

@@ -47,6 +47,7 @@ import { storefront } from "../../theme";
 import {
   barcodeCandidates,
   isProductBarcode,
+  validGtin,
 } from "../../../../../packages/customer-contracts/src/native-scan";
 import {
   isRetailBarcodeFormat,
@@ -92,6 +93,11 @@ type ScanNavigation = ReturnType<typeof useNavigation> & {
   addListener(event: "tabPress", listener: () => void): () => void;
 };
 
+type CameraFrame = { data: string; type: string; seenAt: number };
+const initialEventCounts = { forwarded: 0, ignoredFormat: 0, suppressed: 0 };
+const missTtlMs = 30_000;
+const queuedFrameTtlMs = 2_000;
+
 export default function ScanScreen() {
   const { api, active } = useMvp();
   const { controller: auth } = useCustomerAuth();
@@ -109,6 +115,7 @@ export default function ScanScreen() {
   const [cameraTop, setCameraTop] = useState(0);
   const [focused, setFocused] = useState(false);
   const [pending, setPending] = useState(false);
+  const [showAimHint, setShowAimHint] = useState(false);
   const [code, setCode] = useState("");
   const [manual, setManual] = useState(Platform.OS === "web");
   const [help, setHelp] = useState(false);
@@ -122,12 +129,8 @@ export default function ScanScreen() {
   const [copied, setCopied] = useState(false);
   const [diagnostic, setDiagnostic] = useState(emptyScanDiagnostic);
   const diagnosticRef = useRef(diagnostic);
-  const countsRef = useRef({ forwarded: 0, ignoredFormat: 0, suppressed: 0 });
-  const [eventCounts, setEventCounts] = useState({
-    forwarded: 0,
-    ignoredFormat: 0,
-    suppressed: 0,
-  });
+  const countsRef = useRef(initialEventCounts);
+  const [eventCounts, setEventCounts] = useState(initialEventCounts);
   function observe(change: Partial<ScanDiagnostic>) {
     if (!qaEnabled) return;
     diagnosticRef.current = { ...diagnosticRef.current, ...change };
@@ -144,7 +147,7 @@ export default function ScanScreen() {
   }
   const clearDiagnostic = useCallback(() => {
     diagnosticRef.current = emptyScanDiagnostic();
-    countsRef.current = { forwarded: 0, ignoredFormat: 0, suppressed: 0 };
+    countsRef.current = initialEventCounts;
     setDiagnostic(diagnosticRef.current);
     setEventCounts(countsRef.current);
     setQaOpen(false);
@@ -158,6 +161,11 @@ export default function ScanScreen() {
     busy = useRef(false),
     permissionBusy = useRef(false),
     ready = useRef(false);
+  const cameraLookup = useRef<string | null>(null);
+  const queuedFrame = useRef<CameraFrame | null>(null);
+  const deferredFrame = useRef<CameraFrame | null>(null);
+  const selectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recentMisses = useRef(new Map<string, number>());
   const abort = useRef<AbortController | null>(null);
   const focusRef = useRef(false),
     activeRef = useRef(active),
@@ -208,6 +216,13 @@ export default function ScanScreen() {
       setDiagnostic(diagnosticRef.current);
     }
     generation.current++;
+    cameraLookup.current = null;
+    queuedFrame.current = null;
+    deferredFrame.current = null;
+    if (selectionTimer.current !== null) clearTimeout(selectionTimer.current);
+    selectionTimer.current = null;
+    recentMisses.current.clear();
+    setShowAimHint(false);
     busy.current = false;
     ready.current = false;
     wanted.current = false;
@@ -422,19 +437,26 @@ export default function ScanScreen() {
     }
     observe({ candidates: candidates.map((c) => diagnosticValue(c, format)) });
     setLastLookup(input.data);
-    resumeOnActive.current = false;
-    const g = ++generation.current;
+    const g = frame ? generation.current : ++generation.current;
+    const frameKey = format + ":" + value;
+    if (frame) {
+      cameraLookup.current = frameKey;
+    } else {
+      resumeOnActive.current = false;
+      ready.current = false;
+      wanted.current = false;
+      setCamera(Platform.OS === "web" ? "web" : "paused");
+    }
     Keyboard.dismiss();
     busy.current = true;
-    ready.current = false;
-    wanted.current = false;
     abort.current?.abort();
     abort.current = new AbortController();
-    setCamera(Platform.OS === "web" ? "web" : "paused");
     setPending(true);
+    setShowAimHint(false);
     setError(undefined);
     setResult(undefined);
     setAdded(false);
+    let cameraMiss = false;
     let verificationFailure: string | undefined;
     try {
       if (!api) throw new MobileFailure("not_configured");
@@ -531,7 +553,17 @@ export default function ScanScreen() {
       if (valid(g)) {
         const failure =
           e instanceof MobileFailure ? e.code : "service_unavailable";
-        setError(failure);
+        cameraMiss = frame && failure === "not_found";
+        if (cameraMiss) {
+          setShowAimHint(true);
+          const misses = recentMisses.current;
+          // Keep reads bounded while moving past unpaired tags.
+          misses.delete(frameKey);
+          if (misses.size >= 32) misses.delete(misses.keys().next().value!);
+          misses.set(frameKey, Date.now() + missTtlMs);
+        } else {
+          setError(failure);
+        }
         observe({
           outcome: diagnosticOutcome(failure),
           failureReason: verificationFailure ?? failure,
@@ -541,6 +573,21 @@ export default function ScanScreen() {
       if (valid(g)) {
         busy.current = false;
         setPending(false);
+        cameraLookup.current = null;
+        const next = queuedFrame.current;
+        queuedFrame.current = null;
+        if (frame && !cameraMiss) {
+          ready.current = false;
+          wanted.current = false;
+          resumeOnActive.current = false;
+          setCamera("paused");
+        } else if (
+          cameraMiss &&
+          next &&
+          Date.now() - next.seenAt <= queuedFrameTtlMs
+        ) {
+          void lookup(next.data, next.type, true);
+        }
       }
     }
   }
@@ -551,7 +598,9 @@ export default function ScanScreen() {
       !focusRef.current ||
       !activeRef.current ||
       viewRef.current !== "scan" ||
-      generation.current !== cameraEpoch
+      generation.current !== cameraEpoch ||
+      !ready.current ||
+      !wanted.current
     )
       return;
     countEvent("forwarded");
@@ -568,7 +617,41 @@ export default function ScanScreen() {
         });
       return;
     }
-    void lookup(event.data, event.type, true);
+    const { data, type } = event;
+    const frameKey = type + ":" + data;
+    if ((recentMisses.current.get(frameKey) ?? 0) > Date.now()) {
+      countEvent("suppressed");
+      return;
+    }
+    const candidate = { data, type, seenAt: Date.now() };
+    if (cameraLookup.current !== null) {
+      if (frameKey !== cameraLookup.current) queuedFrame.current = candidate;
+      countEvent("suppressed");
+      return;
+    }
+
+    // Shelf displays can print a UPC as Code 128. Give that retail code first
+    // chance while keeping custom Shopify barcodes eligible for exact lookup.
+    if (type === "code128" && !validGtin(data)) {
+      if (deferredFrame.current) {
+        if (data !== deferredFrame.current.data) queuedFrame.current = candidate;
+        return;
+      }
+      deferredFrame.current = candidate;
+      selectionTimer.current = setTimeout(() => {
+        selectionTimer.current = null;
+        deferredFrame.current = null;
+        if (valid(cameraEpoch)) void lookup(data, type, true);
+      }, 180);
+      return;
+    }
+    if (selectionTimer.current !== null) {
+      clearTimeout(selectionTimer.current);
+      selectionTimer.current = null;
+      queuedFrame.current = deferredFrame.current;
+      deferredFrame.current = null;
+    }
+    void lookup(data, type, true);
   }
   function nextItem() {
     resumeOnActive.current = true;
@@ -815,7 +898,7 @@ export default function ScanScreen() {
                     ready.current = true;
                 }}
                 onError={(code) => {
-                  if (valid(mountedEpoch)) {
+                  if (valid(mountedEpoch) && wanted.current) {
                     resumeOnActive.current = false;
                     pause("unavailable");
                     setError(code);
@@ -893,6 +976,11 @@ export default function ScanScreen() {
                 </View>
               </View>
             ))}
+          {showAimHint && !pending && camera === "running" && (
+            <Text accessibilityLiveRegion="polite" style={ui.copy}>
+              Still scanning. Aim at the barcode on the shelf display or box.
+            </Text>
+          )}
           {pending && (
             <Text accessibilityLiveRegion="polite" style={ui.copy}>
               Barcode detected. Finding your item…

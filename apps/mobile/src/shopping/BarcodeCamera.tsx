@@ -213,8 +213,8 @@ export function BarcodeCamera({
         </Pressable>
       </View>
       <Text style={styles.guidance}>
-        Keep the barcode sharp. If moving closer makes it blurry, move back and
-        try 2×.
+        Aim at the barcode on the shelf display or the product box. If it looks
+        blurry, move back and try 2×.
       </Text>
       <Text style={styles.note}>
         Digital zoom · Torch may cause glare on electronic labels.
