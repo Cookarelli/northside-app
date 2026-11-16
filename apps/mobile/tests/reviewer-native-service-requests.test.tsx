@@ -40,6 +40,7 @@ const stateFor = (id: string): AuthSnapshot => ({
 });
 let mockState: AuthSnapshot = stateFor(A),
   mockFocus = true,
+  mockTopic: string | undefined,
   mockUuid = 0;
 const mockPressHandlers = new Map<string, () => void>();
 const mockConfig = jest.fn<AuthController["serviceRequestConfig"]>(),
@@ -66,6 +67,7 @@ jest.mock("../src/auth/Provider", () => ({
 jest.mock("expo-router", () => {
   const React = jest.requireActual<typeof import("react")>("react");
   return {
+    useLocalSearchParams: () => ({ topic: mockTopic }),
     useFocusEffect: (callback: EffectCallback) => {
       const focused = mockFocus;
       React.useEffect(
@@ -228,6 +230,7 @@ const accept = () =>
 beforeEach(() => {
   mockState = stateFor(A);
   mockFocus = true;
+  mockTopic = undefined;
   mockUuid = 0;
   mockPressHandlers.clear();
   mockDrafts.clear();
@@ -255,6 +258,22 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("actual native shared request screen", () => {
+  it.each(["grading", "consignment"] as const)("routes a %s advance question to staff without submitting a financial request", async (service) => {
+    mockTopic = "advance";
+    await start();
+    expect(screen.queryByRole("button", { name: "service request" })).toBeNull();
+    if (service === "consignment") await press("consignment");
+    await contact();
+    await press("Save request");
+    expect(mockSubmit).not.toHaveBeenCalled();
+    await fill("Card description or request reference", "SAMPLE card NS-123");
+    await press("Save request");
+    await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
+    expect(mockSubmit.mock.calls[0][0]).toMatchObject({
+      service, kind: "inquiry", terms_accepted: false,
+      details: { question: `Card advance inquiry (${service}): SAMPLE card NS-123` },
+    });
+  });
   it("deferred capture synchronously blocks Save and late capture after blur never uploads", async () => {
     const capture = deferred<{ base64: string }>();
     mockCapture.mockImplementationOnce(() => capture.promise);
@@ -314,7 +333,8 @@ describe("actual native shared request screen", () => {
     expect(mockSubmit.mock.calls[0][0].request_id).toBe(request);
     expect(mockSubmit.mock.calls[0][0].details.photo_ids).toEqual([id]);
   });
-  it("reload recovers exact secure pending input without creating a replacement submission", async () => {
+  it.each([false, true])("recovering a pending inquiry preserves the original submission (advance %s)", async (advance) => {
+    mockTopic = advance ? "advance" : undefined;
     const draft: ServiceRequestInput = {
       request_id: A,
       claim_token: "A".repeat(43),
@@ -325,7 +345,7 @@ describe("actual native shared request screen", () => {
         email: "original@example.invalid",
         phone: "8155550100",
       },
-      details: { question: "SAMPLE original question" },
+      details: { question: advance ? "Card advance inquiry (grading): SAMPLE original card" : "SAMPLE original question" },
       terms_id: null,
       terms_accepted: false,
     };
@@ -341,6 +361,21 @@ describe("actual native shared request screen", () => {
       expect(screen.getByText(/Saved NS-SAMPLE-A/)).toBeVisible(),
     );
     expect(mockDrafts.has(A)).toBe(false);
+  });
+
+  it("keeps an unrelated unconfirmed inquiry intact when opening advances", async () => {
+    mockSubmit.mockRejectedValueOnce(new Error("Lost response"));
+    const ordinary = await start();
+    await inquiry();
+    await press("Save request");
+    await waitFor(() => expect(button("Retry same request")).not.toBeDisabled());
+    const pending = mockDrafts.get(A);
+    await ordinary.unmount();
+    mockTopic = "advance";
+    await render(<ServiceRequests />);
+    await waitFor(() => expect(screen.getByText("Review previous request")).toBeVisible());
+    expect(mockDrafts.get(A)).toEqual(pending);
+    expect(screen.queryByRole("button", { name: "Retry same request" })).toBeNull();
   });
 
   it("an acknowledged save stays saved when only the history refresh fails", async () => {

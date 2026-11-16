@@ -749,11 +749,11 @@ function trackingHarness() {
 }
 
 describe("private card tracking uses existing native authentication", () => {
-  it("keeps the requested account section through validated sign-in and resets it on logout", async () => {
+  it.each(["/my-cards?service=consignment", "/service-requests?topic=advance"] as const)("keeps %s through validated sign-in and resets it on logout", async (destination) => {
     const h = harness(),
       c = h.make();
-    await c.login("/my-cards?service=consignment");
-    expect(c.accountDestination()).toBe("/my-cards?service=consignment");
+    await c.login(destination);
+    expect(c.accountDestination()).toBe(destination);
     expect(c.snapshot().account?.customer.id).toBe(idA);
     expect(
       h.request.mock.calls.map(([url]) => String(url)).join(" "),

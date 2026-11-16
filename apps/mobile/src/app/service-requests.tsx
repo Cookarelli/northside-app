@@ -7,7 +7,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import {
   requestSchema,
@@ -30,8 +30,13 @@ const when = (value: string) =>
     timeStyle: "short",
   }).format(new Date(value));
 
+const advanceSubject = (service: ServiceRequestInput["service"]) =>
+  `Card advance inquiry (${service}): `;
+
 export default function ServiceRequestsScreen() {
-  const { state } = useCustomerAuth();
+  const { state, controller } = useCustomerAuth();
+  const { topic } = useLocalSearchParams<{ topic?: string }>();
+  const advance = topic === "advance";
   const identity =
     state.status === "authenticated" && state.account
       ? `${state.account.customer.id}:${state.account.sessionExpiresAt}`
@@ -39,8 +44,8 @@ export default function ServiceRequestsScreen() {
   return (
     <CustomerScreen
       eyebrow="NORTHSIDE SERVICES"
-      title="Service requests"
-      description="Consignment and grading staff review"
+      title={advance ? "Card advance inquiry" : "Service requests"}
+      description={advance ? "Ask staff to review a card in consignment or grading. An inquiry creates no payment or repayment obligation." : "Consignment and grading staff review"}
     >
       <ActionLink
         appearance="storefront"
@@ -48,7 +53,7 @@ export default function ServiceRequestsScreen() {
         label="My Cards & private photos"
       />
       {identity ? (
-        <RequestContent key={identity} />
+        <RequestContent key={identity + (advance ? "/advance" : "")} advance={advance} />
       ) : (
         <>
           <Text style={ui.copy}>
@@ -56,17 +61,19 @@ export default function ServiceRequestsScreen() {
               ? "Service requests are unavailable in this preview. Connect your account services to submit and view verified linked requests."
               : "Sign in to submit and view verified linked service requests."}
           </Text>
-          <ActionLink
-            appearance="storefront"
-            href="/account"
-            label="Open account"
-          />
+          {advance ? (
+            <Button appearance="storefront" label="Sign in to ask about an advance"
+              disabled={state.status === "unconfigured" || state.status === "booting" || state.status === "authenticating"}
+              onPress={() => { void controller.login("/service-requests?topic=advance"); }} />
+          ) : (
+            <ActionLink appearance="storefront" href="/account" label="Open account" />
+          )}
         </>
       )}
     </CustomerScreen>
   );
 }
-function RequestContent() {
+function RequestContent({ advance }: { advance: boolean }) {
   const { controller } = useCustomerAuth(),
     [config, setConfig] = useState<RequestConfig | null>(null),
     [requests, setRequests] = useState<ServiceRequestView[]>([]),
@@ -81,6 +88,7 @@ function RequestContent() {
     [saved, setSaved] = useState(""),
     [busy, setBusy] = useState(false),
     [frozen, setFrozen] = useState(false),
+    [needsRequestRecovery, setNeedsRequestRecovery] = useState(false),
     [photoIds, setPhotoIds] = useState<string[]>([]),
     [photoPending, setPhotoPending] = useState(false);
   const epoch = useRef(0),
@@ -99,11 +107,24 @@ function RequestContent() {
         controller.serviceRequests(a.signal),
         controller.pendingServiceRequest(),
       ])
-        .then(([c, r, recovered]) => {
+        .then(async ([c, r, recovered]) => {
           if (g === epoch.current) {
-            setConfig(c);
             setRequests(r.requests);
             if (recovered) {
+              const subject = advanceSubject(recovered.service);
+              const question = recovered.details.question;
+              if (advance && (recovered.kind !== "inquiry" || typeof question !== "string" || !question.startsWith(subject))) {
+                if (!r.requests.some((item) => item.submission_id === recovered.request_id)) {
+                  setNeedsRequestRecovery(true);
+                  return;
+                }
+                await controller.keepServiceRequest(null);
+                if (g === epoch.current) setConfig(c);
+                return;
+              }
+              if (typeof question === "string") {
+                setFields({ ...recovered.contact, question: advance ? question.slice(subject.length) : question });
+              }
               pending.current = recovered;
               draftId.current = recovered.request_id;
               setFrozen(true);
@@ -122,6 +143,7 @@ function RequestContent() {
                 void controller.keepServiceRequest(null).catch(() => {});
               }
             }
+            setConfig(c);
           }
         })
         .catch(() => {
@@ -140,13 +162,14 @@ function RequestContent() {
         setFields({});
         pending.current = null;
         setFrozen(false);
+        setNeedsRequestRecovery(false);
         setSaved("");
         setPhotoIds([]);
         setPhotoPending(false);
         photoBusy.current = false;
         draftId.current = null;
       };
-    }, [controller]),
+    }, [controller, advance]),
   );
   const photoPendingChanged = useCallback((value: boolean) => {
     photoBusy.current = value;
@@ -175,7 +198,7 @@ function RequestContent() {
                 : "default"
         }
         secureTextEntry={key === "claim_token"}
-        maxLength={["question", "instructions"].includes(key) ? 3000 : 200}
+        maxLength={key === "question" && advance ? 1000 : ["question", "instructions"].includes(key) ? 3000 : 200}
       />
     </View>
   );
@@ -193,6 +216,9 @@ function RequestContent() {
           throw Error(
             "Declared value requires USD dollars and at most two decimal places.",
           );
+        const question = (fields.question ?? "").trim();
+        if (advance && kind === "inquiry" && !question)
+          throw Error("Enter a card description or request reference so staff can identify your card.");
         const bytes = await Crypto.getRandomBytesAsync(32);
         if (g !== epoch.current) return;
         const proposed = {
@@ -210,7 +236,7 @@ function RequestContent() {
           },
           details:
             kind === "inquiry"
-              ? { question: fields.question ?? "" }
+              ? { question: advance ? advanceSubject(service) + question : question }
               : service === "consignment"
                 ? {
                     listing_count: Number(fields.listing_count),
@@ -359,6 +385,12 @@ function RequestContent() {
       }
     }
   }
+  if (needsRequestRecovery) return (
+    <Card appearance="storefront">
+      <Text style={ui.copy}>You have a previous request to confirm. Open your service requests to review it before starting an advance inquiry.</Text>
+      <ActionLink appearance="storefront" href="/service-requests" label="Review previous request" />
+    </Card>
+  );
   return (
     <View style={s.stack}>
       <Text style={ui.copy}>
@@ -392,6 +424,7 @@ function RequestContent() {
               />
             ))}
           </View>
+          {!advance && <>
           <Text style={ui.copy}>Request type</Text>
           <View style={s.row}>
             {(["inquiry", "service_request"] as const).map((v) => (
@@ -411,6 +444,7 @@ function RequestContent() {
               />
             ))}
           </View>
+          </>}
           {input("name", "Full name")}
           {input("email", "Email")}
           {input("phone", "Phone")}
@@ -449,7 +483,7 @@ function RequestContent() {
             </>
           )}
           {kind === "inquiry" ? (
-            input("question", "Question")
+            input("question", advance ? "Card description or request reference" : "Question")
           ) : service === "consignment" ? (
             <>
               {input("listing_count", "Number of listings / lots")}
@@ -584,6 +618,9 @@ function RequestContent() {
               <Text style={ui.copy}>
                 {r.reference} · {r.service} · {r.state}
               </Text>
+              {r.kind === "inquiry" && typeof r.details.question === "string" && (
+                <Text style={ui.copy}>{r.details.question}</Text>
+              )}
               {Array.isArray(r.details.items) &&
                 r.details.items.map((item, i) => {
                   const value = item as {

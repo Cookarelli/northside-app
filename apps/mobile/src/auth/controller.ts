@@ -25,6 +25,7 @@ export const accountDestinations = [
   "/account",
   "/my-cards?service=grading",
   "/my-cards?service=consignment",
+  "/service-requests?topic=advance",
 ] as const;
 export type AccountDestination = (typeof accountDestinations)[number];
 

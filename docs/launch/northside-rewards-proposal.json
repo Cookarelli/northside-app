@@ -1,0 +1,78 @@
+{
+  "status": "Proposal for Joey’s review. Inactive. The two merchandise IDs are for checkout testing only.",
+  "shop": "9i3hnb-jw.myshopify.com",
+  "rule": {
+    "points_per_dollar": 1,
+    "qualification_days": 365,
+    "tiers": [
+      {
+        "label": "Rookie",
+        "threshold_cents": 0
+      },
+      {
+        "label": "Vet",
+        "threshold_cents": 500000
+      },
+      {
+        "label": "HOF",
+        "threshold_cents": 1000000
+      },
+      {
+        "label": "GOAT",
+        "threshold_cents": 2500000
+      }
+    ],
+    "eligible_products": [
+      {
+        "id": "gid://shopify/Product/15993268240753",
+        "kind": "retail"
+      },
+      {
+        "id": "gid://shopify/Product/16135959413105",
+        "kind": "retail"
+      }
+    ],
+    "approved_service_kinds": [],
+    "excluded_product_ids": [],
+    "points_expiry": "none",
+    "rounding": "floor_per_line_cumulative",
+    "tier_returns": "reduce_original_period",
+    "refund_restoration": "manual_review"
+  },
+  "reward": {
+    "points_cost": 500,
+    "value_cents": 500,
+    "terms": {
+      "title": "$5 Northside retail reward",
+      "minimum_cents": 2500,
+      "product_ids": [
+        "gid://shopify/Product/15993268240753",
+        "gid://shopify/Product/16135959413105"
+      ],
+      "collection_ids": [],
+      "expiry_days": 90,
+      "combines": {
+        "orderDiscounts": false,
+        "productDiscounts": false,
+        "shippingDiscounts": false
+      }
+    }
+  },
+  "merchandise_for_testing": {
+    "gid://shopify/Product/15993268240753": "2026 Upper Deck Golf Hobby Box",
+    "gid://shopify/Product/16135959413105": "2023-24 Panini NBA Prizm Mega Box"
+  },
+  "approval_notes": [
+    "Customers earn at the same rate in all four tiers. Qualifying spend uses net eligible merchandise after discounts and returns. Spending points does not reduce tier qualification.",
+    "Proposed reward is a customer-specific Shopify discount. Points do not expire. The proposed 90 days applies only after the customer exchanges points for a voucher.",
+    "Start with identifiable paid retail orders. Exclude tax, shipping, gift cards, grading, consignment, break entries, advances and payouts. Issuing a store credit or converting proceeds is not a retail sale.",
+    "The named test products are active non-gift-card merchandise. Staff must choose the launch product set and confirm online and identified POS checkout and refunds before enabling rewards on each channel. The existing earning rule supports at most 100 explicit product IDs.",
+    "Joey to decide the thresholds, any tier perks, reward minimum, voucher validity and eligible merchandise. No bonus or multiplier is assumed."
+  ],
+  "advance_decisions": [
+    "Decide whether each service offers store credit, cash, or a choice. Record funding method and accepted offer against the verified card and customer before issuing value.",
+    "For consignment, agree on valuation, maximum, any fees, and who covers an unsold card or shortfall. At settlement, subtract the outstanding advance once from the customer’s agreed net proceeds and show both amounts.",
+    "For grading, decide whether the card must sell or the owner can pick it up, what clears the advance in either case, and what happens if the grade is lower than expected. Obtain local review of cash-for-card terms before funding.",
+    "Keep reward points, available store credit, pending proceeds, eligible payouts and outstanding advances distinct. An inquiry or estimate does not create a ledger entry or release funds."
+  ]
+}

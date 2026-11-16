@@ -27,10 +27,11 @@ export default function WalletScreen() {
   const fresh = useSyncExternalStore(subscribe, isFresh, unavailableOnServer);
   return (
     <Screen
-      eyebrow="Northside rewards"
+      eyebrow="Northside Collectibles"
       title="Your wallet."
-      description="Your rewards and loyalty, all in one place."
+      description="Your rewards, card advances and consignment proceeds."
     >
+      <Text accessibilityRole="header" style={ui.heading}>Northside Rewards</Text>
       {state.status !== "authenticated" ? (
         <>
           <StatePanel appearance="storefront"
@@ -102,7 +103,7 @@ export default function WalletScreen() {
             message:
               wallet?.status === "unavailable" &&
               wallet.reason === "not_launched"
-                ? "Northside loyalty has not launched. No balance or reward status is being represented as active."
+                ? "Northside loyalty has not launched. We’ll post earning and redemption details here when the program opens."
                 : "A current verified balance is not available. Please refresh when connected.",
           }}
         />
@@ -116,9 +117,27 @@ export default function WalletScreen() {
           }}
         />
       )}
-      <Text style={ui.copy}>
-        Rewards are available to view when your account is connected.
-      </Text>
+      <Card appearance="storefront">
+        <Text accessibilityRole="header" style={ui.heading}>Membership tiers</Text>
+        <Text style={ui.copy}>Rookie · Vet · HOF · GOAT</Text>
+      </Card>
+      <Card appearance="storefront">
+        <Text accessibilityRole="header" style={ui.heading}>Card advances</Text>
+        <Text style={ui.copy}>
+          Have a card in consignment or grading? Ask the team to review it for
+          an advance. Include the card description or your request reference.
+        </Text>
+        <ActionLink appearance="storefront" href={{ pathname: "/service-requests", params: { topic: "advance" } }} label="Ask about a card advance" />
+      </Card>
+      <Card appearance="storefront">
+        <Text accessibilityRole="header" style={ui.heading}>Consignment proceeds</Text>
+        <Text style={ui.copy}>Follow your card in My Cards. Staff can confirm any sale proceeds and payout.</Text>
+        <ActionLink appearance="storefront" secondary href={{ pathname: "/my-cards", params: { service: "consignment" } }} label="View my consigned cards" />
+      </Card>
+      <Card appearance="storefront">
+        <Text accessibilityRole="header" style={ui.heading}>Northside store credit</Text>
+        <Text style={ui.copy}>Store credit balances are unavailable in this Wallet.</Text>
+      </Card>
     </Screen>
   );
 }
