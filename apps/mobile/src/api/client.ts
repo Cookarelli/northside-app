@@ -42,7 +42,6 @@ import {
   requestSchema,
   type ServiceRequestInput,
 } from "@northside/customer-contracts/service-requests";
-import { emitScanTrace, type ScanTraceListener } from "./scan-trace";
 
 export class MobileFailure extends Error {
   constructor(public readonly code: string) {
@@ -122,7 +121,7 @@ export class MobileApi {
       signal?: AbortSignal;
       shoppingToken?: string;
       errorSchema?: Schema<{ error: { code: string } }>;
-      scan?: { trace?: ScanTraceListener };
+      scan?: boolean;
     } = {},
   ): Promise<T> {
     const retries = options.body === undefined ? 1 : 0;
@@ -158,13 +157,6 @@ export class MobileApi {
           redirect: "error",
         });
         if (options.scan) {
-          emitScanTrace(options.scan.trace, {
-            path: "backend-registry",
-            stage: "backend-request",
-            endpoint: this.base + path,
-            httpStatus: response.status,
-            requestCache: "no-store",
-          });
           if (response.status === 429) throw new MobileFailure("rate_limited");
           if (response.status >= 500) throw new MobileFailure("server_error");
           if ([401, 403].includes(response.status))
@@ -542,26 +534,12 @@ export class MobileApi {
       { signal },
     );
   }
-  async scan(
-    code: string,
-    signal?: AbortSignal,
-    format?: string,
-    trace?: ScanTraceListener,
-  ) {
-    emitScanTrace(trace, {
-      path: "backend-registry",
-      stage: "backend-request",
-      endpoint: this.base + "/scan",
-      httpStatus: null,
-      requestCache: "no-store",
-    });
-    const result = await this.send("/scan", mobileScanSchema, {
+  async scan(code: string, signal?: AbortSignal, format?: string) {
+    return this.send("/scan", mobileScanSchema, {
       body: { code, ...(format ? { format } : {}) },
       signal,
-      scan: { trace },
+      scan: true,
     });
-    emitScanTrace(trace, { path: "backend-registry", stage: "complete" });
-    return result;
   }
   shopping(
     action: ShoppingAction,

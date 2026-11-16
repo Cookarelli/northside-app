@@ -129,7 +129,6 @@ describe("public Shopify preview catalog", () => {
   it.each([429, 500, 503, 401, 403, 404])(
     "reports HTTP %s distinctly from an unknown product without leaking provider data",
     async (status) => {
-      const trace = jest.fn();
       const expected =
         status === 429
           ? "rate_limited"
@@ -145,12 +144,8 @@ describe("public Shopify preview catalog", () => {
               status,
               headers: { "content-type": "application/json" },
             }),
-        ).scan("746134150968", undefined, "code128", trace),
+        ).scan("746134150968", undefined, "code128"),
       ).rejects.toThrow(expected);
-      expect(trace).toHaveBeenLastCalledWith(
-        expect.objectContaining({ httpStatus: status, stage: "catalog-read" }),
-      );
-      expect(JSON.stringify(trace.mock.calls)).not.toContain("PRIVATE");
     },
   );
   it("resolves all six checksum-valid Code128/manual GTIN equivalents through the real adapter", async () => {
@@ -164,111 +159,46 @@ describe("public Shopify preview catalog", () => {
         ).toBe(p.variantId);
       }
   });
-  it("observes exact matches, zero matches, ambiguity and identity failures without changing outcomes", async () => {
+  it("handles exact matches, zero matches, ambiguity and identity failures", async () => {
     const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));
     const api = new PublicCatalogApi(async () => response(nodes));
-    const trace = jest.fn();
     const found = await api.scan(
       nodes[0].variants.nodes[0].barcode,
       undefined,
       "ean13",
-      trace,
     );
     expect(found.product.selectedVariantId).toBe(
       PREVIEW_CATALOG_SELECTION[0].variantId,
     );
-    expect(trace).toHaveBeenCalledWith(
-      expect.objectContaining({
-        stage: "barcode-match",
-        matchingVariants: 1,
-        catalogProducts: 8,
-      }),
-    );
-    expect(trace).toHaveBeenLastCalledWith({
-      path: "public-shopify-variant-barcode",
-      stage: "complete",
-      matchingVariants: 1,
-    });
-    trace.mockClear();
-    await expect(
-      api.scan("8003148023", undefined, "code128", trace),
-    ).rejects.toThrow("not_found");
-    expect(trace).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        stage: "barcode-match",
-        matchingVariants: 0,
-        reason: "no_matching_visible_variant",
-      }),
+    await expect(api.scan("8003148023", undefined, "code128")).rejects.toThrow(
+      "not_found",
     );
     nodes[1].variants.nodes[0].barcode = nodes[0].variants.nodes[0].barcode;
     await expect(
-      api.scan(nodes[0].variants.nodes[0].barcode, undefined, "ean13", trace),
+      api.scan(nodes[0].variants.nodes[0].barcode, undefined, "ean13"),
     ).rejects.toThrow("ambiguous_scan");
-    expect(trace).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        matchingVariants: 2,
-        reason: "multiple_variant_barcodes",
-      }),
-    );
     nodes[1].variants.nodes[0].barcode = "CHANGED-SECOND";
     await expect(
-      api.scan("CHANGED-SECOND", undefined, "code128", trace),
+      api.scan("CHANGED-SECOND", undefined, "code128"),
     ).rejects.toThrow("invalid_response");
-    expect(trace).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        stage: "identity-verification",
-        reason: "catalog_identity_changed",
-      }),
-    );
-    expect(
-      (
-        await api.scan(
-          nodes[0].variants.nodes[0].barcode,
-          undefined,
-          "ean13",
-          () => {
-            throw Error("PRIVATE");
-          },
-        )
-      ).product.selectedVariantId,
-    ).toBe(PREVIEW_CATALOG_SELECTION[0].variantId);
   });
   it("reports missing public nodes and network failures without inventing publication reasons", async () => {
     const nodes: unknown[] = PREVIEW_CATALOG_SELECTION.map((_, i) =>
       product(i),
     );
     nodes[0] = null;
-    const trace = jest.fn();
     await expect(
       new PublicCatalogApi(async () => response(nodes)).scan(
         PREVIEW_CATALOG_SELECTION[0].barcode,
         undefined,
         "ean13",
-        trace,
       ),
     ).rejects.toThrow("product_unavailable");
-    expect(trace).toHaveBeenCalledWith(
-      expect.objectContaining({
-        unreturnedProducts: 1,
-        catalogProducts: 7,
-        matchingVariants: 0,
-      }),
-    );
-    trace.mockClear();
     await expect(
       new PublicCatalogApi(async () => {
         throw Error("PRIVATE transport detail");
-      }).scan("8003148023", undefined, "code128", trace),
+      }).scan("8003148023", undefined, "code128"),
     ).rejects.toThrow("offline");
-    expect(trace).toHaveBeenCalledTimes(1);
-    expect(trace).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        path: "public-shopify-variant-barcode",
-        stage: "catalog-read",
-        httpStatus: null,
-      }),
-    );
-    expect(JSON.stringify(trace.mock.calls)).not.toContain("PRIVATE");
   });
   it("keeps Prizm scannable when unrelated Golf barcode drifts and quarantines Golf", async () => {
     const nodes = PREVIEW_CATALOG_SELECTION.map((_, i) => product(i));

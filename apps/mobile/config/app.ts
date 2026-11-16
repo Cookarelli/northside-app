@@ -49,7 +49,6 @@ export function createAppConfig(env: Environment): ExpoConfig {
     throw new Error("Invalid source revision.");
   if (easBuildId && !uuid.test(easBuildId))
     throw new Error("Invalid build identity.");
-  const scanDiagnostics = env.MOBILE_SCAN_DIAGNOSTICS === "true";
   const prefix = `MOBILE_${selected.toUpperCase()}`;
   const origin = apiOrigin(env[`${prefix}_API_ORIGIN`], selected);
   const releaseCandidate = env.MOBILE_RELEASE_CANDIDATE === "true";
@@ -87,10 +86,6 @@ export function createAppConfig(env: Environment): ExpoConfig {
       "Public catalog is an isolated preview with no customer API; EAS requires iOS.",
     );
   const scanRehearsal = env.MOBILE_SCAN_REHEARSAL === "true";
-  if (scanDiagnostics && selected === "production")
-    throw new Error(
-      "Scan diagnostics are restricted to development and internal preview builds.",
-    );
   if (
     scanRehearsal &&
     (selected !== "development" ||
@@ -326,7 +321,6 @@ export function createAppConfig(env: Environment): ExpoConfig {
         ...(interfacePreview ? { interfacePreview: true } : {}),
         ...(privateCatalogPreview ? { privateCatalogPreview: true } : {}),
         ...(scanRehearsal ? { scanRehearsal: true } : {}),
-        ...(scanDiagnostics ? { scanDiagnostics: true } : {}),
       },
       ...(projectId ? { eas: { projectId } } : {}),
     },

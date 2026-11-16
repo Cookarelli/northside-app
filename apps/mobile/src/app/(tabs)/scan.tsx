@@ -20,10 +20,7 @@ import {
   ScrollView,
   StyleSheet,
   useWindowDimensions,
-  Clipboard,
-  Modal,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import {
   currentObservation,
@@ -40,7 +37,10 @@ import { useCustomerAuth } from "../../auth/Provider";
 import { MobileFailure } from "../../api/client";
 import { useShopping } from "../../shopping/Provider";
 import { CartView } from "../../shopping/CartView";
-import { ScanProduct } from "../../shopping/ScanProduct";
+import {
+  ScanProduct,
+  scannedVariantAvailable,
+} from "../../shopping/ScanProduct";
 import { shoppingMessage } from "../../shopping/messages";
 import { BarcodeCamera } from "../../shopping/BarcodeCamera";
 import { storefront } from "../../theme";
@@ -53,16 +53,6 @@ import {
   isRetailBarcodeFormat,
   barcodePreviewHeight,
 } from "../../shopping/barcode-scanner";
-import {
-  scanDiagnosticsEnabled,
-  emptyScanDiagnostic,
-  diagnosticValue,
-  diagnosticOutcome,
-  diagnosticMatch,
-  formatScanDiagnostic,
-  type ScanDiagnostic,
-  scanAppIdentity,
-} from "../../shopping/scan-diagnostics";
 import { verifiedScanAddInput } from "../../shopping/verified-scan";
 
 function scanMessage(error: string) {
@@ -94,7 +84,6 @@ type ScanNavigation = ReturnType<typeof useNavigation> & {
 };
 
 type CameraFrame = { data: string; type: string; seenAt: number };
-const initialEventCounts = { forwarded: 0, ignoredFormat: 0, suppressed: 0 };
 const missTtlMs = 30_000;
 const queuedFrameTtlMs = 2_000;
 
@@ -123,36 +112,6 @@ export default function ScanScreen() {
   const [result, setResult] = useState<Observation>();
   const [selected, setSelected] = useState<string>();
   const [added, setAdded] = useState(false);
-  const qaEnabled = scanDiagnosticsEnabled(Constants.expoConfig?.extra?.mobile);
-  const appIdentity = scanAppIdentity(Constants);
-  const [qaOpen, setQaOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [diagnostic, setDiagnostic] = useState(emptyScanDiagnostic);
-  const diagnosticRef = useRef(diagnostic);
-  const countsRef = useRef(initialEventCounts);
-  const [eventCounts, setEventCounts] = useState(initialEventCounts);
-  function observe(change: Partial<ScanDiagnostic>) {
-    if (!qaEnabled) return;
-    diagnosticRef.current = { ...diagnosticRef.current, ...change };
-    setDiagnostic(diagnosticRef.current);
-    setCopied(false);
-  }
-  function countEvent(key: keyof typeof countsRef.current) {
-    if (!qaEnabled) return;
-    countsRef.current = {
-      ...countsRef.current,
-      [key]: countsRef.current[key] + 1,
-    };
-    setEventCounts(countsRef.current);
-  }
-  const clearDiagnostic = useCallback(() => {
-    diagnosticRef.current = emptyScanDiagnostic();
-    countsRef.current = initialEventCounts;
-    setDiagnostic(diagnosticRef.current);
-    setEventCounts(countsRef.current);
-    setQaOpen(false);
-    setCopied(false);
-  }, []);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -207,14 +166,6 @@ export default function ScanScreen() {
     activeRef.current &&
     viewRef.current === "scan";
   const pause = useCallback((state: CameraState = "paused") => {
-    if (diagnosticRef.current.outcome === "looking_up") {
-      diagnosticRef.current = {
-        ...diagnosticRef.current,
-        outcome: "cancelled",
-        failureReason: "lookup_interrupted_by_navigation_or_app_state",
-      };
-      setDiagnostic(diagnosticRef.current);
-    }
     generation.current++;
     cameraLookup.current = null;
     queuedFrame.current = null;
@@ -317,7 +268,6 @@ export default function ScanScreen() {
         resumeOnActive.current = false;
         setFocused(false);
         pause();
-        setQaOpen(false);
       };
     }, [pause]),
   );
@@ -352,14 +302,13 @@ export default function ScanScreen() {
       pause();
       setCode("");
       setError(undefined);
-      clearDiagnostic();
       if (identity !== "booting" && identity !== "authenticating")
         void startRef.current(true);
     }
-  }, [api, identity, pause, clearDiagnostic]);
+  }, [api, identity, pause]);
   useEffect(() => {
     if (permission && !permission.granted && camera === "running")
-      // Synchronize a revoked native camera permission; this effect stops the device resource.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Stop capture and cancel in-flight lookup immediately on native permission revocation.
       pause("denied");
   }, [permission, camera, pause]);
   useEffect(() => {
@@ -383,33 +332,15 @@ export default function ScanScreen() {
       !activeRef.current ||
       viewRef.current !== "scan"
     ) {
-      if (frame) countEvent("suppressed");
       return;
     }
     if (frame && (!ready.current || !wanted.current || resultRef.current)) {
-      countEvent("suppressed");
       return;
     }
     setLastLookup(null);
     const value = frame ? raw : raw.trim();
-    if (qaEnabled) {
-      diagnosticRef.current = emptyScanDiagnostic();
-      observe({
-        recordedAt: new Date().toISOString(),
-        source: frame ? "camera" : "manual",
-        rawValue: diagnosticValue(raw, format),
-        rawLength: raw.length,
-        format: format ? diagnosticValue(format) : null,
-        lookupValue: diagnosticValue(value, format),
-        outcome: "looking_up",
-      });
-    }
     if (!isProductBarcode(value)) {
       setError("invalid_request");
-      observe({
-        outcome: "invalid_barcode",
-        failureReason: "input_character_or_length_guard",
-      });
       return;
     }
     const input = scanInputSchema.safeParse({
@@ -418,10 +349,6 @@ export default function ScanScreen() {
     });
     if (!input.success) {
       setError("invalid_request");
-      observe({
-        outcome: "invalid_barcode",
-        failureReason: "scan_input_schema_guard",
-      });
       return;
     }
     let candidates: string[];
@@ -429,13 +356,8 @@ export default function ScanScreen() {
       candidates = barcodeCandidates(input.data.code, input.data.format);
     } catch {
       setError("invalid_request");
-      observe({
-        outcome: "invalid_barcode",
-        failureReason: "barcode_format_or_checksum_guard",
-      });
       return;
     }
-    observe({ candidates: candidates.map((c) => diagnosticValue(c, format)) });
     setLastLookup(input.data);
     const g = frame ? generation.current : ++generation.current;
     const frameKey = format + ":" + value;
@@ -457,46 +379,22 @@ export default function ScanScreen() {
     setResult(undefined);
     setAdded(false);
     let cameraMiss = false;
-    let verificationFailure: string | undefined;
     try {
       if (!api) throw new MobileFailure("not_configured");
       const data = await api.scan(
         input.data.code,
         abort.current.signal,
         input.data.format,
-        qaEnabled
-          ? (trace) => {
-              if (valid(g))
-                observe({
-                  lookup: { ...diagnosticRef.current.lookup, ...trace },
-                });
-            }
-          : undefined,
       );
       if (!valid(g)) return;
       if (!currentObservation(data)) {
-        verificationFailure = "expired_product_observation";
         throw new MobileFailure("refresh_required");
       }
       if (data.kind === "active-item") {
         const item = data.product;
         if (!candidates.includes(item.barcode)) {
-          verificationFailure = "returned_variant_barcode_mismatch";
           throw new MobileFailure("invalid_response");
         }
-        observe({
-          matched: {
-            productId: item.id,
-            title: diagnosticValue(item.title),
-            variantId: item.selectedVariantId,
-            variantTitle: diagnosticValue(item.variantTitle),
-            variantBarcode: item.barcode,
-            appEligible: false,
-          },
-          outcome: "product_unavailable",
-          failureReason: null,
-          canonicalAddInput: null,
-        });
         const observation = {
           data,
           code: input.data.code,
@@ -508,7 +406,6 @@ export default function ScanScreen() {
         return;
       }
       if (data.product.publication !== "published") {
-        verificationFailure = "product_not_published";
         throw new MobileFailure("invalid_response");
       }
       // Verify the returned Shopify VARIANT BARCODE even against an older backend.
@@ -522,22 +419,9 @@ export default function ScanScreen() {
         (data.product.selectedVariantId &&
           data.product.selectedVariantId !== matches[0].id)
       ) {
-        verificationFailure = "returned_variant_barcode_mismatch";
         throw new MobileFailure("invalid_response");
       }
       const selection = matches[0].id;
-      const matched = diagnosticMatch(data, selection);
-      const canonicalAddInput = verifiedScanAddInput(
-        input.data.code,
-        input.data.format,
-        matches[0].identifiers.barcode,
-      );
-      observe({
-        matched,
-        canonicalAddInput,
-        outcome: matched.appEligible ? "product_found" : "product_unavailable",
-        failureReason: null,
-      });
       const observation = {
         data: {
           ...data,
@@ -564,10 +448,6 @@ export default function ScanScreen() {
         } else {
           setError(failure);
         }
-        observe({
-          outcome: diagnosticOutcome(failure),
-          failureReason: verificationFailure ?? failure,
-        });
       }
     } finally {
       if (valid(g)) {
@@ -593,7 +473,6 @@ export default function ScanScreen() {
   }
   function scanned(event: BarcodeScanningResult) {
     // Fence queued callbacks as well as the native decoder. QR is not this tab's workflow.
-    // Fence QA writes too: an old callback must not repopulate a cleared report.
     if (
       !focusRef.current ||
       !activeRef.current ||
@@ -603,30 +482,17 @@ export default function ScanScreen() {
       !wanted.current
     )
       return;
-    countEvent("forwarded");
-    if (!isRetailBarcodeFormat(event.type)) {
-      countEvent("ignoredFormat");
-      if (diagnosticRef.current.source === null)
-        observe({
-          source: "camera",
-          rawValue: diagnosticValue(event.data, event.type),
-          rawLength: event.data.length,
-          format: diagnosticValue(event.type),
-          outcome: "invalid_barcode",
-          failureReason: "ignored_camera_format",
-        });
-      return;
-    }
+
+    if (!isRetailBarcodeFormat(event.type)) return;
     const { data, type } = event;
     const frameKey = type + ":" + data;
     if ((recentMisses.current.get(frameKey) ?? 0) > Date.now()) {
-      countEvent("suppressed");
       return;
     }
     const candidate = { data, type, seenAt: Date.now() };
     if (cameraLookup.current !== null) {
       if (frameKey !== cameraLookup.current) queuedFrame.current = candidate;
-      countEvent("suppressed");
+
       return;
     }
 
@@ -634,7 +500,8 @@ export default function ScanScreen() {
     // chance while keeping custom Shopify barcodes eligible for exact lookup.
     if (type === "code128" && !validGtin(data)) {
       if (deferredFrame.current) {
-        if (data !== deferredFrame.current.data) queuedFrame.current = candidate;
+        if (data !== deferredFrame.current.data)
+          queuedFrame.current = candidate;
         return;
       }
       deferredFrame.current = candidate;
@@ -700,12 +567,7 @@ export default function ScanScreen() {
       setSelected(undefined);
       return;
     }
-    if (
-      !result.data.product.availableForSale ||
-      !variant.availability.availableForSale ||
-      variant.availability.currentlyNotInStock ||
-      variant.availability.state === "unavailable"
-    ) {
+    if (!scannedVariantAvailable(result.data.product, variant)) {
       setError("quantity_unavailable");
       return;
     }
@@ -760,107 +622,36 @@ export default function ScanScreen() {
         setViewportHeight(event.nativeEvent.layout.height)
       }
     >
-      <View style={styles.tabs}>
-        <View accessibilityRole="tablist" style={[styles.tabs, styles.tab]}>
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: view === "scan" }}
-            style={[ui.chip, styles.tab, view === "scan" && ui.selected]}
-            onPress={() => {
-              viewRef.current = "scan";
-              setView("scan");
-              nextItem();
-            }}
-          >
-            <Text style={[ui.label, view === "scan" && ui.selectedLabel]}>
-              Scan
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: view === "cart" }}
-            style={[ui.chip, styles.tab, view === "cart" && ui.selected]}
-            onPress={openCart}
-          >
-            <Text style={[ui.label, view === "cart" && ui.selectedLabel]}>
-              Cart{count ? ` (${count})` : ""}
-            </Text>
-          </Pressable>
-        </View>
-        {qaEnabled && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Internal QA diagnostics"
-            style={[ui.chip, styles.qaButton]}
-            onPress={() => {
-              setCopied(false);
-              setQaOpen(true);
-            }}
-          >
-            <Text style={ui.label}>QA</Text>
-          </Pressable>
-        )}
+      <View accessibilityRole="tablist" style={styles.tabs}>
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: view === "scan" }}
+          style={[ui.chip, styles.tab, view === "scan" && ui.selected]}
+          onPress={() => {
+            viewRef.current = "scan";
+            setView("scan");
+            nextItem();
+          }}
+        >
+          <Text style={[ui.label, view === "scan" && ui.selectedLabel]}>
+            Scan
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: view === "cart" }}
+          style={[ui.chip, styles.tab, view === "cart" && ui.selected]}
+          onPress={openCart}
+        >
+          <Text style={[ui.label, view === "cart" && ui.selectedLabel]}>
+            Cart{count ? ` (${count})` : ""}
+          </Text>
+        </Pressable>
       </View>
       {Constants.expoConfig?.extra?.mobile?.scanRehearsal === true && (
         <Text style={styles.rehearsal}>
           LOCAL REHEARSAL · SYNTHETIC TEST ITEMS
         </Text>
-      )}
-      {qaEnabled && (
-        <Modal
-          visible={qaOpen}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setQaOpen(false)}
-        >
-          <SafeAreaView style={styles.qa}>
-            <Text accessibilityRole="header" style={ui.heading}>
-              Internal scan diagnostics
-            </Text>
-            <Text style={ui.label}>
-              Native iOS build {appIdentity.nativeIosBuild ?? "unknown"} ·
-              Bundle build {appIdentity.configuredBundleBuild ?? "unknown"}
-            </Text>
-            <Text selectable style={ui.copy}>
-              Source {appIdentity.sourceCommit ?? "unknown"} · OTA{" "}
-              {appIdentity.otaConfigured === false ? "disabled" : "unverified"}
-            </Text>
-            <Text style={ui.copy}>
-              Last recorded attempt. Reports survive tab changes and
-              backgrounding until the next lookup or Clear. No forwarded event
-              means this screen has not received one; it does not prove the
-              native decoder detected nothing.
-            </Text>
-            <ScrollView style={styles.qaReport}>
-              <Text selectable testID="scan-diagnostic-report" style={ui.copy}>
-                {formatScanDiagnostic(diagnostic, eventCounts, appIdentity)}
-              </Text>
-            </ScrollView>
-            <Button
-              appearance="storefront"
-              label={copied ? "Diagnostics copied" : "Copy scan diagnostics"}
-              onPress={() => {
-                Clipboard.setString(
-                  formatScanDiagnostic(diagnostic, eventCounts, appIdentity),
-                );
-                setCopied(true);
-              }}
-            />
-            <Button
-              appearance="storefront"
-              secondary
-              label="Clear scan diagnostics"
-              disabled={pending}
-              onPress={clearDiagnostic}
-            />
-            <Button
-              appearance="storefront"
-              secondary
-              label="Close diagnostics"
-              onPress={() => setQaOpen(false)}
-            />
-          </SafeAreaView>
-        </Modal>
       )}
       {view === "cart" ? (
         <CartView
@@ -1030,13 +821,6 @@ export default function ScanScreen() {
             </Card>
           )}
           {result?.data.kind === "product-detail" && (
-            <Text accessibilityLiveRegion="polite" style={ui.label}>
-              {selected && !diagnosticMatch(result.data, selected).appEligible
-                ? "Product found · Unavailable in the app"
-                : "Product found · Review before adding"}
-            </Text>
-          )}
-          {result?.data.kind === "product-detail" && (
             <ScanProduct
               data={result.data}
               selected={selected}
@@ -1190,12 +974,4 @@ const styles = StyleSheet.create({
   },
   rehearsal: { ...storefront.type.eyebrow, color: storefront.colors.accent },
   secondary: { gap: 8 },
-  qa: {
-    flex: 1,
-    padding: 20,
-    gap: 12,
-    backgroundColor: storefront.colors.white,
-  },
-  qaReport: { flex: 1 },
-  qaButton: { minWidth: 48, alignItems: "center", justifyContent: "center" },
 });

@@ -20,7 +20,6 @@ import {
   matchCatalogScan,
   barcodeCandidates,
 } from "../../../../packages/customer-contracts/src/native-scan";
-import { emitScanTrace, type ScanTraceListener } from "./scan-trace";
 
 export const PUBLIC_CATALOG_ENDPOINT = `https://${CATALOG_SHOP}/api/${CATALOG_SHOPIFY_API_VERSION}/graphql.json`;
 export const PUBLIC_CATALOG_QUERY = `query NorthsidePreviewCatalog($ids: [ID!]!) {
@@ -136,7 +135,7 @@ export class PublicCatalogApi implements BrowseApi {
   private async read(
     selection: readonly (typeof PREVIEW_CATALOG_SELECTION)[number][],
     signal?: AbortSignal,
-    scan?: { trace?: ScanTraceListener },
+    scan = false,
   ) {
     if (signal?.aborted) throw new MobileFailure("cancelled");
     const controller = new AbortController();
@@ -163,19 +162,6 @@ export class PublicCatalogApi implements BrowseApi {
         }),
         signal: controller.signal,
       });
-      if (scan)
-        emitScanTrace(scan.trace, {
-          path: "public-shopify-variant-barcode",
-          stage: "catalog-read",
-          endpoint: PUBLIC_CATALOG_ENDPOINT,
-          httpStatus: response.status,
-          requestCache: "no-store",
-          apiVersion: /^\d{4}-\d{2}$/.test(
-            response.headers.get("x-shopify-api-version") ?? "",
-          )
-            ? response.headers.get("x-shopify-api-version")
-            : null,
-        });
       if (controller.signal.aborted) throw new MobileFailure("cancelled");
       if (!response.ok)
         throw new MobileFailure(
@@ -280,53 +266,9 @@ export class PublicCatalogApi implements BrowseApi {
       ...this.observation(),
     });
   }
-  scan: BrowseApi["scan"] = async (code, signal, format, trace) => {
-    if (this.scanFallback)
-      return this.scanFallback.scan(code, signal, format, trace);
-    const path = "public-shopify-variant-barcode" as const;
-    emitScanTrace(trace, {
-      path,
-      stage: "catalog-read",
-      endpoint: PUBLIC_CATALOG_ENDPOINT,
-      httpStatus: null,
-      requestCache: "no-store",
-    });
-    const records = await this.read(PREVIEW_CATALOG_SELECTION, signal, {
-      trace,
-    });
-    // QA metadata observes the same fresh records; it never supplies a match.
-    // QR workflows retain their own resolver and are not barcode-index claims.
-    if (format !== "qr" && !/^https?:/i.test(code)) {
-      let candidates: string[] = [];
-      try {
-        candidates = barcodeCandidates(code, format);
-      } catch {
-        /* Resolver validates. */
-      }
-      const claims = new Set(
-        records.flatMap(({ product }) =>
-          product.variants.nodes
-            .filter(
-              (v) =>
-                v.identifiers.barcode !== null &&
-                candidates.includes(v.identifiers.barcode),
-            )
-            .map((v) => v.id),
-        ),
-      );
-      emitScanTrace(trace, {
-        path,
-        stage: "barcode-match",
-        catalogProducts: records.length,
-        unreturnedProducts: PREVIEW_CATALOG_SELECTION.length - records.length,
-        matchingVariants: claims.size,
-        ...(claims.size === 0
-          ? { reason: "no_matching_visible_variant" as const }
-          : claims.size > 1
-            ? { reason: "multiple_variant_barcodes" as const }
-            : {}),
-      });
-    }
+  scan: BrowseApi["scan"] = async (code, signal, format) => {
+    if (this.scanFallback) return this.scanFallback.scan(code, signal, format);
+    const records = await this.read(PREVIEW_CATALOG_SELECTION, signal, true);
     try {
       // Keep drifted records' claims in the index: filtering first could hide
       // a barcode collision and select the wrong otherwise-verified item.
@@ -340,14 +282,8 @@ export class PublicCatalogApi implements BrowseApi {
           (record) => record.verified && record.product.id === product.id,
         )
       ) {
-        emitScanTrace(trace, {
-          path,
-          stage: "identity-verification",
-          reason: "catalog_identity_changed",
-        });
         throw new MobileFailure("invalid_response");
       }
-      emitScanTrace(trace, { path, stage: "complete", matchingVariants: 1 });
       return mobileProductSchema.parse({
         contractVersion: MOBILE_CONTRACT_VERSION,
         kind: "product-detail",
@@ -369,11 +305,6 @@ export class PublicCatalogApi implements BrowseApi {
               !records.some((r) => r.product.id === p.id),
           )
         ) {
-          emitScanTrace(trace, {
-            path,
-            stage: "eligibility-check",
-            matchingVariants: 0,
-          });
           throw new MobileFailure("product_unavailable");
         }
       }

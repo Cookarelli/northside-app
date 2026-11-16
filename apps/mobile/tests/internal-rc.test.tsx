@@ -10,7 +10,7 @@ const source = { ...rc.env, ...rc.ios.env };
 const built = { ...source, EAS_BUILD: "true", EAS_BUILD_PLATFORM: "ios" };
 
 describe("integrated internal iOS release candidate", () => {
-  it("keeps existing preview distinct and resolves inherited RC settings into build 12 and the exact native target", () => {
+  it("keeps existing preview distinct and resolves inherited RC settings into build 13 and the exact native target", () => {
     expect(rc.extends).toBe("base");
     expect(rc.distribution).toBe("internal");
     expect(rc.environment).toBe("preview");
@@ -21,7 +21,7 @@ describe("integrated internal iOS release candidate", () => {
     expect(preview.ios.simulator).toBe(false);
     expect(preview.ios.developmentClient).toBe(false);
     const c = createAppConfig(built);
-    expect(c.ios?.buildNumber).toBe("12");
+    expect(c.ios?.buildNumber).toBe("13");
     expect(c.ios?.bundleIdentifier).toBe(
       "com.northsidecollectibles.customer.preview",
     );
