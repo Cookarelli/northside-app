@@ -5,6 +5,7 @@ import {
   lookupActiveScan,
   lookupCartScan,
 } from "../lib/server/mobile/active-scan";
+import { mobileHandler } from "../lib/server/mobile/http";
 
 const barcode = "887521144914",
   id = "gid://shopify/ProductVariant/12";
@@ -204,4 +205,129 @@ test("the scanner HTTP response preserves an ambiguous active barcode", async ()
   assert.ok(response instanceof Response);
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error.code, "ambiguous_scan");
+});
+
+test("production barcode HTTP uses live Shopify with the staging cart flag off", async (t) => {
+  const shop = "9i3hnb-jw.myshopify.com";
+  const settings = {
+    NODE_ENV: "production",
+    APP_ORIGIN: "https://api.example.test",
+    NORTHSIDE_MOBILE_ENVIRONMENT: "production",
+    NORTHSIDE_MOBILE_SCAN_CART_APPROVED: "false",
+    NORTHSIDE_MOBILE_APPROVED_COLLECTION: "",
+    NORTHSIDE_FIXTURES: "0",
+    SHOPIFY_SHOP: shop,
+    SHOPIFY_API_VERSION: "2026-07",
+    SHOPIFY_ADMIN_AUTH_MODE: "installed_oauth",
+    SHOPIFY_ADMIN_ACCESS_TOKEN: "synthetic-admin-token",
+    SHOPIFY_ADMIN_TOKEN_EXPIRES_AT: new Date(
+      Date.now() + 3_600_000,
+    ).toISOString(),
+    SHOPIFY_STOREFRONT_PRIVATE_TOKEN: "synthetic-storefront-token",
+  };
+  const before = Object.keys(settings).map(
+    (key) => [key, process.env[key]] as const,
+  );
+  t.after(() => {
+    for (const [key, value] of before) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+  Object.assign(process.env, settings);
+
+  const unknown = "012345678905";
+  let claims = [claim];
+  let node: typeof visible | null = visible;
+  let providerUnavailable = false;
+  const provider = t.mock.method(
+    globalThis,
+    "fetch",
+    async (url: string | Request | URL, init?: RequestInit) => {
+      const { query, variables } = JSON.parse(String(init?.body));
+      if (url === `https://${shop}/admin/api/2026-10/graphql.json`) {
+        assert.match(query, /^query ActiveScanVariants/);
+        if (providerUnavailable) return new Response(null, { status: 503 });
+        const requested = variables.search.includes(`barcode:"${unknown}"`)
+          ? []
+          : claims;
+        return Response.json({ data: page(requested) });
+      }
+      assert.equal(url, `https://${shop}/api/2026-07/graphql.json`);
+      assert.match(query, /^query NativeScannedVariant/);
+      assert.deepEqual(variables, { id });
+      return Response.json({ data: { node } });
+    },
+  );
+  const post = (path: string, body: object) =>
+    mobileHandler(
+      new Request(`${settings.APP_ORIGIN}/api/mobile/v1/${path}`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }),
+    );
+  const scan = (code = barcode, format = "upc_a") =>
+    post("scan", { code, format });
+  async function expectError(response: Response, status: number, code: string) {
+    assert.equal(response.status, status);
+    const body = await response.json();
+    assert.equal(body.kind, "error");
+    assert.deepEqual(body.error, { code });
+  }
+
+  const published = await scan();
+  assert.equal(published.status, 200);
+  const detail = await published.json();
+  assert.equal(detail.kind, "product-detail");
+  assert.equal(detail.product.selectedVariantId, id);
+  assert.equal(detail.product.variants.nodes.length, 1);
+  assert.deepEqual(detail.product.variants.nodes[0].price, {
+    amountCents: 2995,
+    currencyCode: "USD",
+  });
+  const equivalent = await scan(`0${barcode}`, "ean13");
+  assert.equal(equivalent.status, 200);
+  assert.equal((await equivalent.json()).product.selectedVariantId, id);
+
+  node = null;
+  const scanOnly = await scan();
+  assert.equal(scanOnly.status, 200);
+  assert.equal((await scanOnly.json()).kind, "active-item");
+  await expectError(await scan(unknown), 404, "not_found");
+  claims = [claim, { ...claim, id: "gid://shopify/ProductVariant/31" }];
+  await expectError(await scan(), 400, "ambiguous_scan");
+  providerUnavailable = true;
+  await expectError(await scan(), 503, "service_unavailable");
+
+  const readCalls = provider.mock.callCount();
+  for (const key of [
+    "SHOPIFY_STOREFRONT_PRIVATE_TOKEN",
+    "SHOPIFY_ADMIN_ACCESS_TOKEN",
+  ] as const) {
+    delete process.env[key];
+    await expectError(await scan(), 503, "not_configured");
+    process.env[key] = settings[key];
+  }
+  await expectError(
+    await post("shopping", { action: "start" }),
+    404,
+    "not_found",
+  );
+  await expectError(
+    await scan("https://api.example.test/q/123", "qr"),
+    503,
+    "not_configured",
+  );
+  await expectError(
+    await post("scan", { code: "https://api.example.test/q/123" }),
+    503,
+    "not_configured",
+  );
+  process.env.NORTHSIDE_FIXTURES = "1";
+  await expectError(await scan(), 503, "not_configured");
+  assert.equal(provider.mock.callCount(), readCalls);
 });

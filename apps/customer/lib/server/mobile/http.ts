@@ -12,6 +12,8 @@ import {
 } from "./approved-native-catalog";
 import { lookupActiveScan } from "./active-scan";
 import { nativeScanCartGate, nativeScanCartSelected } from "./scan-cart-gate";
+import { liveOnly } from "../providers";
+import { storefront } from "../storefront";
 import {
   readNativeTracking,
   readNativeTrackingPhoto,
@@ -285,6 +287,35 @@ export async function mobileHandler(request: Request) {
         return successMvp(await acceptNativeTerms(bearer(request), body));
       if (path === "scan") {
         const scan = input(scanInputSchema, body);
+        if (
+          process.env.NORTHSIDE_MOBILE_ENVIRONMENT === "production" &&
+          scan.format !== "qr" &&
+          !/^https?:/i.test(scan.code)
+        ) {
+          if (process.env.NORTHSIDE_FIXTURES !== "0")
+            throw new AccessError(503, "not_configured");
+          try {
+            liveOnly();
+            return successMvp(
+              await lookupActiveScan(scan.code, scan.format, storefront()),
+            );
+          } catch (error) {
+            if (
+              error instanceof AccessError &&
+              [
+                "https_origin_not_configured",
+                "https_origin_required",
+                "shopify_shop_not_configured",
+                "shopify_version_requires_validation",
+                "shopify_not_configured",
+                "admin_installation_unverified",
+                "admin_oauth_token_expired",
+              ].includes(error.code)
+            )
+              throw new AccessError(503, "not_configured");
+            throw error;
+          }
+        }
         if (nativeScanCartSelected()) {
           nativeScanCartGate();
           try {
