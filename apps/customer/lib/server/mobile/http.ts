@@ -11,6 +11,7 @@ import {
   readNativeProduct,
 } from "./approved-native-catalog";
 import { lookupActiveScan } from "./active-scan";
+import type { AdminScanDiagnostic } from "../admin-shopify";
 import { nativeScanCartGate, nativeScanCartSelected } from "./scan-cart-gate";
 import { liveOnly } from "../providers";
 import { storefront } from "../storefront";
@@ -135,7 +136,7 @@ function input<T>(
   if (!result.success) throw new AccessError(400, "invalid_request");
   return result.data;
 }
-export function mobileError(error: unknown) {
+export function mobileError(error: unknown, requestId = randomUUID()) {
   const proposed =
     error instanceof AccessError ? error.code : "service_unavailable";
   const parsed = mobileErrorCodeSchema.safeParse(proposed);
@@ -156,11 +157,88 @@ export function mobileError(error: unknown) {
       contractVersion: MOBILE_CONTRACT_VERSION,
       kind: "error",
       error: { code },
-      requestId: randomUUID(),
+      requestId,
     },
     { status, headers },
   );
 }
+const scannerConfigurationErrors = new Set([
+  "https_origin_not_configured",
+  "https_origin_required",
+  "shopify_shop_not_configured",
+  "shopify_version_requires_validation",
+  "shopify_not_configured",
+  "admin_installation_unverified",
+  "admin_oauth_token_expired",
+  "not_configured",
+]);
+
+const scannerProviderErrors = new Set([
+  "admin_authorization_failed",
+  "admin_scope_or_expiry_invalid",
+  "shopify_unavailable",
+  "shopify_version_mismatch",
+  "shopify_query_failed",
+  "unsupported_money",
+  "invalid_provider_data",
+]);
+
+async function productionBarcodeScan(code: string, format?: string) {
+  let diagnostic:
+    | Parameters<AdminScanDiagnostic>[0]
+    | { step: "configuration" | "storefront_detail"; upstreamStatus?: number } =
+    { step: "configuration" };
+  try {
+    if (process.env.NORTHSIDE_FIXTURES !== "0")
+      throw new AccessError(503, "not_configured");
+    liveOnly();
+    const catalog = storefront(undefined, async (...args) => {
+      diagnostic = { step: "storefront_detail" };
+      const response = await fetch(...args);
+      diagnostic = {
+        step: "storefront_detail",
+        upstreamStatus: response.status,
+      };
+      return response;
+    });
+    return successMvp(
+      await lookupActiveScan(code, format, catalog, undefined, (event) => {
+        diagnostic = event;
+      }),
+    );
+  } catch (error) {
+    const requestId = randomUUID();
+    const reason =
+      error instanceof AccessError ? error.code : "unexpected_error";
+    const configurationError = scannerConfigurationErrors.has(reason);
+    if (!(error instanceof AccessError) || error.status >= 500) {
+      console.error(
+        JSON.stringify({
+          event: "mobile_barcode_scan_failed",
+          requestId,
+          ...diagnostic,
+          reason:
+            configurationError || scannerProviderErrors.has(reason)
+              ? reason
+              : "unexpected_error",
+          adminMode:
+            process.env.SHOPIFY_ADMIN_AUTH_MODE ===
+            "same_org_client_credentials"
+              ? "same_org_client_credentials"
+              : process.env.SHOPIFY_ADMIN_AUTH_MODE === "installed_oauth"
+                ? "installed_oauth"
+                : "unrecognized",
+          sameOrgConfirmed: process.env.SHOPIFY_SAME_ORG_CONFIRMED === "true",
+        }),
+      );
+    }
+    return mobileError(
+      configurationError ? new AccessError(503, "not_configured") : error,
+      requestId,
+    );
+  }
+}
+
 export async function mobileHandler(request: Request) {
   const url = new URL(request.url),
     path = url.pathname.replace(/^\/api\/mobile\/v1\/?/, "");
@@ -292,29 +370,7 @@ export async function mobileHandler(request: Request) {
           scan.format !== "qr" &&
           !/^https?:/i.test(scan.code)
         ) {
-          if (process.env.NORTHSIDE_FIXTURES !== "0")
-            throw new AccessError(503, "not_configured");
-          try {
-            liveOnly();
-            return successMvp(
-              await lookupActiveScan(scan.code, scan.format, storefront()),
-            );
-          } catch (error) {
-            if (
-              error instanceof AccessError &&
-              [
-                "https_origin_not_configured",
-                "https_origin_required",
-                "shopify_shop_not_configured",
-                "shopify_version_requires_validation",
-                "shopify_not_configured",
-                "admin_installation_unverified",
-                "admin_oauth_token_expired",
-              ].includes(error.code)
-            )
-              throw new AccessError(503, "not_configured");
-            throw error;
-          }
+          return await productionBarcodeScan(scan.code, scan.format);
         }
         if (nativeScanCartSelected()) {
           nativeScanCartGate();

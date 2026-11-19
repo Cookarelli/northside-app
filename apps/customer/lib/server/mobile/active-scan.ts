@@ -8,7 +8,7 @@ import {
   activeItemScanSchema,
   mobileProductSchema,
 } from "../../../../../packages/customer-contracts/src/mvp";
-import { adminQuery } from "../admin-shopify";
+import { adminQuery, type AdminScanDiagnostic } from "../admin-shopify";
 import { cents } from "../shopify-config";
 import { AccessError } from "../security";
 import { storefront, type Query } from "../storefront";
@@ -97,6 +97,7 @@ export async function lookupActiveScan(
   format?: string,
   publicQuery?: Query,
   admin?: Query,
+  observe?: AdminScanDiagnostic,
 ) {
   if (format === "qr" || /^https?:/i.test(code))
     return approvedNativeScan(code, format, publicQuery);
@@ -109,7 +110,7 @@ export async function lookupActiveScan(
   }
   const { claim, barcode, currency } = await activeClaim(
     candidates,
-    admin ?? (await adminQuery("2026-10")),
+    admin ?? (await adminQuery("2026-10", observe)),
   );
   const { node } = await (publicQuery ?? storefront())<{
     node: StorefrontVariant | null;

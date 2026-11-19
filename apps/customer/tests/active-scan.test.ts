@@ -240,6 +240,9 @@ test("production barcode HTTP uses live Shopify with the staging cart flag off",
   let claims = [claim];
   let node: typeof visible | null = visible;
   let providerUnavailable = false;
+  const log = t.mock.method(console, "error", (message: string) => {
+    assert.equal(typeof message, "string");
+  });
   const provider = t.mock.method(
     globalThis,
     "fetch",
@@ -277,6 +280,7 @@ test("production barcode HTTP uses live Shopify with the staging cart flag off",
     const body = await response.json();
     assert.equal(body.kind, "error");
     assert.deepEqual(body.error, { code });
+    return body.requestId as string;
   }
 
   const published = await scan();
@@ -300,8 +304,25 @@ test("production barcode HTTP uses live Shopify with the staging cart flag off",
   await expectError(await scan(unknown), 404, "not_found");
   claims = [claim, { ...claim, id: "gid://shopify/ProductVariant/31" }];
   await expectError(await scan(), 400, "ambiguous_scan");
+  assert.equal(log.mock.callCount(), 0);
   providerUnavailable = true;
-  await expectError(await scan(), 503, "service_unavailable");
+  const failedRequest = await expectError(
+    await scan(),
+    503,
+    "service_unavailable",
+  );
+  const [message] = log.mock.calls[0].arguments;
+  const diagnostic = JSON.parse(message);
+  assert.equal(diagnostic.event, "mobile_barcode_scan_failed");
+  assert.equal(diagnostic.requestId, failedRequest);
+  assert.equal(diagnostic.step, "admin_barcode_query");
+  assert.equal(diagnostic.upstreamStatus, 503);
+  assert.equal(diagnostic.reason, "shopify_unavailable");
+  assert.doesNotMatch(
+    message,
+    /synthetic-admin-token|synthetic-storefront-token/,
+  );
+  assert.ok(!message.includes(barcode));
 
   const readCalls = provider.mock.callCount();
   for (const key of [

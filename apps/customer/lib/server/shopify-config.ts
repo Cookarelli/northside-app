@@ -32,6 +32,26 @@ export function buyerIP(headers: Headers) {
     throw new AccessError(503, "verified_buyer_ip_required");
   return value;
 }
+const graphqlErrorCodes = [
+  "ACCESS_DENIED",
+  "THROTTLED",
+  "MAX_COST_EXCEEDED",
+  "INTERNAL_SERVER_ERROR",
+  "undefinedField",
+] as const;
+
+export type ShopifyGraphQLDiagnostic =
+  | {
+      phase: "response";
+      upstreamStatus: number;
+      apiVersionMatches: boolean | null;
+    }
+  | {
+      phase: "graphql_error";
+      upstreamStatus: number;
+      code?: (typeof graphqlErrorCodes)[number];
+    };
+
 export async function graphql<T>(
   url: string,
   headers: Record<string, string>,
@@ -39,6 +59,7 @@ export async function graphql<T>(
   variables: object,
   run = fetch,
   expectedVersion = apiVersion(),
+  observe?: (event: ShopifyGraphQLDiagnostic) => void,
 ): Promise<T> {
   const response = await run(url, {
     method: "POST",
@@ -48,13 +69,39 @@ export async function graphql<T>(
     headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify({ query, variables }),
   });
-  if (!response.ok) throw new AccessError(503, "shopify_unavailable");
+  if (!response.ok) {
+    observe?.({
+      phase: "response",
+      upstreamStatus: response.status,
+      apiVersionMatches: null,
+    });
+    throw new AccessError(503, "shopify_unavailable");
+  }
   const actual = response.headers.get("x-shopify-api-version");
+  observe?.({
+    phase: "response",
+    upstreamStatus: response.status,
+    apiVersionMatches: actual ? actual === expectedVersion : null,
+  });
   if (actual && actual !== expectedVersion)
     throw new AccessError(503, "shopify_version_mismatch");
   const result = await response.json();
-  if (result.errors?.length || !result.data)
+  if (result.errors?.length || !result.data) {
+    if (observe) {
+      const errors: unknown = result.errors;
+      const code = Array.isArray(errors)
+        ? graphqlErrorCodes.find((knownCode) =>
+            errors.some((error) => error?.extensions?.code === knownCode),
+          )
+        : undefined;
+      observe({
+        phase: "graphql_error",
+        upstreamStatus: response.status,
+        ...(code ? { code } : {}),
+      });
+    }
     throw new AccessError(503, "shopify_query_failed");
+  }
   return result.data as T;
 }
 export function cents(value: { amount: string; currencyCode: string }) {

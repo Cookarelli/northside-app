@@ -5,12 +5,43 @@ import {
   graphql,
   gid,
   cents,
+  type ShopifyGraphQLDiagnostic,
 } from "./shopify-config";
 import { AccessError } from "./security";
 import type { Query } from "./storefront";
 import type { Money } from "../commerce";
+const oauthErrorCodes = [
+  "invalid_client",
+  "invalid_grant",
+  "invalid_request",
+  "shop_not_permitted",
+  "unauthorized_client",
+  "unsupported_grant_type",
+] as const;
+
+export type AdminScanDiagnosticEvent =
+  | { step: "admin_token_exchange"; phase: "start" }
+  | {
+      step: "admin_token_exchange";
+      phase: "response";
+      upstreamStatus: number;
+      code?: (typeof oauthErrorCodes)[number];
+    }
+  | {
+      step: "admin_token_validation";
+      upstreamStatus: number;
+      validExpiry: boolean;
+      hasAccessToken: boolean;
+      grantedReadOrders: boolean;
+      grantedReadProducts: boolean;
+    }
+  | { step: "admin_barcode_query"; phase: "start" }
+  | ({ step: "admin_barcode_query" } & ShopifyGraphQLDiagnostic);
+
+export type AdminScanDiagnostic = (event: AdminScanDiagnosticEvent) => void;
+
 let cached: { token: string; until: number } | undefined;
-export async function adminToken(run = fetch) {
+export async function adminToken(run = fetch, observe?: AdminScanDiagnostic) {
   const { shop } = commerceConfig();
   const mode = process.env.SHOPIFY_ADMIN_AUTH_MODE;
   if (mode === "installed_oauth") {
@@ -26,6 +57,7 @@ export async function adminToken(run = fetch) {
   )
     throw new AccessError(503, "admin_installation_unverified");
   if (cached && cached.until > Date.now() + 60000) return cached.token;
+  observe?.({ step: "admin_token_exchange", phase: "start" });
   const response = await run(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     cache: "no-store",
@@ -38,14 +70,35 @@ export async function adminToken(run = fetch) {
       client_secret: required("SHOPIFY_APP_CLIENT_SECRET"),
     }),
   });
+  if (observe) {
+    const failure = response.ok
+      ? undefined
+      : await response.json().catch(() => undefined);
+    const code = oauthErrorCodes.find(
+      (knownCode) => failure?.error === knownCode,
+    );
+    observe({
+      step: "admin_token_exchange",
+      phase: "response",
+      upstreamStatus: response.status,
+      ...(code ? { code } : {}),
+    });
+  }
   if (!response.ok) throw new AccessError(503, "admin_authorization_failed");
   const data = await response.json();
-  if (
-    typeof data.access_token !== "string" ||
-    !Number.isFinite(data.expires_in) ||
-    data.expires_in <= 60 ||
-    !String(data.scope).split(",").includes("read_orders")
-  )
+  const hasAccessToken = typeof data.access_token === "string";
+  const validExpiry = Number.isFinite(data.expires_in) && data.expires_in > 60;
+  const scopes = String(data.scope).split(",");
+  const grantedReadOrders = scopes.includes("read_orders");
+  observe?.({
+    step: "admin_token_validation",
+    upstreamStatus: response.status,
+    validExpiry,
+    hasAccessToken,
+    grantedReadOrders,
+    grantedReadProducts: scopes.includes("read_products"),
+  });
+  if (!hasAccessToken || !validExpiry || !grantedReadOrders)
     throw new AccessError(503, "admin_scope_or_expiry_invalid");
   cached = {
     token: data.access_token,
@@ -55,18 +108,23 @@ export async function adminToken(run = fetch) {
 }
 export async function adminQuery(
   barcodeApiVersion?: "2026-10",
+  observe?: AdminScanDiagnostic,
 ): Promise<Query> {
   const { shop, version } = commerceConfig(),
-    token = await adminToken();
-  return (query, variables) =>
-    graphql(
+    token = await adminToken(fetch, observe);
+  return (query, variables) => {
+    observe?.({ step: "admin_barcode_query", phase: "start" });
+    return graphql(
       `https://${shop}/admin/api/${barcodeApiVersion ?? version}/graphql.json`,
       { "X-Shopify-Access-Token": token },
       query,
       variables,
       fetch,
       barcodeApiVersion ?? version,
+      observe &&
+        ((event) => observe({ step: "admin_barcode_query", ...event })),
     );
+  };
 }
 type Bag = { shopMoney: Money };
 export type OrderSnapshot = {
