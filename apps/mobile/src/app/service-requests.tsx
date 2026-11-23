@@ -410,7 +410,7 @@ function RequestContent({ advance }: { advance: boolean }) {
   return (
     <View style={s.stack}>
       <Text style={ui.copy}>
-        6800 Forest Hills Road, Unit 3, Loves Park, IL. Receiving ZIP and
+        6800 Forest Hills Road, Suite 3, Loves Park, IL. Receiving ZIP and
         mail-in start date are unconfirmed. Do not mail cards based on this
         screen.
       </Text>
