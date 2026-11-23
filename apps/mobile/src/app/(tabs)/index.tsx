@@ -324,7 +324,7 @@ export default function HomeScreen() {
         <Card appearance="storefront">
           <Text style={styles.heading}>Visit Northside</Text>
           <Text style={styles.copy}>
-            {"6800 Forest Hills Road, Unit 3, Loves Park, IL."}
+            {"6800 Forest Hills Road, Suite 3, Loves Park, IL."}
           </Text>
           {info.data?.store.hours.length ? (
             info.data.store.hours.map((hours, i) => (

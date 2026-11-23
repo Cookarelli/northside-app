@@ -10,7 +10,7 @@ const ID = "11111111-1111-4111-8111-111111111111",
 const config = {
   contractVersion: "1",
   location: {
-    address: "6800 Forest Hills Road, Unit 3, Loves Park, Illinois",
+    address: "6800 Forest Hills Road, Suite 3, Loves Park, Illinois",
     receivingPostalCode: null,
     receivingStartsAt: null,
     receivingActive: false,

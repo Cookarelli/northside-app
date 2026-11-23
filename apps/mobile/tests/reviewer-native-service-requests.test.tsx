@@ -152,7 +152,7 @@ jest.mock("../src/components/Controls", () => {
 const config = (revision = 1): RequestConfig => ({
   contractVersion: "1",
   location: {
-    address: "6800 Forest Hills Road, Unit 3, Loves Park, Illinois",
+    address: "6800 Forest Hills Road, Suite 3, Loves Park, Illinois",
     receivingPostalCode: null,
     receivingStartsAt: null,
     receivingActive: false,

@@ -47,7 +47,7 @@ export async function requestConfig(
       ? hashToken(`service-request:${a.tenant_id}:${a.customer_id}`)
       : null,
     location: {
-      address: "6800 Forest Hills Road, Unit 3, Loves Park, Illinois",
+      address: "6800 Forest Hills Road, Suite 3, Loves Park, Illinois",
       receivingPostalCode: null,
       receivingStartsAt: null,
       receivingActive: false,

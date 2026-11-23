@@ -1033,7 +1033,7 @@ export function ServiceRequestForm({
             <div>
               <strong>Before sending cards</strong>
               <p>
-                6800 Forest Hills Road, Unit 3<br />
+                6800 Forest Hills Road, Suite 3<br />
                 Loves Park, Illinois
               </p>
               <p>

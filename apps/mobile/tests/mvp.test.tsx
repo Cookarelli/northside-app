@@ -1620,7 +1620,7 @@ describe("customer mobile MVP with simulated services", () => {
     );
     expect(screen.getByText("Synthetic verified event")).toBeVisible();
     expect(
-      screen.getByText("6800 Forest Hills Road, Unit 3, Loves Park, IL."),
+      screen.getByText("6800 Forest Hills Road, Suite 3, Loves Park, IL."),
     ).toBeVisible();
     expect(screen.queryByText(/Checkout now/)).toBeNull();
   });
